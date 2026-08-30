@@ -567,23 +567,24 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     paddingHorizontal: 26,
-    marginBottom: 36,
+    marginBottom: 78,
   },
   heading: {
     fontFamily: Typography.fontSerif,
-    fontSize: 43,
-    color: Colors.darkTextPrimary,
-    lineHeight: 51,
+    fontSize: 36,
+    color: '#FFFFFF',
+    lineHeight: 44,
     marginBottom: 12,
   },
   italicAccent: {
     fontFamily: Typography.fontSerifItalic,
+    color: '#FFFFFF',
   },
   subtitle: {
     fontFamily: Typography.fontSansRegular,
     fontSize: 16,
     lineHeight: 24,
-    color: '#9CA3AF',
+    color: '#FFFFFF',
   },
   floatingFooterRow: {
     position: 'absolute',
