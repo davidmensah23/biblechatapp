@@ -53,11 +53,11 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: Colors.cardSecondary,
-    borderRadius: 18,
-    paddingVertical: 18,
+    borderRadius: 20,
+    paddingVertical: 20,
     paddingHorizontal: 14,
     alignItems: 'center',
-    minHeight: 200,
+    minHeight: 215,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
@@ -65,9 +65,9 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   avatarContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     overflow: 'hidden',
     backgroundColor: '#E0E0E0',
     marginBottom: 12,
@@ -78,16 +78,16 @@ const styles = StyleSheet.create({
   },
   name: {
     fontFamily: Typography.fontSerif,
-    fontSize: 22,
+    fontSize: 24,
     color: Colors.textPrimary,
     marginBottom: 6,
     textAlign: 'center',
   },
   quote: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 10.5,
+    fontSize: 12.5,
     color: Colors.textMuted,
     textAlign: 'center',
-    lineHeight: 15,
+    lineHeight: 17.5,
   }
 });

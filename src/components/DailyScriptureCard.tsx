@@ -30,7 +30,6 @@ export const DailyScriptureCard: React.FC<DailyScriptureCardProps> = ({
     const newState = !bookmarked;
     setBookmarked(newState);
 
-    // Heart bounce popping micro-animation
     heartScale.value = withSequence(
       withSpring(1.4, SpringConfigs.bouncy),
       withSpring(1, SpringConfigs.snappy)
@@ -81,9 +80,9 @@ export const DailyScriptureCard: React.FC<DailyScriptureCardProps> = ({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.cardSecondary,
-    borderRadius: 18,
+    borderRadius: 20,
     overflow: 'hidden',
-    marginBottom: 20,
+    marginBottom: 22,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
@@ -92,7 +91,7 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     width: '100%',
-    height: 120,
+    height: 130,
     backgroundColor: '#333333',
   },
   bannerImage: {
@@ -100,17 +99,17 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   content: {
-    padding: 16,
+    padding: 18,
   },
   verseText: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 12.5,
-    lineHeight: 18,
+    fontSize: 14.5,
+    lineHeight: 22,
     color: Colors.textPrimary,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   referenceText: {
-    fontFamily: Typography.fontSansMedium,
+    fontFamily: Typography.fontSansSemiBold,
     color: Colors.textSecondary,
   },
   footerRow: {
@@ -120,7 +119,7 @@ const styles = StyleSheet.create({
   },
   readMoreText: {
     fontFamily: Typography.fontSerifItalic,
-    fontSize: 16,
+    fontSize: 17,
     color: Colors.textPrimary,
     textDecorationLine: 'underline',
   }

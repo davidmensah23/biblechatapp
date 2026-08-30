@@ -80,7 +80,7 @@ export const ProfileScreen: React.FC = () => {
             <Text style={styles.userBio} numberOfLines={2}>{profile.bio}</Text>
             <TouchableOpacity onPress={() => setActiveSubTab('edit')}>
               <Text style={styles.editBioLink}>
-                <Ionicons name="create-outline" size={13} color="#3B82F6" /> Edit your bio
+                <Ionicons name="create-outline" size={14} color="#3B82F6" /> Edit your bio
               </Text>
             </TouchableOpacity>
           </View>
@@ -94,7 +94,7 @@ export const ProfileScreen: React.FC = () => {
           >
             <Ionicons
               name={activeSubTab === 'bookmarks' ? 'folder' : 'folder-outline'}
-              size={20}
+              size={22}
               color={activeSubTab === 'bookmarks' ? Colors.textPrimary : Colors.textMuted}
             />
           </TouchableOpacity>
@@ -105,7 +105,7 @@ export const ProfileScreen: React.FC = () => {
           >
             <Ionicons
               name={activeSubTab === 'edit' ? 'person' : 'person-outline'}
-              size={20}
+              size={22}
               color={activeSubTab === 'edit' ? Colors.textPrimary : Colors.textMuted}
             />
           </TouchableOpacity>
@@ -133,7 +133,7 @@ export const ProfileScreen: React.FC = () => {
                     <Text style={styles.bmReference}>{bm.type === 'verse' ? 'Read' : 'View message in chat'}</Text>
                   </View>
                   <TouchableOpacity onPress={() => handleRemoveBookmark(bm.id)}>
-                    <Ionicons name="heart" size={18} color={Colors.heartActive} />
+                    <Ionicons name="heart" size={20} color={Colors.heartActive} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: Typography.fontSerif,
-    fontSize: 26,
+    fontSize: 28,
     color: Colors.textPrimary,
   },
   titleRedLine: {
@@ -233,9 +233,9 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   settingsBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: Colors.cardSecondary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -251,9 +251,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   userAvatar: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     marginRight: 16,
   },
   userInfo: {
@@ -261,21 +261,21 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontFamily: Typography.fontSerif,
-    fontSize: 22,
+    fontSize: 25,
     color: Colors.textPrimary,
   },
   userBio: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 11.5,
+    fontSize: 13.5,
     color: Colors.textMuted,
-    marginTop: 2,
-    lineHeight: 16,
+    marginTop: 3,
+    lineHeight: 19,
   },
   editBioLink: {
     fontFamily: Typography.fontSansMedium,
-    fontSize: 12,
+    fontSize: 13,
     color: '#3B82F6',
-    marginTop: 4,
+    marginTop: 5,
   },
   subTabsRow: {
     flexDirection: 'row',
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
   },
   subTabButton: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: 'center',
   },
   subTabButtonActive: {
@@ -298,22 +298,22 @@ const styles = StyleSheet.create({
   bookmarkCard: {
     backgroundColor: Colors.cardSecondary,
     borderRadius: 18,
-    padding: 14,
+    padding: 16,
   },
   bmHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
   bmThumbnail: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
+    width: 48,
+    height: 48,
+    borderRadius: 10,
     marginRight: 12,
   },
   bmAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     marginRight: 12,
   },
   bmContent: {
@@ -322,13 +322,13 @@ const styles = StyleSheet.create({
   },
   bmText: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 14,
+    lineHeight: 20,
     color: Colors.textPrimary,
   },
   bmReference: {
     fontFamily: Typography.fontSansMedium,
-    fontSize: 11,
+    fontSize: 12.5,
     color: '#3B82F6',
     marginTop: 4,
     textDecorationLine: 'underline',
@@ -341,28 +341,28 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontFamily: Typography.fontSansMedium,
-    fontSize: 12,
+    fontSize: 13.5,
     color: Colors.textSecondary,
   },
   inputField: {
     backgroundColor: Colors.cardSecondary,
-    borderRadius: 14,
+    borderRadius: 16,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     fontFamily: Typography.fontSansRegular,
-    fontSize: 14,
+    fontSize: 15,
     color: Colors.textPrimary,
   },
   saveBtn: {
     backgroundColor: Colors.accentGreen,
-    borderRadius: 16,
-    paddingVertical: 14,
+    borderRadius: 18,
+    paddingVertical: 15,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 12,
   },
   saveBtnText: {
     fontFamily: Typography.fontSansSemiBold,
-    fontSize: 15,
+    fontSize: 16,
     color: '#FFFFFF',
   }
 });

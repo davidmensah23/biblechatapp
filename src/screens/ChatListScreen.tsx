@@ -139,9 +139,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: Colors.cardSecondary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 10,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 16,
   },
   searchIcon: {
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontFamily: Typography.fontSansRegular,
-    fontSize: 14,
+    fontSize: 15,
     color: Colors.textPrimary,
   },
   listContainer: {
@@ -187,14 +187,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.cardSecondary,
-    borderRadius: 18,
-    padding: 14,
-    marginBottom: 10,
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
   },
   avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     marginRight: 14,
   },
   chatInfo: {
@@ -208,18 +208,19 @@ const styles = StyleSheet.create({
   },
   personaName: {
     fontFamily: Typography.fontSerif,
-    fontSize: 18,
+    fontSize: 20,
     color: Colors.textPrimary,
   },
   timestamp: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 11,
+    fontSize: 12,
     color: Colors.textLight,
   },
   lastMessage: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 12.5,
+    fontSize: 14,
     color: Colors.textSecondary,
+    lineHeight: 19,
   },
   emptyState: {
     alignItems: 'center',
@@ -228,7 +229,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 14,
+    fontSize: 15,
     color: Colors.textMuted,
     marginTop: 12,
   }
