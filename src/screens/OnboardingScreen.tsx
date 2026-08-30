@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -23,34 +23,74 @@ import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
 import { SpringConfigs } from '../theme/animations';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 interface OnboardingScreenProps {
   onComplete: () => void;
 }
 
+// Multi-bar pulsating audio visualizer for Slide 3
+const WaveVisualizer: React.FC = () => {
+  const bar1 = useSharedValue(20);
+  const bar2 = useSharedValue(35);
+  const bar3 = useSharedValue(50);
+  const bar4 = useSharedValue(30);
+  const bar5 = useSharedValue(45);
+  const bar6 = useSharedValue(25);
+  const bar7 = useSharedValue(40);
+
+  useEffect(() => {
+    bar1.value = withRepeat(withSequence(withTiming(45, { duration: 400 }), withTiming(15, { duration: 400 })), -1, true);
+    bar2.value = withRepeat(withSequence(withTiming(20, { duration: 350 }), withTiming(55, { duration: 350 })), -1, true);
+    bar3.value = withRepeat(withSequence(withTiming(60, { duration: 450 }), withTiming(25, { duration: 450 })), -1, true);
+    bar4.value = withRepeat(withSequence(withTiming(30, { duration: 300 }), withTiming(70, { duration: 300 })), -1, true);
+    bar5.value = withRepeat(withSequence(withTiming(65, { duration: 420 }), withTiming(20, { duration: 420 })), -1, true);
+    bar6.value = withRepeat(withSequence(withTiming(18, { duration: 380 }), withTiming(50, { duration: 380 })), -1, true);
+    bar7.value = withRepeat(withSequence(withTiming(40, { duration: 320 }), withTiming(15, { duration: 320 })), -1, true);
+  }, []);
+
+  const s1 = useAnimatedStyle(() => ({ height: bar1.value }));
+  const s2 = useAnimatedStyle(() => ({ height: bar2.value }));
+  const s3 = useAnimatedStyle(() => ({ height: bar3.value }));
+  const s4 = useAnimatedStyle(() => ({ height: bar4.value }));
+  const s5 = useAnimatedStyle(() => ({ height: bar5.value }));
+  const s6 = useAnimatedStyle(() => ({ height: bar6.value }));
+  const s7 = useAnimatedStyle(() => ({ height: bar7.value }));
+
+  return (
+    <View style={styles.waveBarsContainer}>
+      <Animated.View style={[styles.waveBar, s1]} />
+      <Animated.View style={[styles.waveBar, styles.waveBarCyan, s2]} />
+      <Animated.View style={[styles.waveBar, styles.waveBarPurple, s3]} />
+      <Animated.View style={[styles.waveBar, styles.waveBarBlue, s4]} />
+      <Animated.View style={[styles.waveBar, styles.waveBarPurple, s5]} />
+      <Animated.View style={[styles.waveBar, styles.waveBarCyan, s6]} />
+      <Animated.View style={[styles.waveBar, s7]} />
+    </View>
+  );
+};
+
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
 
   // Pagination Dot Animations
-  const dotWidth0 = useSharedValue(22);
+  const dotWidth0 = useSharedValue(24);
   const dotWidth1 = useSharedValue(6);
   const dotWidth2 = useSharedValue(6);
 
   // Glow pulse for slide 3
   const beamPulse = useSharedValue(1);
 
-  React.useEffect(() => {
-    // Animate pagination pills
-    dotWidth0.value = withSpring(currentSlide === 0 ? 24 : 6, SpringConfigs.bouncy);
-    dotWidth1.value = withSpring(currentSlide === 1 ? 24 : 6, SpringConfigs.bouncy);
-    dotWidth2.value = withSpring(currentSlide === 2 ? 24 : 6, SpringConfigs.bouncy);
+  useEffect(() => {
+    dotWidth0.value = withSpring(currentSlide === 0 ? 26 : 6, SpringConfigs.bouncy);
+    dotWidth1.value = withSpring(currentSlide === 1 ? 26 : 6, SpringConfigs.bouncy);
+    dotWidth2.value = withSpring(currentSlide === 2 ? 26 : 6, SpringConfigs.bouncy);
 
     if (currentSlide === 2) {
       beamPulse.value = withRepeat(
         withSequence(
-          withTiming(1.3, { duration: 800, easing: Easing.inOut(Easing.ease) }),
-          withTiming(1.0, { duration: 800, easing: Easing.inOut(Easing.ease) })
+          withTiming(1.25, { duration: 900, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1.0, { duration: 900, easing: Easing.inOut(Easing.ease) })
         ),
         -1,
         true
@@ -80,10 +120,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
       },
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dx < -50) {
-          // Swiped left -> next
           handleNext();
         } else if (gestureState.dx > 50) {
-          // Swiped right -> prev
           handlePrev();
         }
       },
@@ -97,25 +135,28 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
 
   return (
     <SafeAreaView style={styles.container} {...panResponder.panHandlers}>
-      {/* Top Visual Area */}
-      <View style={styles.visualContainer}>
+      {/* Top Visual Area (54% height) */}
+      <View style={[styles.visualContainer, currentSlide === 0 && styles.visualContainerFullBleed]}>
         {currentSlide === 0 && (
           <View style={styles.slide1Visual}>
             <Image
               source={require('../../assets/images/onboarding_disciples_hero.png')}
-              style={styles.heroImage}
-              resizeMode="contain"
+              style={styles.heroImageFull}
+              resizeMode="cover"
             />
+            {/* Subtle bottom shadow vignette */}
+            <View style={styles.bottomVignette} />
           </View>
         )}
 
         {currentSlide === 1 && (
           <View style={styles.slide2Visual}>
-            {/* Background Stack Cards with Layered Depth */}
+            {/* 3D Stack Layer 3 */}
             <View style={[styles.stackCard, styles.stackCardBack2]} />
+            {/* 3D Stack Layer 2 */}
             <View style={[styles.stackCard, styles.stackCardBack1]} />
 
-            {/* Top Peter Preview Card */}
+            {/* Front Simon Peter Card */}
             <View style={[styles.stackCard, styles.stackCardFront]}>
               <View style={styles.cardHeader}>
                 <Image
@@ -145,15 +186,16 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
               <Text style={styles.callCardTitle}>Peter Speaking</Text>
               <Text style={styles.callCardSubtitle}>You have been chatting for 30 minutes</Text>
 
+              {/* Glowing Wave Frequency Area */}
               <View style={styles.callGlowArea}>
-                <Animated.View style={[styles.callGlowBeam, beamStyle]} />
-                <Animated.View style={[styles.callGlowCenter, beamStyle]} />
+                <Animated.View style={[styles.callGlowHalo, beamStyle]} />
+                <WaveVisualizer />
               </View>
 
               <View style={styles.slideEndBar}>
                 <Text style={styles.slideEndText}>Slide to end call</Text>
                 <View style={styles.slideEndIcon}>
-                  <Ionicons name="call" size={14} color="#FFFFFF" style={{ transform: [{ rotate: '135deg' }] }} />
+                  <Ionicons name="call" size={15} color="#FFFFFF" style={{ transform: [{ rotate: '135deg' }] }} />
                 </View>
               </View>
             </View>
@@ -161,43 +203,45 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
         )}
       </View>
 
-      {/* Bottom Content Area */}
+      {/* Bottom Content Area (46% height) */}
       <View style={styles.textContainer}>
-        {currentSlide === 0 && (
-          <>
-            <Text style={styles.heading}>
-              They've Got <Text style={styles.italicAccent}>Stories</Text>.{'\n'}
-              You've Got <Text style={styles.italicAccent}>Questions</Text>
-            </Text>
-            <Text style={styles.subtitle}>
-              Ask Questions, Explore Their Stories, And Discover Ancient Wisdom—Reimagined For Today.
-            </Text>
-          </>
-        )}
+        <View style={styles.textHeaderGroup}>
+          {currentSlide === 0 && (
+            <>
+              <Text style={styles.heading}>
+                They've Got <Text style={styles.italicAccent}>Stories</Text>.{'\n'}
+                You've Got <Text style={styles.italicAccent}>Questions</Text>
+              </Text>
+              <Text style={styles.subtitle}>
+                Ask Questions, Explore Their Stories, And Discover Ancient Wisdom—Reimagined For Today.
+              </Text>
+            </>
+          )}
 
-        {currentSlide === 1 && (
-          <>
-            <Text style={styles.heading}>
-              Dive Into <Text style={styles.italicAccent}>Timeless</Text>{'\n'}
-              Conversations
-            </Text>
-            <Text style={styles.subtitle}>
-              From Parables To Personal Insight, Learn From 12 Disciples Brought To Life With Heart And Humility.
-            </Text>
-          </>
-        )}
+          {currentSlide === 1 && (
+            <>
+              <Text style={styles.heading}>
+                Dive Into <Text style={styles.italicAccent}>Timeless</Text>{'\n'}
+                Conversations
+              </Text>
+              <Text style={styles.subtitle}>
+                From Parables To Personal Insight, Learn From 12 Disciples Brought To Life With Heart And Humility.
+              </Text>
+            </>
+          )}
 
-        {currentSlide === 2 && (
-          <>
-            <Text style={styles.heading}>
-              Thoughtful. Friendly.{'\n'}
-              <Text style={styles.italicAccent}>Always Here.</Text>
-            </Text>
-            <Text style={styles.subtitle}>
-              Enjoy Meaningful Interactions In A Respectful, Safe, And Beautifully Designed Experience.
-            </Text>
-          </>
-        )}
+          {currentSlide === 2 && (
+            <>
+              <Text style={styles.heading}>
+                Thoughtful. Friendly.{'\n'}
+                <Text style={styles.italicAccent}>Always Here.</Text>
+              </Text>
+              <Text style={styles.subtitle}>
+                Enjoy Meaningful Interactions In A Respectful, Safe, And Beautifully Designed Experience.
+              </Text>
+            </>
+          )}
+        </View>
 
         {/* Footer Navigation */}
         <View style={styles.footerRow}>
@@ -211,12 +255,12 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
           {/* Action Button */}
           {currentSlide < 2 ? (
             <TouchableOpacity style={styles.nextArrowBtn} onPress={handleNext} activeOpacity={0.8}>
-              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity style={styles.getStartedBtn} onPress={onComplete} activeOpacity={0.85}>
               <Text style={styles.getStartedText}>Get Started</Text>
-              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
+              <Ionicons name="arrow-forward" size={17} color="#FFFFFF" style={{ marginLeft: 6 }} />
             </TouchableOpacity>
           )}
         </View>
@@ -231,20 +275,31 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.darkBackground,
   },
   visualContainer: {
-    flex: 1.2,
+    flex: 1.15,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
+    position: 'relative',
+  },
+  visualContainerFullBleed: {
+    paddingHorizontal: 0,
   },
   slide1Visual: {
+    width: width,
+    height: '100%',
+    position: 'relative',
+  },
+  heroImageFull: {
     width: '100%',
     height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  heroImage: {
-    width: width * 0.88,
-    height: '92%',
+  bottomVignette: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 50,
+    backgroundColor: 'rgba(10, 10, 10, 0.65)',
   },
   slide2Visual: {
     width: '100%',
@@ -256,78 +311,82 @@ const styles = StyleSheet.create({
   stackCard: {
     position: 'absolute',
     borderRadius: 24,
-    backgroundColor: '#FFFFFF',
   },
   stackCardBack2: {
-    width: '78%',
-    height: 240,
-    top: 20,
-    opacity: 0.2,
-    backgroundColor: '#888888',
-    transform: [{ rotate: '-4deg' }],
+    width: '84%',
+    height: 230,
+    top: 24,
+    backgroundColor: '#1E1E24',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    transform: [{ rotate: '-6deg' }],
   },
   stackCardBack1: {
-    width: '84%',
-    height: 250,
-    top: 32,
-    opacity: 0.4,
-    backgroundColor: '#AAAAAA',
-    transform: [{ rotate: '2deg' }],
+    width: '88%',
+    height: 240,
+    top: 36,
+    backgroundColor: '#2A2A32',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    transform: [{ rotate: '4deg' }],
   },
   stackCardFront: {
-    width: '90%',
-    backgroundColor: '#F7F7F7',
-    padding: 20,
-    top: 45,
+    width: '94%',
+    backgroundColor: '#F5F5F7',
+    padding: 22,
+    top: 48,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.45,
+    shadowRadius: 24,
+    elevation: 10,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   cardAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     marginRight: 12,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
   },
   cardHeaderText: {
     flex: 1,
   },
   cardTitle: {
     fontFamily: Typography.fontSerif,
-    fontSize: 20,
+    fontSize: 22,
     color: '#111111',
   },
   cardSubtitle: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 9.5,
-    color: '#3B82F6',
+    fontSize: 11,
+    color: '#2563EB',
     marginTop: 2,
   },
   cardBio: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 11.5,
-    lineHeight: 16,
-    color: '#444444',
-    marginBottom: 14,
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#374151',
+    marginBottom: 16,
   },
   chatWithMePill: {
-    borderWidth: 1,
-    borderColor: '#222222',
-    borderRadius: 20,
-    paddingVertical: 8,
+    borderWidth: 1.5,
+    borderColor: '#111827',
+    borderRadius: 24,
+    paddingVertical: 10,
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
   chatWithMeText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 12,
-    color: '#111111',
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 13.5,
+    color: '#111827',
   },
   slide3Visual: {
     width: '100%',
@@ -336,24 +395,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   callCard: {
-    width: '90%',
-    backgroundColor: '#0F0F12',
-    borderRadius: 24,
+    width: '94%',
+    backgroundColor: '#121218',
+    borderRadius: 26,
     borderWidth: 1,
-    borderColor: 'rgba(217, 70, 239, 0.4)',
-    padding: 20,
+    borderColor: 'rgba(217, 70, 239, 0.35)',
+    padding: 24,
     alignItems: 'center',
+    shadowColor: '#D946EF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 6,
   },
   callCardTitle: {
     fontFamily: Typography.fontSerif,
-    fontSize: 26,
+    fontSize: 28,
     color: '#FFFFFF',
     marginBottom: 4,
   },
   callCardSubtitle: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 11,
-    color: '#888888',
+    fontSize: 12,
+    color: '#9CA3AF',
     marginBottom: 20,
   },
   callGlowArea: {
@@ -361,78 +425,89 @@ const styles = StyleSheet.create({
     height: 100,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 22,
+    position: 'relative',
   },
-  callGlowBeam: {
+  callGlowHalo: {
     position: 'absolute',
-    width: '100%',
-    height: 3,
-    backgroundColor: '#D946EF',
-    shadowColor: '#D946EF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 10,
+    width: 140,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'rgba(217, 70, 239, 0.15)',
   },
-  callGlowCenter: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  waveBarsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    height: 80,
+  },
+  waveBar: {
+    width: 6,
+    borderRadius: 3,
+    backgroundColor: '#9CA3AF',
+  },
+  waveBarCyan: {
     backgroundColor: '#06B6D4',
-    shadowColor: '#06B6D4',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 16,
+  },
+  waveBarPurple: {
+    backgroundColor: '#D946EF',
+  },
+  waveBarBlue: {
+    backgroundColor: '#3B82F6',
   },
   slideEndBar: {
     width: '100%',
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(59, 130, 246, 0.65)',
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(59, 130, 246, 0.8)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
   },
   slideEndText: {
     fontFamily: Typography.fontSansMedium,
-    fontSize: 13,
+    fontSize: 14,
     color: '#FFFFFF',
   },
   slideEndIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#EF4444',
     alignItems: 'center',
     justifyContent: 'center',
   },
   textContainer: {
-    flex: 0.8,
-    paddingHorizontal: 28,
+    flex: 0.85,
+    paddingHorizontal: 26,
     justifyContent: 'space-between',
-    paddingBottom: 24,
+    paddingBottom: 28,
+  },
+  textHeaderGroup: {
+    justifyContent: 'flex-start',
   },
   heading: {
     fontFamily: Typography.fontSerif,
-    fontSize: 34,
+    fontSize: 38,
     color: Colors.darkTextPrimary,
-    lineHeight: 42,
-    marginBottom: 12,
+    lineHeight: 46,
+    marginBottom: 14,
   },
   italicAccent: {
     fontFamily: Typography.fontSerifItalic,
   },
   subtitle: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 13,
-    lineHeight: 20,
-    color: Colors.darkTextMuted,
+    fontSize: 15.5,
+    lineHeight: 23,
+    color: '#9CA3AF',
   },
   footerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 16,
+    paddingTop: 12,
   },
   paginationDots: {
     flexDirection: 'row',
@@ -447,13 +522,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   dotInactive: {
-    backgroundColor: '#333333',
+    backgroundColor: '#374151',
   },
   nextArrowBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#222222',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#27272A',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -461,13 +536,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.accentBlue,
-    paddingVertical: 14,
-    paddingHorizontal: 22,
-    borderRadius: 28,
+    paddingVertical: 15,
+    paddingHorizontal: 24,
+    borderRadius: 30,
   },
   getStartedText: {
     fontFamily: Typography.fontSansSemiBold,
-    fontSize: 15,
+    fontSize: 16,
     color: '#FFFFFF',
   }
 });
