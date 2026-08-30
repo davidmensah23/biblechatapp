@@ -1,8 +1,27 @@
 import React, { useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, SafeAreaView, Dimensions } from 'react-native';
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+  Dimensions,
+  PanResponder
+} from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withRepeat,
+  withSequence,
+  Easing
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
+import { SpringConfigs } from '../theme/animations';
 
 const { width } = Dimensions.get('window');
 
@@ -13,6 +32,32 @@ interface OnboardingScreenProps {
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
 
+  // Pagination Dot Animations
+  const dotWidth0 = useSharedValue(22);
+  const dotWidth1 = useSharedValue(6);
+  const dotWidth2 = useSharedValue(6);
+
+  // Glow pulse for slide 3
+  const beamPulse = useSharedValue(1);
+
+  React.useEffect(() => {
+    // Animate pagination pills
+    dotWidth0.value = withSpring(currentSlide === 0 ? 24 : 6, SpringConfigs.bouncy);
+    dotWidth1.value = withSpring(currentSlide === 1 ? 24 : 6, SpringConfigs.bouncy);
+    dotWidth2.value = withSpring(currentSlide === 2 ? 24 : 6, SpringConfigs.bouncy);
+
+    if (currentSlide === 2) {
+      beamPulse.value = withRepeat(
+        withSequence(
+          withTiming(1.3, { duration: 800, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1.0, { duration: 800, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        true
+      );
+    }
+  }, [currentSlide]);
+
   const handleNext = () => {
     if (currentSlide < 2) {
       setCurrentSlide(currentSlide + 1);
@@ -21,8 +66,37 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
     }
   };
 
+  const handlePrev = () => {
+    if (currentSlide > 0) {
+      setCurrentSlide(currentSlide - 1);
+    }
+  };
+
+  // Swipe Gesture Handler
+  const panResponder = React.useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 20 && Math.abs(gestureState.dy) < 30;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -50) {
+          // Swiped left -> next
+          handleNext();
+        } else if (gestureState.dx > 50) {
+          // Swiped right -> prev
+          handlePrev();
+        }
+      },
+    })
+  ).current;
+
+  const dot0Style = useAnimatedStyle(() => ({ width: dotWidth0.value }));
+  const dot1Style = useAnimatedStyle(() => ({ width: dotWidth1.value }));
+  const dot2Style = useAnimatedStyle(() => ({ width: dotWidth2.value }));
+  const beamStyle = useAnimatedStyle(() => ({ transform: [{ scale: beamPulse.value }] }));
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} {...panResponder.panHandlers}>
       {/* Top Visual Area */}
       <View style={styles.visualContainer}>
         {currentSlide === 0 && (
@@ -37,10 +111,10 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
 
         {currentSlide === 1 && (
           <View style={styles.slide2Visual}>
-            {/* Background Stack Cards */}
+            {/* Background Stack Cards with Layered Depth */}
             <View style={[styles.stackCard, styles.stackCardBack2]} />
             <View style={[styles.stackCard, styles.stackCardBack1]} />
-            
+
             {/* Top Peter Preview Card */}
             <View style={[styles.stackCard, styles.stackCardFront]}>
               <View style={styles.cardHeader}>
@@ -72,8 +146,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
               <Text style={styles.callCardSubtitle}>You have been chatting for 30 minutes</Text>
 
               <View style={styles.callGlowArea}>
-                <View style={styles.callGlowBeam} />
-                <View style={styles.callGlowCenter} />
+                <Animated.View style={[styles.callGlowBeam, beamStyle]} />
+                <Animated.View style={[styles.callGlowCenter, beamStyle]} />
               </View>
 
               <View style={styles.slideEndBar}>
@@ -127,11 +201,11 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
 
         {/* Footer Navigation */}
         <View style={styles.footerRow}>
-          {/* Pagination Indicators */}
+          {/* Animated Pagination Indicators */}
           <View style={styles.paginationDots}>
-            <View style={[styles.dot, currentSlide === 0 ? styles.dotActive : styles.dotInactive]} />
-            <View style={[styles.dot, currentSlide === 1 ? styles.dotActive : styles.dotInactive]} />
-            <View style={[styles.dot, currentSlide === 2 ? styles.dotActive : styles.dotInactive]} />
+            <Animated.View style={[styles.dot, currentSlide === 0 ? styles.dotActive : styles.dotInactive, dot0Style]} />
+            <Animated.View style={[styles.dot, currentSlide === 1 ? styles.dotActive : styles.dotInactive, dot1Style]} />
+            <Animated.View style={[styles.dot, currentSlide === 2 ? styles.dotActive : styles.dotInactive, dot2Style]} />
           </View>
 
           {/* Action Button */}
@@ -140,7 +214,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
               <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.getStartedBtn} onPress={onComplete} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.getStartedBtn} onPress={onComplete} activeOpacity={0.85}>
               <Text style={styles.getStartedText}>Get Started</Text>
               <Ionicons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
             </TouchableOpacity>
@@ -190,6 +264,7 @@ const styles = StyleSheet.create({
     top: 20,
     opacity: 0.2,
     backgroundColor: '#888888',
+    transform: [{ rotate: '-4deg' }],
   },
   stackCardBack1: {
     width: '84%',
@@ -197,6 +272,7 @@ const styles = StyleSheet.create({
     top: 32,
     opacity: 0.4,
     backgroundColor: '#AAAAAA',
+    transform: [{ rotate: '2deg' }],
   },
   stackCardFront: {
     width: '90%',
@@ -368,11 +444,9 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   dotActive: {
-    width: 22,
     backgroundColor: '#FFFFFF',
   },
   dotInactive: {
-    width: 6,
     backgroundColor: '#333333',
   },
   nextArrowBtn: {

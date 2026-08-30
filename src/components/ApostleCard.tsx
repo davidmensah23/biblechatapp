@@ -1,8 +1,10 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet, Pressable } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { ApostlePersona } from '../types';
 import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
+import { SpringConfigs } from '../theme/animations';
 
 interface ApostleCardProps {
   apostle: ApostlePersona;
@@ -10,33 +12,57 @@ interface ApostleCardProps {
 }
 
 export const ApostleCard: React.FC<ApostleCardProps> = ({ apostle, onPress }) => {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.95, SpringConfigs.bouncy);
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, SpringConfigs.snappy);
+  };
+
   return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => onPress(apostle)}
-      activeOpacity={0.8}
-    >
-      <View style={styles.avatarContainer}>
-        <Image source={apostle.avatar} style={styles.avatar} resizeMode="cover" />
-      </View>
-      <Text style={styles.name}>{apostle.name}</Text>
-      <Text style={styles.quote} numberOfLines={3}>
-        {apostle.shortQuote}
-      </Text>
-    </TouchableOpacity>
+    <Animated.View style={[styles.cardWrapper, animatedStyle]}>
+      <Pressable
+        style={styles.card}
+        onPress={() => onPress(apostle)}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+      >
+        <View style={styles.avatarContainer}>
+          <Image source={apostle.avatar} style={styles.avatar} resizeMode="cover" />
+        </View>
+        <Text style={styles.name}>{apostle.name}</Text>
+        <Text style={styles.quote} numberOfLines={3}>
+          {apostle.shortQuote}
+        </Text>
+      </Pressable>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
+  cardWrapper: {
     flex: 1,
+    margin: 6,
+  },
+  card: {
     backgroundColor: Colors.cardSecondary,
     borderRadius: 18,
     paddingVertical: 18,
     paddingHorizontal: 14,
     alignItems: 'center',
-    margin: 6,
     minHeight: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
   },
   avatarContainer: {
     width: 72,

@@ -1,5 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Modal, View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSequence,
+  Easing
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
@@ -18,6 +26,70 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
   durationMinutes = 30,
   onEndCall
 }) => {
+  const ring1Scale = useSharedValue(1);
+  const ring1Opacity = useSharedValue(0.6);
+  const ring2Scale = useSharedValue(1);
+  const ring2Opacity = useSharedValue(0.4);
+  const wavePulse = useSharedValue(1);
+
+  useEffect(() => {
+    if (visible) {
+      // Ring 1 Ripple
+      ring1Scale.value = withRepeat(
+        withTiming(1.6, { duration: 2000, easing: Easing.out(Easing.ease) }),
+        -1,
+        false
+      );
+      ring1Opacity.value = withRepeat(
+        withTiming(0, { duration: 2000, easing: Easing.out(Easing.ease) }),
+        -1,
+        false
+      );
+
+      // Ring 2 Ripple (delayed)
+      ring2Scale.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 500 }),
+          withTiming(1.9, { duration: 2000, easing: Easing.out(Easing.ease) })
+        ),
+        -1,
+        false
+      );
+      ring2Opacity.value = withRepeat(
+        withSequence(
+          withTiming(0.4, { duration: 500 }),
+          withTiming(0, { duration: 2000, easing: Easing.out(Easing.ease) })
+        ),
+        -1,
+        false
+      );
+
+      // Center Avatar Breathing
+      wavePulse.value = withRepeat(
+        withSequence(
+          withTiming(1.05, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1.0, { duration: 1000, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        true
+      );
+    }
+  }, [visible]);
+
+  const ring1Style = useAnimatedStyle(() => ({
+    transform: [{ scale: ring1Scale.value }],
+    opacity: ring1Opacity.value,
+  }));
+
+  const ring2Style = useAnimatedStyle(() => ({
+    transform: [{ scale: ring2Scale.value }],
+    opacity: ring2Opacity.value,
+  }));
+
+  const centerAvatarStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: wavePulse.value }],
+  }));
+
   return (
     <Modal visible={visible} animationType="slide" transparent={false}>
       <View style={styles.container}>
@@ -35,13 +107,18 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
             You have been chatting for {durationMinutes} minutes
           </Text>
 
-          {/* Glowing Wave Card */}
+          {/* Glowing Wave Card with Animated Concentric Ripples */}
           <View style={styles.visualizerCard}>
-            <Image
-              source={require('../../assets/avatars/peter.png')}
-              style={styles.centerAvatar}
-            />
-            <View style={styles.pulseRing} />
+            <Animated.View style={[styles.pulseRing, styles.pulseRing1, ring1Style]} />
+            <Animated.View style={[styles.pulseRing, styles.pulseRing2, ring2Style]} />
+
+            <Animated.View style={[styles.avatarWrapper, centerAvatarStyle]}>
+              <Image
+                source={apostle.avatar}
+                style={styles.centerAvatar}
+              />
+            </Animated.View>
+
             <Text style={styles.listeningStatus}>Listening & Reflecting...</Text>
           </View>
         </View>
@@ -110,27 +187,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  pulseRing: {
+    position: 'absolute',
+    borderRadius: 100,
+    borderWidth: 2,
+  },
+  pulseRing1: {
+    width: 120,
+    height: 120,
+    borderColor: 'rgba(6, 182, 212, 0.6)',
+  },
+  pulseRing2: {
+    width: 140,
+    height: 140,
+    borderColor: 'rgba(217, 70, 239, 0.5)',
+  },
+  avatarWrapper: {
+    zIndex: 2,
+    marginBottom: 16,
   },
   centerAvatar: {
     width: 96,
     height: 96,
     borderRadius: 48,
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: '#3B82F6',
-    marginBottom: 16,
-  },
-  pulseRing: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 1.5,
-    borderColor: 'rgba(6, 182, 212, 0.4)',
   },
   listeningStatus: {
     fontFamily: Typography.fontSansMedium,
     fontSize: 13,
     color: '#06B6D4',
+    zIndex: 2,
   },
   footer: {
     alignItems: 'center',
@@ -140,11 +230,13 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 58,
     borderRadius: 29,
-    backgroundColor: 'rgba(59, 130, 246, 0.7)',
+    backgroundColor: 'rgba(59, 130, 246, 0.75)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   endCallText: {
     fontFamily: Typography.fontSansMedium,

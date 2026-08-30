@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, FlatList } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
@@ -9,6 +10,7 @@ import { ApostlePersona, BibleVerse } from '../types';
 import { ApostleCard } from '../components/ApostleCard';
 import { DailyScriptureCard } from '../components/DailyScriptureCard';
 import { ScriptureDetailModal } from '../components/ScriptureDetailModal';
+import { SpringConfigs } from '../theme/animations';
 
 interface HomeScreenProps {
   onSelectApostle: (apostle: ApostlePersona) => void;
@@ -18,6 +20,16 @@ interface HomeScreenProps {
 export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenChatList }) => {
   const [activeTab, setActiveTab] = useState<'forYou' | 'disciples'>('forYou');
   const [selectedVerse, setSelectedVerse] = useState<BibleVerse | null>(null);
+
+  const tabIndicatorOffset = useSharedValue(0);
+
+  useEffect(() => {
+    tabIndicatorOffset.value = withSpring(activeTab === 'forYou' ? 0 : 96, SpringConfigs.bouncy);
+  }, [activeTab]);
+
+  const animatedIndicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: tabIndicatorOffset.value }],
+  }));
 
   const handleOpenVerseModal = () => {
     setSelectedVerse({
@@ -43,7 +55,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenC
             <Text style={[styles.tabText, activeTab === 'forYou' && styles.tabTextActive]}>
               For You
             </Text>
-            {activeTab === 'forYou' && <View style={styles.activeTabIndicator} />}
           </TouchableOpacity>
 
           {/* Disciples Tab */}
@@ -55,8 +66,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenC
             <Text style={[styles.tabText, activeTab === 'disciples' && styles.tabTextActive]}>
               Disciples
             </Text>
-            {activeTab === 'disciples' && <View style={styles.activeTabIndicator} />}
           </TouchableOpacity>
+
+          {/* Gliding Red Indicator */}
+          <Animated.View style={[styles.activeTabIndicator, animatedIndicatorStyle]} />
         </View>
 
         {/* Chats Navigation Icon */}
@@ -145,11 +158,12 @@ const styles = StyleSheet.create({
   tabsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    position: 'relative',
+    paddingBottom: 4,
   },
   tabButton: {
     paddingVertical: 6,
-    position: 'relative',
+    marginRight: 24,
   },
   tabText: {
     fontFamily: Typography.fontSerif,
@@ -163,7 +177,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     left: 0,
-    right: 0,
+    width: 68,
     height: 2.5,
     backgroundColor: Colors.accentRed,
     borderRadius: 2,

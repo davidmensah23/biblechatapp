@@ -1,4 +1,4 @@
-﻿import * as SQLite from 'expo-sqlite';
+import * as SQLite from 'expo-sqlite';
 import { ChatMessage, ConversationThread, SavedBookmark, UserProfile } from '../types';
 import { DEFAULT_PROFILE } from './supabase';
 

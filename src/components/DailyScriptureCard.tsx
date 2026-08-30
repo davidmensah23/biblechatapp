@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withSequence } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
+import { SpringConfigs } from '../theme/animations';
 
 interface DailyScriptureCardProps {
   quote: string;
@@ -18,10 +20,22 @@ export const DailyScriptureCard: React.FC<DailyScriptureCardProps> = ({
   onBookmarkToggle
 }) => {
   const [bookmarked, setBookmarked] = useState(false);
+  const heartScale = useSharedValue(1);
+
+  const heartAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: heartScale.value }],
+  }));
 
   const handleBookmark = () => {
     const newState = !bookmarked;
     setBookmarked(newState);
+
+    // Heart bounce popping micro-animation
+    heartScale.value = withSequence(
+      withSpring(1.4, SpringConfigs.bouncy),
+      withSpring(1, SpringConfigs.snappy)
+    );
+
     if (onBookmarkToggle) {
       onBookmarkToggle(newState);
     }
@@ -49,13 +63,15 @@ export const DailyScriptureCard: React.FC<DailyScriptureCardProps> = ({
             <Text style={styles.readMoreText}>Read more</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleBookmark} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons
-              name={bookmarked ? 'heart' : 'heart-outline'}
-              size={20}
-              color={bookmarked ? Colors.heartActive : Colors.heartInactive}
-            />
-          </TouchableOpacity>
+          <Pressable onPress={handleBookmark} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Animated.View style={heartAnimatedStyle}>
+              <Ionicons
+                name={bookmarked ? 'heart' : 'heart-outline'}
+                size={22}
+                color={bookmarked ? Colors.heartActive : Colors.heartInactive}
+              />
+            </Animated.View>
+          </Pressable>
         </View>
       </View>
     </View>
@@ -68,6 +84,11 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     overflow: 'hidden',
     marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
   imageContainer: {
     width: '100%',

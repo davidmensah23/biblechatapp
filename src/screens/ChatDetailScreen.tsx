@@ -10,8 +10,16 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator
+  Alert
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+  Easing
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
@@ -24,6 +32,57 @@ interface ChatDetailScreenProps {
   apostle: ApostlePersona;
   onBack: () => void;
 }
+
+const BouncingDots: React.FC = () => {
+  const dot1 = useSharedValue(0);
+  const dot2 = useSharedValue(0);
+  const dot3 = useSharedValue(0);
+
+  useEffect(() => {
+    dot1.value = withRepeat(
+      withSequence(
+        withTiming(-5, { duration: 300, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0, { duration: 300, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      true
+    );
+
+    setTimeout(() => {
+      dot2.value = withRepeat(
+        withSequence(
+          withTiming(-5, { duration: 300, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0, { duration: 300, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        true
+      );
+    }, 150);
+
+    setTimeout(() => {
+      dot3.value = withRepeat(
+        withSequence(
+          withTiming(-5, { duration: 300, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0, { duration: 300, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        true
+      );
+    }, 300);
+  }, []);
+
+  const style1 = useAnimatedStyle(() => ({ transform: [{ translateY: dot1.value }] }));
+  const style2 = useAnimatedStyle(() => ({ transform: [{ translateY: dot2.value }] }));
+  const style3 = useAnimatedStyle(() => ({ transform: [{ translateY: dot3.value }] }));
+
+  return (
+    <View style={styles.dotsRow}>
+      <Animated.View style={[styles.typingDot, style1]} />
+      <Animated.View style={[styles.typingDot, style2]} />
+      <Animated.View style={[styles.typingDot, style3]} />
+    </View>
+  );
+};
 
 export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onBack }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -41,7 +100,6 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
   const loadChatHistory = async () => {
     const history = await fetchMessages(conversationId);
     if (history.length === 0) {
-      // Create initial greeting message from the apostle
       const greeting: ChatMessage = {
         id: `msg_${Date.now()}`,
         conversationId: conversationId,
@@ -77,7 +135,6 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
     setIsLoading(true);
 
     try {
-      // Call Groq API
       const replyText = await generateApostleReply(apostle, messages, userText);
 
       const assistantMsg: ChatMessage = {
@@ -107,7 +164,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
       author: apostle.name,
       timestamp: Date.now()
     });
-    alert(`Saved quote from ${apostle.name} to your profile bookmarks!`);
+    Alert.alert('Saved', `Saved quote from ${apostle.name} to your profile bookmarks!`);
   };
 
   return (
@@ -173,7 +230,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
               <View style={styles.typingIndicator}>
                 <Image source={apostle.avatar} style={styles.bubbleAvatar} />
                 <View style={[styles.bubble, styles.assistantBubble, styles.typingBubble]}>
-                  <ActivityIndicator size="small" color={Colors.textPrimary} />
+                  <BouncingDots />
                   <Text style={styles.typingText}>{apostle.name} is writing...</Text>
                 </View>
               </View>
@@ -326,6 +383,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingVertical: 10,
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  typingDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: Colors.textMuted,
   },
   typingText: {
     fontFamily: Typography.fontSansRegular,
