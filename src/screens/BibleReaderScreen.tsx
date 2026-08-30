@@ -15,6 +15,7 @@ import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
 import { fetchChapter, BibleChapterData, ALL_BIBLE_BOOKS } from '../services/bibleEngine';
 import { BibleBookPickerModal } from '../components/BibleBookPickerModal';
+import { BibleVersionsModal } from '../components/BibleVersionsModal';
 import { saveBookmark } from '../services/database';
 
 interface BibleReaderScreenProps {
@@ -29,6 +30,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ onAskApost
   const [isLoading, setIsLoading] = useState(false);
   const [selectedVerseNumber, setSelectedVerseNumber] = useState<number | null>(null);
   const [showBookPicker, setShowBookPicker] = useState(false);
+  const [showVersionsModal, setShowVersionsModal] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [fontSize, setFontSize] = useState(16.5);
 
@@ -169,7 +171,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ onAskApost
         <View style={styles.topHeaderRight}>
           <TouchableOpacity
             style={styles.translationPill}
-            onPress={toggleTranslation}
+            onPress={() => setShowVersionsModal(true)}
             activeOpacity={0.8}
           >
             <Ionicons name="globe-outline" size={15} color={Colors.textPrimary} style={{ marginRight: 5 }} />
@@ -328,6 +330,14 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ onAskApost
           setCurrentChapter(c);
         }}
         onClose={() => setShowBookPicker(false)}
+      />
+
+      {/* YouVersion-Style Bible Versions & Offline Downloads Modal */}
+      <BibleVersionsModal
+        visible={showVersionsModal}
+        currentVersion={translation}
+        onSelectVersion={(v) => setTranslation(v as any)}
+        onClose={() => setShowVersionsModal(false)}
       />
     </SafeAreaView>
   );
