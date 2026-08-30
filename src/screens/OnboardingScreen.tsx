@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,9 @@ import {
   StyleSheet,
   SafeAreaView,
   Dimensions,
-  PanResponder
+  ScrollView,
+  NativeSyntheticEvent,
+  NativeScrollEvent
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -98,17 +100,14 @@ const CosmicSpectrumVisualizer: React.FC = () => {
             </SvgRadialGradient>
           </Defs>
 
-          {/* Radial Aura Disc */}
           <Circle cx="65" cy="65" r="60" fill="url(#starGlowGrad)" />
 
-          {/* 4-Pointed Star Ray */}
           <Path
             d="M 65 5 Q 65 65 5 65 Q 65 65 65 125 Q 65 65 125 65 Q 65 65 65 5 Z"
             fill="#FFFFFF"
             opacity="0.95"
           />
 
-          {/* Diagonal Secondary Micro Rays */}
           <Path
             d="M 65 30 Q 65 65 30 65 Q 65 65 65 100 Q 65 65 100 65 Q 65 65 65 30 Z"
             fill="#FBCFE8"
@@ -123,9 +122,7 @@ const CosmicSpectrumVisualizer: React.FC = () => {
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [activeCardIndex, setActiveCardIndex] = useState(0);
-
-  // Horizontal Carousel Translation Track
-  const translateX = useSharedValue(0);
+  const scrollRef = useRef<ScrollView>(null);
 
   // Pagination Dot Animations
   const dotWidth0 = useSharedValue(26);
@@ -133,8 +130,6 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
   const dotWidth2 = useSharedValue(6);
 
   useEffect(() => {
-    translateX.value = withSpring(-currentSlide * width, SpringConfigs.cardStack);
-
     dotWidth0.value = withSpring(currentSlide === 0 ? 26 : 6, SpringConfigs.bouncy);
     dotWidth1.value = withSpring(currentSlide === 1 ? 26 : 6, SpringConfigs.bouncy);
     dotWidth2.value = withSpring(currentSlide === 2 ? 26 : 6, SpringConfigs.bouncy);
@@ -142,47 +137,25 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
 
   const handleNext = () => {
     if (currentSlide < 2) {
-      setCurrentSlide(currentSlide + 1);
+      const nextSlide = currentSlide + 1;
+      setCurrentSlide(nextSlide);
+      scrollRef.current?.scrollTo({ x: nextSlide * width, animated: true });
     } else {
       onComplete();
     }
   };
 
-  const handlePrev = () => {
-    if (currentSlide > 0) {
-      setCurrentSlide(currentSlide - 1);
+  const handleScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const pageIndex = Math.round(offsetX / width);
+    if (pageIndex !== currentSlide && pageIndex >= 0 && pageIndex <= 2) {
+      setCurrentSlide(pageIndex);
     }
   };
 
-  // Switch disciple on slide 2 stack tap
   const cycleCardStack = () => {
     setActiveCardIndex((prev) => (prev + 1) % APOSTLE_PERSONAS.length);
   };
-
-  // Continuous Swipe Gesture Responder
-  const panResponder = React.useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 15 && Math.abs(gestureState.dy) < 30;
-      },
-      onPanResponderMove: (_, gestureState) => {
-        translateX.value = -currentSlide * width + gestureState.dx;
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx < -50 && currentSlide < 2) {
-          setCurrentSlide(currentSlide + 1);
-        } else if (gestureState.dx > 50 && currentSlide > 0) {
-          setCurrentSlide(currentSlide - 1);
-        } else {
-          translateX.value = withSpring(-currentSlide * width, SpringConfigs.cardStack);
-        }
-      },
-    })
-  ).current;
-
-  const trackAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }));
 
   const dot0Style = useAnimatedStyle(() => ({ width: dotWidth0.value }));
   const dot1Style = useAnimatedStyle(() => ({ width: dotWidth1.value }));
@@ -191,7 +164,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
   const currentApostle = APOSTLE_PERSONAS[activeCardIndex];
 
   return (
-    <SafeAreaView style={styles.container} {...panResponder.panHandlers}>
+    <SafeAreaView style={styles.container}>
       {/* Top Header with Clean Skip Option */}
       <View style={styles.topBar}>
         <View style={{ width: 40 }} />
@@ -202,8 +175,18 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
         )}
       </View>
 
-      {/* Continuous Sliding Track for Top Visuals and Typography */}
-      <Animated.View style={[styles.slidingTrack, trackAnimatedStyle]}>
+      {/* Native Horizontal Paging ScrollView (100% Smooth & Glitch-Free on Android) */}
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        bounces={false}
+        scrollEventThrottle={16}
+        onMomentumScrollEnd={handleScrollEnd}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
         {/* SLIDE 1 */}
         <View style={styles.slidePage}>
           {/* Slide 1 Top Visual with Smooth Long Gradient Dissolve */}
@@ -320,7 +303,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
             </Text>
           </View>
         </View>
-      </Animated.View>
+      </ScrollView>
 
       {/* Floating Bottom Footer Navigation */}
       <View style={styles.floatingFooterRow}>
@@ -370,10 +353,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#A1A1AA',
   },
-  slidingTrack: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
     flexDirection: 'row',
-    width: width * 3,
   },
   slidePage: {
     width: width,
