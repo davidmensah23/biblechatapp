@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: Typography.fontSerif,
-    fontSize: 22,
+    fontSize: 25,
     color: Colors.textPrimary,
   },
   headerSubtitle: {

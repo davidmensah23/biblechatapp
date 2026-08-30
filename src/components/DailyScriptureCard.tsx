@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   },
   readMoreText: {
     fontFamily: Typography.fontSerifItalic,
-    fontSize: 17,
+    fontSize: 19,
     color: Colors.textPrimary,
     textDecorationLine: 'underline',
   }

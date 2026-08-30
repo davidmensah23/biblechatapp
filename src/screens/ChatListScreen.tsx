@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: Typography.fontSerif,
-    fontSize: 28,
+    fontSize: 32,
     color: Colors.textPrimary,
   },
   searchBtn: {
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   },
   personaName: {
     fontFamily: Typography.fontSerif,
-    fontSize: 20,
+    fontSize: 23,
     color: Colors.textPrimary,
   },
   timestamp: {

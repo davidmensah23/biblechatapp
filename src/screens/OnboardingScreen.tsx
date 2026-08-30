@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
     paddingBottom: 95,
   },
   visualContainer: {
-    height: '56%',
+    height: '51%',
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
   },
   stackCardLayer4: {
     width: '74%',
-    height: 250,
+    height: 240,
     top: 6,
     backgroundColor: '#18181D',
     borderWidth: 1,
@@ -400,7 +400,7 @@ const styles = StyleSheet.create({
   },
   stackCardLayer3: {
     width: '80%',
-    height: 255,
+    height: 245,
     top: 16,
     backgroundColor: '#23232A',
     borderWidth: 1,
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
   },
   stackCardLayer2: {
     width: '86%',
-    height: 260,
+    height: 250,
     top: 26,
     backgroundColor: '#32323C',
     borderWidth: 1,
@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
     width: '92%',
     backgroundColor: '#F5F5F7',
     padding: 20,
-    top: 38,
+    top: 36,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.45,
@@ -452,19 +452,19 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontFamily: Typography.fontSerif,
-    fontSize: 22,
+    fontSize: 24,
     color: '#111111',
   },
   cardSubtitle: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 10.5,
+    fontSize: 11,
     color: '#2563EB',
     marginTop: 1,
   },
   cardBio: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 12.5,
-    lineHeight: 17.5,
+    fontSize: 13,
+    lineHeight: 18,
     color: '#374151',
     marginBottom: 16,
   },
@@ -497,7 +497,7 @@ const styles = StyleSheet.create({
   },
   callCardTitle: {
     fontFamily: Typography.fontSerif,
-    fontSize: 28,
+    fontSize: 30,
     color: '#FFFFFF',
     marginBottom: 4,
   },
@@ -567,22 +567,22 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     paddingHorizontal: 26,
-    justifyContent: 'center',
+    marginBottom: 36,
   },
   heading: {
     fontFamily: Typography.fontSerif,
-    fontSize: 38,
+    fontSize: 43,
     color: Colors.darkTextPrimary,
-    lineHeight: 46,
-    marginBottom: 10,
+    lineHeight: 51,
+    marginBottom: 12,
   },
   italicAccent: {
     fontFamily: Typography.fontSerifItalic,
   },
   subtitle: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 15.5,
-    lineHeight: 23,
+    fontSize: 16,
+    lineHeight: 24,
     color: '#9CA3AF',
   },
   floatingFooterRow: {

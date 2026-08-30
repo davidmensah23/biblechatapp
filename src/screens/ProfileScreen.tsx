@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: Typography.fontSerif,
-    fontSize: 28,
+    fontSize: 32,
     color: Colors.textPrimary,
   },
   titleRedLine: {
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontFamily: Typography.fontSerif,
-    fontSize: 25,
+    fontSize: 29,
     color: Colors.textPrimary,
   },
   userBio: {

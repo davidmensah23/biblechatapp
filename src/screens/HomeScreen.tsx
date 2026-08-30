@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontFamily: Typography.fontSerif,
-    fontSize: 22,
+    fontSize: 26,
     color: Colors.textLight,
   },
   tabTextActive: {
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     left: 0,
-    width: 28,
+    width: 32,
     height: 2.5,
     backgroundColor: Colors.accentRed,
     borderRadius: 2,
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
   },
   sectionHeading: {
     fontFamily: Typography.fontSerif,
-    fontSize: 24,
+    fontSize: 28,
     color: Colors.textPrimary,
     marginTop: 20,
     marginBottom: 12,

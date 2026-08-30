@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
   },
   name: {
     fontFamily: Typography.fontSerif,
-    fontSize: 24,
+    fontSize: 27,
     color: Colors.textPrimary,
     marginBottom: 6,
     textAlign: 'center',
