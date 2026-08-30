@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,204 +6,329 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  TextInput,
-  FlatList,
-  Modal
+  PanResponder,
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
-import { BIBLE_BOOKS, INITIAL_FEATURED_VERSES } from '../services/bibleData';
+import { fetchChapter, BibleChapterData, ALL_BIBLE_BOOKS } from '../services/bibleEngine';
+import { BibleBookPickerModal } from '../components/BibleBookPickerModal';
 import { saveBookmark } from '../services/database';
-import { BibleVerse, BibleBook } from '../types';
 
-export const BibleReaderScreen: React.FC = () => {
-  const [selectedBook, setSelectedBook] = useState<BibleBook>(BIBLE_BOOKS[0]); // Matthew
-  const [selectedChapter, setSelectedChapter] = useState(1);
-  const [fontSize, setFontSize] = useState(16);
-  const [searchQuery, setSearchQuery] = useState('');
+interface BibleReaderScreenProps {
+  onAskApostleWithVerse?: (verseText: string, reference: string) => void;
+}
+
+export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ onAskApostleWithVerse }) => {
+  const [currentBook, setCurrentBook] = useState('2 Samuel');
+  const [currentChapter, setCurrentChapter] = useState(23);
+  const [translation, setTranslation] = useState<'NIV' | 'KJV' | 'ESV'>('NIV');
+  const [chapterData, setChapterData] = useState<BibleChapterData | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedVerseNumber, setSelectedVerseNumber] = useState<number | null>(null);
   const [showBookPicker, setShowBookPicker] = useState(false);
-  const [translation, setTranslation] = useState('NIV');
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [fontSize, setFontSize] = useState(16.5);
 
-  // Chapter sample text generation
-  const getChapterVerses = (): BibleVerse[] => {
-    const featured = INITIAL_FEATURED_VERSES.filter(v => v.book.toLowerCase() === selectedBook.name.toLowerCase());
-    if (featured.length > 0) {
-      return featured;
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    loadChapterData(currentBook, currentChapter, translation);
+  }, [currentBook, currentChapter, translation]);
+
+  const loadChapterData = async (b: string, c: number, t: string) => {
+    setIsLoading(true);
+    setSelectedVerseNumber(null);
+    try {
+      const data = await fetchChapter(b, c, t);
+      setChapterData(data);
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    } catch (err) {
+      console.error('Failed to load chapter:', err);
+    } finally {
+      setIsLoading(false);
     }
-
-    return [
-      {
-        book: selectedBook.name,
-        chapter: selectedChapter,
-        verse: 1,
-        text: `In the beginning was the divine revelation and grace given through faith in ${selectedBook.name} chapter ${selectedChapter}.`,
-        translation: translation
-      },
-      {
-        book: selectedBook.name,
-        chapter: selectedChapter,
-        verse: 2,
-        text: 'The Lord is my light and my salvation; whom shall I fear? The Lord is the stronghold of my life.',
-        translation: translation
-      },
-      {
-        book: selectedBook.name,
-        chapter: selectedChapter,
-        verse: 3,
-        text: 'Blessed are those who hunger and thirst for righteousness, for they will be filled.',
-        translation: translation
-      },
-      {
-        book: selectedBook.name,
-        chapter: selectedChapter,
-        verse: 4,
-        text: 'Trust in the Lord with all your heart and lean not on your own understanding; in all your ways submit to him.',
-        translation: translation
-      },
-      {
-        book: selectedBook.name,
-        chapter: selectedChapter,
-        verse: 5,
-        text: 'Cast your cares on the Lord and he will sustain you; he will never let the righteous be shaken.',
-        translation: translation
-      }
-    ];
   };
 
-  const handleBookmark = async (verse: BibleVerse) => {
+  const getBookMetadata = (name: string) => {
+    return ALL_BIBLE_BOOKS.find((b) => b.name === name) || { name, chaptersCount: 28, testament: 'NT' };
+  };
+
+  const handleNextChapter = () => {
+    const bookMeta = getBookMetadata(currentBook);
+    if (currentChapter < bookMeta.chaptersCount) {
+      setCurrentChapter(currentChapter + 1);
+    } else {
+      // Jump to next book in sequence
+      const bookIdx = ALL_BIBLE_BOOKS.findIndex((b) => b.name === currentBook);
+      if (bookIdx >= 0 && bookIdx < ALL_BIBLE_BOOKS.length - 1) {
+        const nextBook = ALL_BIBLE_BOOKS[bookIdx + 1];
+        setCurrentBook(nextBook.name);
+        setCurrentChapter(1);
+      }
+    }
+  };
+
+  const handlePrevChapter = () => {
+    if (currentChapter > 1) {
+      setCurrentChapter(currentChapter - 1);
+    } else {
+      // Jump to previous book in sequence
+      const bookIdx = ALL_BIBLE_BOOKS.findIndex((b) => b.name === currentBook);
+      if (bookIdx > 0) {
+        const prevBook = ALL_BIBLE_BOOKS[bookIdx - 1];
+        setCurrentBook(prevBook.name);
+        setCurrentChapter(prevBook.chaptersCount);
+      }
+    }
+  };
+
+  // Horizontal Swipe Gesture Responder
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 35 && Math.abs(gestureState.dy) < 25;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -60) {
+          // Swiped Left -> Next Chapter
+          handleNextChapter();
+        } else if (gestureState.dx > 60) {
+          // Swiped Right -> Previous Chapter
+          handlePrevChapter();
+        }
+      }
+    })
+  ).current;
+
+  const handleVerseTap = (verseNum: number) => {
+    if (selectedVerseNumber === verseNum) {
+      setSelectedVerseNumber(null);
+    } else {
+      setSelectedVerseNumber(verseNum);
+    }
+  };
+
+  const handleBookmarkSelectedVerse = async () => {
+    if (!chapterData || selectedVerseNumber === null) return;
+    const verseObj = chapterData.verses.find((v) => v.verseNumber === selectedVerseNumber);
+    if (!verseObj) return;
+
     await saveBookmark({
       id: `bm_verse_${Date.now()}`,
       type: 'verse',
-      title: `${verse.book} ${verse.chapter}:${verse.verse}`,
-      content: verse.text,
-      reference: `${verse.book} ${verse.chapter}:${verse.verse} (${verse.translation})`,
+      title: `${chapterData.book} ${chapterData.chapter}:${selectedVerseNumber}`,
+      content: verseObj.text,
       timestamp: Date.now()
     });
-    alert(`Saved ${verse.book} ${verse.chapter}:${verse.verse} to your profile bookmarks!`);
+
+    Alert.alert('Bookmarked', `Saved ${chapterData.book} ${chapterData.chapter}:${selectedVerseNumber} to your profile!`);
+    setSelectedVerseNumber(null);
   };
 
-  const verses = getChapterVerses();
+  const handleCopyVerse = () => {
+    if (!chapterData || selectedVerseNumber === null) return;
+    Alert.alert('Copied', `Copied ${chapterData.book} ${chapterData.chapter}:${selectedVerseNumber} to clipboard`);
+    setSelectedVerseNumber(null);
+  };
+
+  const toggleTranslation = () => {
+    if (translation === 'NIV') setTranslation('KJV');
+    else if (translation === 'KJV') setTranslation('ESV');
+    else setTranslation('NIV');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        {/* Book & Chapter Selector Button */}
-        <TouchableOpacity
-          style={styles.bookSelectorBtn}
-          onPress={() => setShowBookPicker(true)}
-          activeOpacity={0.75}
-        >
-          <Text style={styles.bookSelectorText}>
-            {selectedBook.name} {selectedChapter}
+      {/* Top YouVersion-style Header Bar */}
+      <View style={styles.topHeader}>
+        <View style={styles.topHeaderLeft}>
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            onPress={() => setIsPlayingAudio(!isPlayingAudio)}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={isPlayingAudio ? 'volume-high' : 'volume-medium-outline'}
+              size={23}
+              color={isPlayingAudio ? Colors.accentBlue : Colors.textPrimary}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            onPress={() => setShowBookPicker(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="search" size={21} color={Colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.topHeaderRight}>
+          <TouchableOpacity
+            style={styles.translationPill}
+            onPress={toggleTranslation}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="globe-outline" size={15} color={Colors.textPrimary} style={{ marginRight: 5 }} />
+            <Text style={styles.translationPillText}>{translation}</Text>
+          </TouchableOpacity>
+
+          {/* Quick Font Size Adjuster */}
+          <View style={styles.fontSizeControls}>
+            <TouchableOpacity
+              onPress={() => setFontSize(Math.max(13, fontSize - 1.5))}
+              style={styles.fontSizeBtn}
+            >
+              <Text style={styles.fontSizeBtnText}>A-</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setFontSize(Math.min(24, fontSize + 1.5))}
+              style={styles.fontSizeBtn}
+            >
+              <Text style={styles.fontSizeBtnText}>A+</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      {/* Main Scripture Scrollable Area with Swipe Gestures */}
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        {...panResponder.panHandlers}
+      >
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.textPrimary} />
+            <Text style={styles.loadingText}>Loading Scripture...</Text>
+          </View>
+        ) : chapterData ? (
+          <View>
+            {/* Hero Chapter Header */}
+            <View style={styles.heroHeader}>
+              <Text style={styles.heroBookName}>{chapterData.book}</Text>
+              <Text style={styles.heroChapterNumber}>{chapterData.chapter}</Text>
+              {chapterData.sectionTitle ? (
+                <Text style={styles.heroSectionTitle}>{chapterData.sectionTitle}</Text>
+              ) : null}
+            </View>
+
+            {/* Continuous Verses Text */}
+            <View style={styles.versesContainer}>
+              {chapterData.verses.map((v) => {
+                const isSelected = selectedVerseNumber === v.verseNumber;
+                return (
+                  <TouchableOpacity
+                    key={v.verseNumber}
+                    style={[styles.verseParagraph, isSelected && styles.verseParagraphSelected]}
+                    onPress={() => handleVerseTap(v.verseNumber)}
+                    activeOpacity={0.85}
+                  >
+                    <Text
+                      style={[
+                        styles.verseContentText,
+                        { fontSize, lineHeight: fontSize * 1.6 },
+                        isSelected && styles.verseContentTextSelected
+                      ]}
+                    >
+                      <Text style={styles.superscriptVerseNumber}>{v.verseNumber} </Text>
+                      {v.text}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
+      </ScrollView>
+
+      {/* Selected Verse Action Bar */}
+      {selectedVerseNumber !== null && (
+        <View style={styles.verseActionBar}>
+          <Text style={styles.verseActionLabel} numberOfLines={1}>
+            {currentBook} {currentChapter}:{selectedVerseNumber}
           </Text>
-          <Ionicons name="chevron-down" size={16} color={Colors.textPrimary} />
+
+          <View style={styles.verseActionButtonsRow}>
+            <TouchableOpacity style={styles.actionBtn} onPress={handleCopyVerse} activeOpacity={0.8}>
+              <Ionicons name="copy-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.actionBtnText}>Copy</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionBtn} onPress={handleBookmarkSelectedVerse} activeOpacity={0.8}>
+              <Ionicons name="bookmark-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.actionBtnText}>Bookmark</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.actionBtnSpecial]}
+              onPress={() => {
+                const verseObj = chapterData?.verses.find((v) => v.verseNumber === selectedVerseNumber);
+                if (onAskApostleWithVerse && verseObj) {
+                  onAskApostleWithVerse(verseObj.text, `${currentBook} ${currentChapter}:${selectedVerseNumber}`);
+                } else {
+                  Alert.alert('Ask Apostle', `Ask Simon Peter or John about this verse in the chat tab!`);
+                }
+                setSelectedVerseNumber(null);
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="sparkles" size={17} color="#FFFFFF" />
+              <Text style={styles.actionBtnText}>Ask Apostle</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Bottom Floating Control Bar */}
+      <View style={styles.floatingControlsWrapper}>
+        {/* Audio Narration Play Button */}
+        <TouchableOpacity
+          style={styles.floatingAudioBtn}
+          onPress={() => setIsPlayingAudio(!isPlayingAudio)}
+          activeOpacity={0.85}
+        >
+          <Ionicons name={isPlayingAudio ? 'pause' : 'play'} size={20} color={Colors.textPrimary} />
         </TouchableOpacity>
 
-        {/* Controls */}
-        <View style={styles.controlsRow}>
-          <TouchableOpacity
-            style={styles.controlBtn}
-            onPress={() => setFontSize(Math.max(13, fontSize - 1))}
-          >
-            <Text style={styles.controlBtnText}>A-</Text>
+        {/* Chapter Switcher Pill */}
+        <View style={styles.floatingChapterPill}>
+          <TouchableOpacity onPress={handlePrevChapter} style={styles.chapterArrowBtn} activeOpacity={0.7}>
+            <Ionicons name="chevron-back" size={20} color={Colors.textPrimary} />
           </TouchableOpacity>
+
           <TouchableOpacity
-            style={styles.controlBtn}
-            onPress={() => setFontSize(Math.min(24, fontSize + 1))}
+            style={styles.chapterTitleButton}
+            onPress={() => setShowBookPicker(true)}
+            activeOpacity={0.7}
           >
-            <Text style={styles.controlBtnText}>A+</Text>
+            <Text style={styles.floatingChapterText}>
+              {currentBook} {currentChapter}
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.controlBtn, styles.translationBtn]}
-            onPress={() => setTranslation(translation === 'NIV' ? 'KJV' : translation === 'KJV' ? 'WEB' : 'NIV')}
-          >
-            <Text style={styles.translationText}>{translation}</Text>
+
+          <TouchableOpacity onPress={handleNextChapter} style={styles.chapterArrowBtn} activeOpacity={0.7}>
+            <Ionicons name="chevron-forward" size={20} color={Colors.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Scripture Text Body */}
-      <ScrollView contentContainerStyle={styles.scriptureBody} showsVerticalScrollIndicator={false}>
-        <Text style={styles.chapterHeading}>
-          {selectedBook.name} {selectedChapter}
-        </Text>
-
-        {verses.map((v) => (
-          <TouchableOpacity
-            key={v.verse}
-            style={styles.verseRow}
-            onLongPress={() => handleBookmark(v)}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.verseNumber, { fontSize: fontSize * 0.75 }]}>{v.verse}</Text>
-            <Text style={[styles.verseText, { fontSize: fontSize, lineHeight: fontSize * 1.6 }]}>
-              {v.text}
-            </Text>
-          </TouchableOpacity>
-        ))}
-
-        {/* Chapter Switcher Bottom */}
-        <View style={styles.chapterNavigation}>
-          <TouchableOpacity
-            style={[styles.navChapterBtn, selectedChapter <= 1 && styles.navChapterBtnDisabled]}
-            disabled={selectedChapter <= 1}
-            onPress={() => setSelectedChapter(selectedChapter - 1)}
-          >
-            <Ionicons name="arrow-back" size={16} color={Colors.textPrimary} />
-            <Text style={styles.navChapterText}>Previous</Text>
-          </TouchableOpacity>
-
-          <Text style={styles.navChapterIndicator}>
-            Chapter {selectedChapter} of {selectedBook.chaptersCount}
-          </Text>
-
-          <TouchableOpacity
-            style={[styles.navChapterBtn, selectedChapter >= selectedBook.chaptersCount && styles.navChapterBtnDisabled]}
-            disabled={selectedChapter >= selectedBook.chaptersCount}
-            onPress={() => setSelectedChapter(selectedChapter + 1)}
-          >
-            <Text style={styles.navChapterText}>Next</Text>
-            <Ionicons name="arrow-forward" size={16} color={Colors.textPrimary} />
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-
       {/* Book & Chapter Picker Modal */}
-      <Modal visible={showBookPicker} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.pickerModal}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>Select Book & Chapter</Text>
-              <TouchableOpacity onPress={() => setShowBookPicker(false)}>
-                <Ionicons name="close" size={22} color={Colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
-
-            <FlatList
-              data={BIBLE_BOOKS}
-              keyExtractor={(item) => item.name}
-              contentContainerStyle={styles.bookList}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[styles.bookRow, item.name === selectedBook.name && styles.bookRowActive]}
-                  onPress={() => {
-                    setSelectedBook(item);
-                    setSelectedChapter(1);
-                    setShowBookPicker(false);
-                  }}
-                >
-                  <Text style={[styles.bookName, item.name === selectedBook.name && styles.bookNameActive]}>
-                    {item.name}
-                  </Text>
-                  <Text style={styles.bookTestament}>{item.testament} • {item.chaptersCount} ch</Text>
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        </View>
-      </Modal>
+      <BibleBookPickerModal
+        visible={showBookPicker}
+        currentBook={currentBook}
+        currentChapter={currentChapter}
+        onSelect={(b, c) => {
+          setCurrentBook(b);
+          setCurrentChapter(c);
+        }}
+        onClose={() => setShowBookPicker(false)}
+      />
     </SafeAreaView>
   );
 };
@@ -213,167 +338,230 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  header: {
+  topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingTop: 14,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: Colors.divider,
   },
-  bookSelectorBtn: {
+  topHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  headerIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.cardSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  translationPill: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.cardSecondary,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    gap: 6,
   },
-  bookSelectorText: {
-    fontFamily: Typography.fontSerif,
-    fontSize: 18,
+  translationPillText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 13,
     color: Colors.textPrimary,
   },
-  controlsRow: {
+  fontSizeControls: {
+    flexDirection: 'row',
+    backgroundColor: Colors.cardSecondary,
+    borderRadius: 20,
+    padding: 3,
+  },
+  fontSizeBtn: {
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  fontSizeBtnText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 13,
+    color: Colors.textPrimary,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 160,
+  },
+  loadingContainer: {
+    paddingVertical: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 14,
+    color: Colors.textMuted,
+    marginTop: 12,
+  },
+  heroHeader: {
+    alignItems: 'center',
+    marginBottom: 28,
+  },
+  heroBookName: {
+    fontFamily: Typography.fontSerif,
+    fontSize: 26,
+    color: '#666666',
+    letterSpacing: 0.5,
+  },
+  heroChapterNumber: {
+    fontFamily: Typography.fontSerif,
+    fontSize: 72,
+    color: Colors.textPrimary,
+    lineHeight: 80,
+    marginVertical: 4,
+  },
+  heroSectionTitle: {
+    fontFamily: Typography.fontSerifItalic,
+    fontSize: 22,
+    color: Colors.textPrimary,
+    textAlign: 'center',
+    marginTop: 10,
+    paddingHorizontal: 16,
+  },
+  versesContainer: {
+    gap: 14,
+  },
+  verseParagraph: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  verseParagraphSelected: {
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.accentBlue,
+  },
+  superscriptVerseNumber: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 11,
+    color: '#999999',
+  },
+  verseContentText: {
+    fontFamily: Typography.fontSansRegular,
+    color: '#222222',
+  },
+  verseContentTextSelected: {
+    color: '#111111',
+  },
+  verseActionBar: {
+    position: 'absolute',
+    bottom: 154,
+    left: 16,
+    right: 16,
+    backgroundColor: '#1E1E22',
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
+    zIndex: 150,
+  },
+  verseActionLabel: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 13,
+    color: '#FFFFFF',
+    maxWidth: 90,
+  },
+  verseActionButtonsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  controlBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: Colors.cardSecondary,
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    gap: 5,
+  },
+  actionBtnSpecial: {
+    backgroundColor: Colors.accentBlue,
+  },
+  actionBtnText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 12,
+    color: '#FFFFFF',
+  },
+  floatingControlsWrapper: {
+    position: 'absolute',
+    bottom: 86,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    zIndex: 100,
+  },
+  floatingAudioBtn: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  floatingChapterPill: {
+    flex: 1,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  chapterArrowBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  controlBtnText: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 12,
-    color: Colors.textPrimary,
-  },
-  translationBtn: {
-    width: 'auto',
-    paddingHorizontal: 10,
-  },
-  translationText: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 11,
-    color: Colors.textPrimary,
-  },
-  scriptureBody: {
-    paddingHorizontal: 22,
-    paddingVertical: 20,
-    paddingBottom: 110,
-  },
-  chapterHeading: {
-    fontFamily: Typography.fontSerif,
-    fontSize: 30,
-    color: Colors.textPrimary,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  verseRow: {
-    flexDirection: 'row',
-    marginBottom: 12,
-    alignItems: 'flex-start',
-  },
-  verseNumber: {
-    fontFamily: Typography.fontSansBold,
-    color: Colors.accentRed,
-    width: 24,
-    marginTop: 2,
-  },
-  verseText: {
-    flex: 1,
-    fontFamily: Typography.fontSansRegular,
-    color: Colors.textPrimary,
-  },
-  chapterNavigation: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 32,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: Colors.divider,
-  },
-  navChapterBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 18,
-    backgroundColor: Colors.cardSecondary,
-  },
-  navChapterBtnDisabled: {
-    opacity: 0.3,
-  },
-  navChapterText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 12,
-    color: Colors.textPrimary,
-  },
-  navChapterIndicator: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 11,
-    color: Colors.textMuted,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    justifyContent: 'flex-end',
-  },
-  pickerModal: {
-    backgroundColor: Colors.card,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 20,
-    maxHeight: '75%',
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.divider,
-  },
-  pickerTitle: {
-    fontFamily: Typography.fontSerif,
-    fontSize: 22,
-    color: Colors.textPrimary,
-  },
-  bookList: {
-    paddingBottom: 20,
-  },
-  bookRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
+  chapterTitleButton: {
     paddingHorizontal: 12,
-    borderRadius: 12,
+    paddingVertical: 8,
   },
-  bookRowActive: {
-    backgroundColor: Colors.cardSecondary,
-  },
-  bookName: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 15,
+  floatingChapterText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 16,
     color: Colors.textPrimary,
-  },
-  bookNameActive: {
-    fontFamily: Typography.fontSansBold,
-    color: Colors.accentRed,
-  },
-  bookTestament: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 12,
-    color: Colors.textMuted,
   }
 });
