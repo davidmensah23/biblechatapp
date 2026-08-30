@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,12 +18,13 @@ import Animated, {
   withSequence,
   Easing
 } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Defs, RadialGradient as SvgRadialGradient, Stop, Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
 import { SpringConfigs } from '../theme/animations';
 import { APOSTLE_PERSONAS } from '../services/personas';
-import { ApostlePersona } from '../types';
 
 const { width } = Dimensions.get('window');
 
@@ -31,50 +32,97 @@ interface OnboardingScreenProps {
   onComplete: () => void;
 }
 
-// Multi-bar pulsating audio visualizer for Slide 3
-const WaveVisualizer: React.FC = () => {
-  const bar1 = useSharedValue(20);
-  const bar2 = useSharedValue(35);
-  const bar3 = useSharedValue(50);
-  const bar4 = useSharedValue(30);
-  const bar5 = useSharedValue(45);
-  const bar6 = useSharedValue(25);
-  const bar7 = useSharedValue(40);
+// Radiant 4-Point Cosmic Star Spectrum for Slide 3
+const CosmicSpectrumVisualizer: React.FC = () => {
+  const starGlow = useSharedValue(1);
+  const flareScale = useSharedValue(1);
 
   useEffect(() => {
-    bar1.value = withRepeat(withSequence(withTiming(45, { duration: 400 }), withTiming(15, { duration: 400 })), -1, true);
-    bar2.value = withRepeat(withSequence(withTiming(20, { duration: 350 }), withTiming(55, { duration: 350 })), -1, true);
-    bar3.value = withRepeat(withSequence(withTiming(60, { duration: 450 }), withTiming(25, { duration: 450 })), -1, true);
-    bar4.value = withRepeat(withSequence(withTiming(30, { duration: 300 }), withTiming(70, { duration: 300 })), -1, true);
-    bar5.value = withRepeat(withSequence(withTiming(65, { duration: 420 }), withTiming(20, { duration: 420 })), -1, true);
-    bar6.value = withRepeat(withSequence(withTiming(18, { duration: 380 }), withTiming(50, { duration: 380 })), -1, true);
-    bar7.value = withRepeat(withSequence(withTiming(40, { duration: 320 }), withTiming(15, { duration: 320 })), -1, true);
+    starGlow.value = withRepeat(
+      withSequence(
+        withTiming(1.3, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.9, { duration: 1200, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      true
+    );
+
+    flareScale.value = withRepeat(
+      withSequence(
+        withTiming(1.15, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.95, { duration: 1500, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      true
+    );
   }, []);
 
-  const s1 = useAnimatedStyle(() => ({ height: bar1.value }));
-  const s2 = useAnimatedStyle(() => ({ height: bar2.value }));
-  const s3 = useAnimatedStyle(() => ({ height: bar3.value }));
-  const s4 = useAnimatedStyle(() => ({ height: bar4.value }));
-  const s5 = useAnimatedStyle(() => ({ height: bar5.value }));
-  const s6 = useAnimatedStyle(() => ({ height: bar6.value }));
-  const s7 = useAnimatedStyle(() => ({ height: bar7.value }));
+  const starAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: starGlow.value }],
+    opacity: starGlow.value * 0.85,
+  }));
+
+  const beamAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleY: flareScale.value }],
+  }));
 
   return (
-    <View style={styles.waveBarsContainer}>
-      <Animated.View style={[styles.waveBar, s1]} />
-      <Animated.View style={[styles.waveBar, styles.waveBarCyan, s2]} />
-      <Animated.View style={[styles.waveBar, styles.waveBarPurple, s3]} />
-      <Animated.View style={[styles.waveBar, styles.waveBarBlue, s4]} />
-      <Animated.View style={[styles.waveBar, styles.waveBarPurple, s5]} />
-      <Animated.View style={[styles.waveBar, styles.waveBarCyan, s6]} />
-      <Animated.View style={[styles.waveBar, s7]} />
+    <View style={styles.spectrumContainer}>
+      {/* Background Deep Cosmic Gradient */}
+      <LinearGradient
+        colors={['#080312', '#1A062E', '#0B0214']}
+        style={StyleSheet.absoluteFillObject}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
+
+      {/* Radiant Horizontal Neon Aurora Streak */}
+      <Animated.View style={[styles.auroraBeamWrapper, beamAnimatedStyle]}>
+        <LinearGradient
+          colors={['rgba(59, 130, 246, 0)', 'rgba(147, 51, 234, 0.6)', 'rgba(236, 72, 153, 0.95)', 'rgba(147, 51, 234, 0.6)', 'rgba(59, 130, 246, 0)']}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={styles.auroraBeamLine}
+        />
+      </Animated.View>
+
+      {/* Central Radiant 4-Point Star Burst (SVG) */}
+      <Animated.View style={[styles.starCenterWrapper, starAnimatedStyle]}>
+        <Svg height="130" width="130" viewBox="0 0 130 130">
+          <Defs>
+            <SvgRadialGradient id="starGlowGrad" cx="50%" cy="50%" r="50%">
+              <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
+              <Stop offset="25%" stopColor="#F472B6" stopOpacity="0.8" />
+              <Stop offset="60%" stopColor="#C084FC" stopOpacity="0.3" />
+              <Stop offset="100%" stopColor="#818CF8" stopOpacity="0" />
+            </SvgRadialGradient>
+          </Defs>
+
+          {/* Radial Aura Disc */}
+          <Circle cx="65" cy="65" r="60" fill="url(#starGlowGrad)" />
+
+          {/* 4-Pointed Star Ray */}
+          <Path
+            d="M 65 5 Q 65 65 5 65 Q 65 65 65 125 Q 65 65 125 65 Q 65 65 65 5 Z"
+            fill="#FFFFFF"
+            opacity="0.95"
+          />
+
+          {/* Diagonal Secondary Micro Rays */}
+          <Path
+            d="M 65 30 Q 65 65 30 65 Q 65 65 65 100 Q 65 65 100 65 Q 65 65 65 30 Z"
+            fill="#FBCFE8"
+            opacity="0.7"
+          />
+        </Svg>
+      </Animated.View>
     </View>
   );
 };
 
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [selectedPreviewApostle, setSelectedPreviewApostle] = useState<ApostlePersona>(APOSTLE_PERSONAS[0]);
+  const [activeCardIndex, setActiveCardIndex] = useState(0);
 
   // Horizontal Carousel Translation Track
   const translateX = useSharedValue(0);
@@ -84,26 +132,12 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
   const dotWidth1 = useSharedValue(6);
   const dotWidth2 = useSharedValue(6);
 
-  // Glow pulse for slide 3
-  const beamPulse = useSharedValue(1);
-
   useEffect(() => {
     translateX.value = withSpring(-currentSlide * width, SpringConfigs.cardStack);
 
     dotWidth0.value = withSpring(currentSlide === 0 ? 26 : 6, SpringConfigs.bouncy);
     dotWidth1.value = withSpring(currentSlide === 1 ? 26 : 6, SpringConfigs.bouncy);
     dotWidth2.value = withSpring(currentSlide === 2 ? 26 : 6, SpringConfigs.bouncy);
-
-    if (currentSlide === 2) {
-      beamPulse.value = withRepeat(
-        withSequence(
-          withTiming(1.25, { duration: 900, easing: Easing.inOut(Easing.ease) }),
-          withTiming(1.0, { duration: 900, easing: Easing.inOut(Easing.ease) })
-        ),
-        -1,
-        true
-      );
-    }
   }, [currentSlide]);
 
   const handleNext = () => {
@@ -118,6 +152,11 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
     if (currentSlide > 0) {
       setCurrentSlide(currentSlide - 1);
     }
+  };
+
+  // Switch disciple on slide 2 stack tap
+  const cycleCardStack = () => {
+    setActiveCardIndex((prev) => (prev + 1) % APOSTLE_PERSONAS.length);
   };
 
   // Continuous Swipe Gesture Responder
@@ -148,35 +187,44 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
   const dot0Style = useAnimatedStyle(() => ({ width: dotWidth0.value }));
   const dot1Style = useAnimatedStyle(() => ({ width: dotWidth1.value }));
   const dot2Style = useAnimatedStyle(() => ({ width: dotWidth2.value }));
-  const beamStyle = useAnimatedStyle(() => ({ transform: [{ scale: beamPulse.value }] }));
+
+  const currentApostle = APOSTLE_PERSONAS[activeCardIndex];
 
   return (
     <SafeAreaView style={styles.container} {...panResponder.panHandlers}>
-      {/* Top Header with Skip Button */}
+      {/* Top Header with Clean Skip Option */}
       <View style={styles.topBar}>
-        <View style={styles.badgePill}>
-          <Text style={styles.badgeText}>✨ AI Theological Companion</Text>
-        </View>
-
-        {currentSlide < 2 ? (
+        <View style={{ width: 40 }} />
+        {currentSlide < 2 && (
           <TouchableOpacity onPress={onComplete} style={styles.skipButton} activeOpacity={0.7}>
             <Text style={styles.skipText}>Skip</Text>
           </TouchableOpacity>
-        ) : <View style={{ width: 40 }} />}
+        )}
       </View>
 
       {/* Continuous Sliding Track for Top Visuals and Typography */}
       <Animated.View style={[styles.slidingTrack, trackAnimatedStyle]}>
         {/* SLIDE 1 */}
         <View style={styles.slidePage}>
-          {/* Slide 1 Top Visual */}
+          {/* Slide 1 Top Visual with Smooth Long Gradient Dissolve */}
           <View style={styles.visualContainer}>
             <Image
               source={require('../../assets/images/onboarding_disciples_hero.png')}
               style={styles.heroImageFull}
               resizeMode="cover"
             />
-            <View style={styles.bottomVignette} />
+            {/* Smooth Multi-Stop Linear Gradient Fade */}
+            <LinearGradient
+              colors={[
+                'transparent',
+                'rgba(10, 10, 10, 0.2)',
+                'rgba(10, 10, 10, 0.65)',
+                'rgba(10, 10, 10, 0.95)',
+                '#0A0A0A'
+              ]}
+              locations={[0, 0.25, 0.55, 0.8, 1]}
+              style={styles.smoothFadeGradient}
+            />
           </View>
 
           {/* Slide 1 Text Area */}
@@ -188,66 +236,43 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
             <Text style={styles.subtitle}>
               Ask Questions, Explore Their Stories, And Discover Ancient Wisdom—Reimagined For Today.
             </Text>
-
-            {/* Interactive Sample Prompt Chip */}
-            <View style={styles.samplePromptChip}>
-              <Ionicons name="chatbubble-ellipses-outline" size={16} color="#60A5FA" style={{ marginRight: 8 }} />
-              <Text style={styles.samplePromptText} numberOfLines={2}>
-                "Peter, what did it feel like when Jesus called you from the boat?"
-              </Text>
-            </View>
           </View>
         </View>
 
-        {/* SLIDE 2 */}
+        {/* SLIDE 2: Layered 3D Perspective Card Stack */}
         <View style={styles.slidePage}>
-          {/* Slide 2 Top Visual */}
           <View style={[styles.visualContainer, styles.visualContainerPadded]}>
-            {/* 3D Stack Layer 3 */}
-            <View style={[styles.stackCard, styles.stackCardBack2]} />
-            {/* 3D Stack Layer 2 */}
-            <View style={[styles.stackCard, styles.stackCardBack1]} />
+            {/* Top Arched Stack Layers in Perspective */}
+            <View style={[styles.stackCard, styles.stackCardLayer4]} />
+            <View style={[styles.stackCard, styles.stackCardLayer3]} />
+            <View style={[styles.stackCard, styles.stackCardLayer2]} />
 
-            {/* Front Selected Apostle Card */}
-            <View style={[styles.stackCard, styles.stackCardFront]}>
+            {/* Front Interactive Card */}
+            <TouchableOpacity
+              activeOpacity={0.92}
+              onPress={cycleCardStack}
+              style={[styles.stackCard, styles.stackCardFront]}
+            >
               <View style={styles.cardHeader}>
-                <Image
-                  source={selectedPreviewApostle.avatar}
-                  style={styles.cardAvatar}
-                />
+                <View style={styles.avatarCircleWrap}>
+                  <Image source={currentApostle.avatar} style={styles.cardAvatar} resizeMode="cover" />
+                </View>
                 <View style={styles.cardHeaderText}>
-                  <Text style={styles.cardTitle}>{selectedPreviewApostle.name}</Text>
+                  <Text style={styles.cardTitle}>{currentApostle.title}</Text>
                   <Text style={styles.cardSubtitle} numberOfLines={1}>
-                    {selectedPreviewApostle.subtitle}
+                    {currentApostle.subtitle}
                   </Text>
                 </View>
               </View>
 
-              <Text style={styles.cardBio} numberOfLines={3}>
-                {selectedPreviewApostle.shortQuote}
+              <Text style={styles.cardBio} numberOfLines={4}>
+                {currentApostle.bio}
               </Text>
 
-              {/* Mini Apostles Selector Chips */}
-              <View style={styles.miniAvatarsRow}>
-                {APOSTLE_PERSONAS.slice(0, 5).map((a) => {
-                  const isCurrent = a.id === selectedPreviewApostle.id;
-                  return (
-                    <TouchableOpacity
-                      key={a.id}
-                      style={[styles.miniAvatarTouch, isCurrent && styles.miniAvatarTouchActive]}
-                      onPress={() => setSelectedPreviewApostle(a)}
-                      activeOpacity={0.7}
-                    >
-                      <Image source={a.avatar} style={styles.miniAvatarImg} />
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
               <View style={styles.chatWithMePill}>
-                <Text style={styles.chatWithMeText}>Chat with {selectedPreviewApostle.name}</Text>
+                <Text style={styles.chatWithMeText}>Chat with me</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           </View>
 
           {/* Slide 2 Text Area */}
@@ -262,23 +287,23 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
           </View>
         </View>
 
-        {/* SLIDE 3 */}
+        {/* SLIDE 3: Glowing Aurora Starlight Call Screen */}
         <View style={styles.slidePage}>
-          {/* Slide 3 Top Visual */}
           <View style={[styles.visualContainer, styles.visualContainerPadded]}>
             <View style={styles.callCard}>
               <Text style={styles.callCardTitle}>Peter Speaking</Text>
               <Text style={styles.callCardSubtitle}>You have been chatting for 30 minutes</Text>
 
-              <View style={styles.callGlowArea}>
-                <Animated.View style={[styles.callGlowHalo, beamStyle]} />
-                <WaveVisualizer />
+              {/* Exact Radiant Starlight Spectrum */}
+              <View style={styles.spectrumOuterFrame}>
+                <CosmicSpectrumVisualizer />
               </View>
 
+              {/* Slide to End Call Pill */}
               <View style={styles.slideEndBar}>
                 <Text style={styles.slideEndText}>Slide to end call</Text>
                 <View style={styles.slideEndIcon}>
-                  <Ionicons name="call" size={15} color="#FFFFFF" style={{ transform: [{ rotate: '135deg' }] }} />
+                  <Ionicons name="call" size={14} color="#FFFFFF" style={{ transform: [{ rotate: '135deg' }] }} />
                 </View>
               </View>
             </View>
@@ -297,7 +322,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
         </View>
       </Animated.View>
 
-      {/* Floating Bottom Footer Controls */}
+      {/* Floating Bottom Footer Navigation */}
       <View style={styles.floatingFooterRow}>
         {/* Animated Pagination Indicators */}
         <View style={styles.paginationDots}>
@@ -313,8 +338,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
           </TouchableOpacity>
         ) : (
           <TouchableOpacity style={styles.getStartedBtn} onPress={onComplete} activeOpacity={0.85}>
-            <Text style={styles.getStartedText}>Begin Your Walk</Text>
-            <Ionicons name="arrow-forward" size={17} color="#FFFFFF" style={{ marginLeft: 8 }} />
+            <Text style={styles.getStartedText}>Get Started</Text>
+            <Ionicons name="arrow-forward" size={17} color="#FFFFFF" style={{ marginLeft: 6 }} />
           </TouchableOpacity>
         )}
       </View>
@@ -336,25 +361,14 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
     zIndex: 150,
   },
-  badgePill: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-  },
-  badgeText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 11.5,
-    color: '#E5E7EB',
-  },
   skipButton: {
     paddingVertical: 6,
     paddingHorizontal: 10,
   },
   skipText: {
     fontFamily: Typography.fontSansMedium,
-    fontSize: 14,
-    color: '#9CA3AF',
+    fontSize: 15,
+    color: '#A1A1AA',
   },
   slidingTrack: {
     flex: 1,
@@ -381,41 +395,46 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  bottomVignette: {
+  smoothFadeGradient: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 60,
-    backgroundColor: 'rgba(10, 10, 10, 0.75)',
+    height: 160,
   },
   stackCard: {
     position: 'absolute',
     borderRadius: 24,
   },
-  stackCardBack2: {
-    width: '84%',
+  stackCardLayer4: {
+    width: '74%',
     height: 250,
-    top: 14,
-    backgroundColor: '#1E1E24',
+    top: 6,
+    backgroundColor: '#18181D',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  stackCardLayer3: {
+    width: '80%',
+    height: 255,
+    top: 16,
+    backgroundColor: '#23232A',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
-    transform: [{ rotate: '-6deg' }],
   },
-  stackCardBack1: {
-    width: '88%',
+  stackCardLayer2: {
+    width: '86%',
     height: 260,
-    top: 24,
-    backgroundColor: '#2A2A32',
+    top: 26,
+    backgroundColor: '#32323C',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
-    transform: [{ rotate: '4deg' }],
   },
   stackCardFront: {
-    width: '94%',
+    width: '92%',
     backgroundColor: '#F5F5F7',
-    padding: 18,
-    top: 36,
+    padding: 20,
+    top: 38,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.45,
@@ -425,15 +444,24 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
-  cardAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    marginRight: 10,
+  avatarCircleWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    overflow: 'hidden',
+    backgroundColor: '#ECECF0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
     borderWidth: 1.5,
     borderColor: '#E5E7EB',
+  },
+  cardAvatar: {
+    width: '100%',
+    height: '100%',
+    transform: [{ scale: 1.4 }, { translateY: 2 }],
   },
   cardHeaderText: {
     flex: 1,
@@ -445,46 +473,22 @@ const styles = StyleSheet.create({
   },
   cardSubtitle: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 11,
+    fontSize: 10.5,
     color: '#2563EB',
     marginTop: 1,
   },
   cardBio: {
     fontFamily: Typography.fontSansRegular,
     fontSize: 12.5,
-    lineHeight: 17,
+    lineHeight: 17.5,
     color: '#374151',
-    marginBottom: 12,
-  },
-  miniAvatarsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    marginBottom: 12,
-  },
-  miniAvatarTouch: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    padding: 2,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  miniAvatarTouchActive: {
-    borderColor: '#2563EB',
-    transform: [{ scale: 1.1 }],
-  },
-  miniAvatarImg: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 18,
+    marginBottom: 16,
   },
   chatWithMePill: {
     borderWidth: 1.5,
     borderColor: '#111827',
     borderRadius: 22,
-    paddingVertical: 9,
+    paddingVertical: 10,
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
   },
@@ -495,16 +499,16 @@ const styles = StyleSheet.create({
   },
   callCard: {
     width: '94%',
-    backgroundColor: '#121218',
-    borderRadius: 26,
-    borderWidth: 1,
-    borderColor: 'rgba(217, 70, 239, 0.35)',
-    padding: 22,
+    backgroundColor: '#0F0918',
+    borderRadius: 28,
+    borderWidth: 1.5,
+    borderColor: 'rgba(217, 70, 239, 0.4)',
+    padding: 20,
     alignItems: 'center',
     shadowColor: '#D946EF',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
     elevation: 6,
   },
   callCardTitle: {
@@ -517,63 +521,63 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontSansRegular,
     fontSize: 12,
     color: '#9CA3AF',
-    marginBottom: 18,
+    marginBottom: 16,
   },
-  callGlowArea: {
+  spectrumOuterFrame: {
     width: '100%',
-    height: 90,
-    justifyContent: 'center',
-    alignItems: 'center',
+    height: 120,
+    borderRadius: 18,
+    overflow: 'hidden',
     marginBottom: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  spectrumContainer: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
     position: 'relative',
   },
-  callGlowHalo: {
+  auroraBeamWrapper: {
     position: 'absolute',
-    width: 140,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(217, 70, 239, 0.15)',
+    width: '100%',
+    height: 14,
+    justifyContent: 'center',
   },
-  waveBarsContainer: {
-    flexDirection: 'row',
+  auroraBeamLine: {
+    width: '100%',
+    height: 8,
+    borderRadius: 4,
+  },
+  starCenterWrapper: {
+    position: 'absolute',
     alignItems: 'center',
-    gap: 8,
-    height: 75,
-  },
-  waveBar: {
-    width: 6,
-    borderRadius: 3,
-    backgroundColor: '#9CA3AF',
-  },
-  waveBarCyan: {
-    backgroundColor: '#06B6D4',
-  },
-  waveBarPurple: {
-    backgroundColor: '#D946EF',
-  },
-  waveBarBlue: {
-    backgroundColor: '#3B82F6',
+    justifyContent: 'center',
   },
   slideEndBar: {
     width: '100%',
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(59, 130, 246, 0.8)',
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(59, 130, 246, 0.85)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
   },
   slideEndText: {
     fontFamily: Typography.fontSansMedium,
-    fontSize: 14,
+    fontSize: 13.5,
     color: '#FFFFFF',
   },
   slideEndIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#EF4444',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -596,24 +600,6 @@ const styles = StyleSheet.create({
     fontSize: 15.5,
     lineHeight: 23,
     color: '#9CA3AF',
-  },
-  samplePromptChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(59, 130, 246, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginTop: 14,
-  },
-  samplePromptText: {
-    flex: 1,
-    fontFamily: Typography.fontSerifItalic,
-    fontSize: 13.5,
-    color: '#93C5FD',
-    lineHeight: 18,
   },
   floatingFooterRow: {
     position: 'absolute',
