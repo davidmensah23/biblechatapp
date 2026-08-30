@@ -47,7 +47,7 @@ export interface BibleBook {
 
 export interface SavedBookmark {
   id: string;
-  type: 'verse' | 'quote';
+  type: 'verse' | 'quote' | 'insight';
   title: string;
   content: string;
   reference?: string;

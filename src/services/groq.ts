@@ -6,7 +6,7 @@ const PRIMARY_MODEL = 'openai/gpt-oss-120b';
 const FALLBACK_MODEL = 'openai/gpt-oss-20b';
 
 export interface UserProfileContext {
-  name?: string;
+  fullName?: string;
   age?: string;
   location?: string;
   bio?: string;
@@ -30,9 +30,9 @@ export const generateApostleReply = async (
 
     let enrichedSystemPrompt = persona.systemPrompt;
 
-    if (userProfile && userProfile.name) {
+    if (userProfile && userProfile.fullName) {
       enrichedSystemPrompt += `\n\nUser Profile Context:
-You are speaking with ${userProfile.name}${userProfile.age ? `, age ${userProfile.age}` : ''}${userProfile.location ? `, located in ${userProfile.location}` : ''}.
+You are speaking with ${userProfile.fullName}${userProfile.age ? `, age ${userProfile.age}` : ''}${userProfile.location ? `, located in ${userProfile.location}` : ''}.
 ${userProfile.bio ? `Their faith background/note: "${userProfile.bio}"` : ''}
 Address them warmly by name when natural and appropriate.`;
     }
@@ -43,7 +43,7 @@ Address them warmly by name when natural and appropriate.`;
 - Match the user's conversational energy: if they give a friendly greeting ("Hi", "Good morning"), reply warmly in 1-2 sentences and ask how their walk with God is going today.
 - Quote Scripture reverently and sparingly where it adds divine light to the conversation.`;
 
-    const messages: MessagePayload = [
+    const messages: MessagePayload[] = [
       { role: 'system', content: enrichedSystemPrompt }
     ];
 

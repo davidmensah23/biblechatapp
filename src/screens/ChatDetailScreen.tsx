@@ -25,7 +25,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
 import { ApostlePersona, ChatMessage, UserProfile } from '../types';
-import { fetchMessages, saveMessage, saveBookmark, getUserProfile } from '../services/database';
+import { fetchMessages, saveMessage, saveBookmark, fetchUserProfile } from '../services/database';
 import { generateApostleReply } from '../services/groq';
 import { VoiceCallModal } from '../components/VoiceCallModal';
 import { FormattedMessageText } from '../components/FormattedMessageText';
@@ -110,7 +110,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
 
   const loadProfileContext = async () => {
     try {
-      const p = await getUserProfile();
+      const p = await fetchUserProfile();
       setUserProfile(p);
     } catch (e) {
       console.warn('Could not load user profile context:', e);
@@ -120,7 +120,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
   const loadChatHistory = async () => {
     const history = await fetchMessages(conversationId);
     if (history.length === 0) {
-      const nameGreeting = userProfile?.name ? `, ${userProfile.name}` : '';
+      const nameGreeting = userProfile?.fullName ? `, ${userProfile.fullName}` : '';
       const greeting: ChatMessage = {
         id: `msg_${Date.now()}`,
         conversationId: conversationId,
@@ -162,9 +162,9 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
         userText,
         userProfile
           ? {
-              name: userProfile.name,
+              fullName: userProfile.fullName,
               age: '24',
-              location: 'Ghana',
+              location: userProfile.location || 'Ghana',
               bio: userProfile.bio
             }
           : undefined
@@ -329,7 +329,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
       <VoiceCallModal
         visible={showCallModal}
         apostle={apostle}
-        onClose={() => setShowCallModal(false)}
+        onEndCall={() => setShowCallModal(false)}
       />
     </SafeAreaView>
   );
@@ -419,11 +419,11 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
   },
   userBubble: {
-    backgroundColor: Colors.chatBubbleUser,
+    backgroundColor: '#1E1E24',
     borderBottomRightRadius: 4,
   },
   assistantBubble: {
-    backgroundColor: Colors.chatBubbleAssistant,
+    backgroundColor: Colors.cardSecondary,
     borderBottomLeftRadius: 4,
   },
   bookmarkBtn: {
@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   typingBubble: {
-    backgroundColor: Colors.chatBubbleAssistant,
+    backgroundColor: Colors.cardSecondary,
     borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 12,
