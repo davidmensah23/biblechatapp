@@ -67,7 +67,7 @@ export const DailyScriptureCard: React.FC<DailyScriptureCardProps> = ({
               <Ionicons
                 name={bookmarked ? 'heart' : 'heart-outline'}
                 size={22}
-                color={bookmarked ? Colors.heartActive : Colors.heartInactive}
+                color={bookmarked ? Colors.heartActive : '#444444'}
               />
             </Animated.View>
           </Pressable>
@@ -79,8 +79,8 @@ export const DailyScriptureCard: React.FC<DailyScriptureCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.cardSecondary,
-    borderRadius: 20,
+    backgroundColor: '#DCDCE1',
+    borderRadius: 24,
     overflow: 'hidden',
     marginBottom: 22,
     shadowColor: '#000',
@@ -91,8 +91,9 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     width: '100%',
-    height: 130,
-    backgroundColor: '#333333',
+    height: 140,
+    backgroundColor: '#222222',
+    overflow: 'hidden',
   },
   bannerImage: {
     width: '100%',
@@ -103,14 +104,14 @@ const styles = StyleSheet.create({
   },
   verseText: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 14.5,
-    lineHeight: 22,
-    color: Colors.textPrimary,
+    fontSize: 15.5,
+    lineHeight: 23,
+    color: '#111111',
     marginBottom: 14,
   },
   referenceText: {
-    fontFamily: Typography.fontSansSemiBold,
-    color: Colors.textSecondary,
+    fontFamily: Typography.fontSansRegular,
+    color: '#111111',
   },
   footerRow: {
     flexDirection: 'row',
@@ -119,8 +120,8 @@ const styles = StyleSheet.create({
   },
   readMoreText: {
     fontFamily: Typography.fontSerifItalic,
-    fontSize: 19,
-    color: Colors.textPrimary,
+    fontSize: 18,
+    color: '#111111',
     textDecorationLine: 'underline',
   }
 });

@@ -98,16 +98,6 @@ export default function App() {
             />
           )}
 
-          {activeNavTab === 'chats' && (
-            <ChatListScreen
-              onSelectConversation={(apostle) => {
-                setSelectedApostle(apostle);
-                setCurrentView('chat');
-              }}
-              onBack={() => setActiveNavTab('home')}
-            />
-          )}
-
           {activeNavTab === 'bible' && <BibleReaderScreen />}
 
           {activeNavTab === 'profile' && <ProfileScreen />}

@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, FlatList } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
 import { APOSTLE_PERSONAS } from '../services/personas';
 import { DAILY_SCRIPTURE_FEATURED } from '../services/bibleData';
@@ -10,7 +8,6 @@ import { ApostlePersona, BibleVerse } from '../types';
 import { ApostleCard } from '../components/ApostleCard';
 import { DailyScriptureCard } from '../components/DailyScriptureCard';
 import { ScriptureDetailModal } from '../components/ScriptureDetailModal';
-import { NotificationsModal } from '../components/NotificationsModal';
 import { SpringConfigs } from '../theme/animations';
 
 interface HomeScreenProps {
@@ -20,13 +17,12 @@ interface HomeScreenProps {
 export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
   const [activeTab, setActiveTab] = useState<'forYou' | 'disciples'>('forYou');
   const [selectedVerse, setSelectedVerse] = useState<BibleVerse | null>(null);
-  const [showNotifications, setShowNotifications] = useState(false);
 
   const tabIndicatorOffset = useSharedValue(0);
 
   useEffect(() => {
-    // Exact centered offset: 20px for "For You", 124px for "Disciples"
-    tabIndicatorOffset.value = withSpring(activeTab === 'forYou' ? 20 : 124, SpringConfigs.bouncy);
+    // Indicator positioned right above the text: 0 for "For You", 108px for "Disciples"
+    tabIndicatorOffset.value = withSpring(activeTab === 'forYou' ? 0 : 108, SpringConfigs.bouncy);
   }, [activeTab]);
 
   const animatedIndicatorStyle = useAnimatedStyle(() => ({
@@ -45,16 +41,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top Header with Tabs & Notification Bell Button */}
+      {/* Top Header with Tabs & Top Red Indicator Bar */}
       <View style={styles.header}>
         <View style={styles.tabsContainer}>
+          {/* Gliding Top Red Line positioned Above the Active Tab */}
+          <Animated.View style={[styles.topRedIndicator, animatedIndicatorStyle]} />
+
           {/* For You Tab */}
           <TouchableOpacity
             style={styles.tabButton}
             onPress={() => setActiveTab('forYou')}
             activeOpacity={0.7}
           >
-            <Text style={[styles.tabText, activeTab === 'forYou' && styles.tabTextActive]}>
+            <Text style={[styles.tabText, activeTab === 'forYou' ? styles.tabTextActive : styles.tabTextInactive]}>
               For You
             </Text>
           </TouchableOpacity>
@@ -65,24 +64,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
             onPress={() => setActiveTab('disciples')}
             activeOpacity={0.7}
           >
-            <Text style={[styles.tabText, activeTab === 'disciples' && styles.tabTextActive]}>
+            <Text style={[styles.tabText, activeTab === 'disciples' ? styles.tabTextActive : styles.tabTextInactive]}>
               Disciples
             </Text>
           </TouchableOpacity>
-
-          {/* Gliding Compact Red Indicator */}
-          <Animated.View style={[styles.activeTabIndicator, animatedIndicatorStyle]} />
         </View>
-
-        {/* Working Notification Bell Icon */}
-        <TouchableOpacity
-          style={styles.notificationBellBtn}
-          onPress={() => setShowNotifications(true)}
-          activeOpacity={0.75}
-        >
-          <Ionicons name="notifications-outline" size={22} color={Colors.textPrimary} />
-          <View style={styles.notificationUnreadDot} />
-        </TouchableOpacity>
       </View>
 
       {/* Main Tab Content */}
@@ -99,9 +85,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
             onReadMore={handleOpenVerseModal}
           />
 
-          {/* Meet Your Heroes Section */}
+          {/* Meet Your Heroes Section Heading */}
           <Text style={styles.sectionHeading}>Meet your heroes</Text>
 
+          {/* 2-Column Grid Rows */}
           <View style={styles.gridRow}>
             {APOSTLE_PERSONAS.slice(0, 2).map((apostle) => (
               <ApostleCard
@@ -123,11 +110,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
           </View>
         </ScrollView>
       ) : (
-        /* Disciples 2-Column Grid Tab */
+        /* Disciples Full 2-Column Grid Tab */
         <FlatList
           data={APOSTLE_PERSONAS}
           keyExtractor={(item) => item.id}
           numColumns={2}
+          columnWrapperStyle={styles.columnWrapper}
           contentContainerStyle={styles.disciplesListContent}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
@@ -147,12 +135,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
           onClose={() => setSelectedVerse(null)}
         />
       )}
-
-      {/* Interactive Notifications Modal */}
-      <NotificationsModal
-        visible={showNotifications}
-        onClose={() => setShowNotifications(false)}
-      />
     </SafeAreaView>
   );
 };
@@ -160,84 +142,65 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#F3F3F5',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 10,
+    paddingHorizontal: 22,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
   tabsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     position: 'relative',
-    paddingBottom: 4,
+    paddingTop: 10,
+  },
+  topRedIndicator: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 60,
+    height: 3,
+    backgroundColor: '#D92D20',
+    borderRadius: 2,
   },
   tabButton: {
-    paddingVertical: 6,
-    marginRight: 24,
+    paddingRight: 24,
   },
   tabText: {
     fontFamily: Typography.fontSerif,
-    fontSize: 26,
-    color: Colors.textLight,
+    fontSize: 27,
   },
   tabTextActive: {
-    color: Colors.textPrimary,
+    color: '#111111',
   },
-  activeTabIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    width: 32,
-    height: 2.5,
-    backgroundColor: Colors.accentRed,
-    borderRadius: 2,
-  },
-  notificationBellBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.cardSecondary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  notificationUnreadDot: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#EF4444',
+  tabTextInactive: {
+    color: '#A3A3A8',
   },
   content: {
     flex: 1,
   },
   contentContainer: {
     paddingHorizontal: 20,
-    paddingTop: 8,
     paddingBottom: 110,
   },
   sectionHeading: {
     fontFamily: Typography.fontSerif,
-    fontSize: 28,
-    color: Colors.textPrimary,
-    marginTop: 20,
-    marginBottom: 12,
+    fontSize: 27,
+    color: '#111111',
+    marginTop: 10,
+    marginBottom: 16,
   },
   gridRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 4,
   },
+  columnWrapper: {
+    justifyContent: 'space-between',
+  },
   disciplesListContent: {
-    paddingHorizontal: 14,
-    paddingTop: 8,
+    paddingHorizontal: 20,
     paddingBottom: 110,
   }
 });

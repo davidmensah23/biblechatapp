@@ -1,10 +1,7 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, Pressable } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { ApostlePersona } from '../types';
-import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
-import { SpringConfigs } from '../theme/animations';
 
 interface ApostleCardProps {
   apostle: ApostlePersona;
@@ -12,69 +9,56 @@ interface ApostleCardProps {
 }
 
 export const ApostleCard: React.FC<ApostleCardProps> = ({ apostle, onPress }) => {
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.95, SpringConfigs.bouncy);
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, SpringConfigs.snappy);
-  };
-
   return (
-    <Animated.View style={[styles.cardWrapper, animatedStyle]}>
-      <Pressable
-        style={styles.card}
-        onPress={() => onPress(apostle)}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-      >
-        <View style={styles.avatarContainer}>
-          <Image source={apostle.avatar} style={styles.avatar} resizeMode="cover" />
-        </View>
-        <Text style={styles.name}>{apostle.name}</Text>
-        <Text style={styles.quote} numberOfLines={3}>
-          {apostle.shortQuote}
-        </Text>
-      </Pressable>
-    </Animated.View>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => onPress(apostle)}
+      activeOpacity={0.8}
+    >
+      {/* Grey Circular Avatar Container */}
+      <View style={styles.avatarContainer}>
+        <Image
+          source={apostle.avatar}
+          style={styles.avatar}
+          resizeMode="cover"
+        />
+      </View>
+
+      {/* Name in Clean Bold Sans-Serif */}
+      <Text style={styles.name}>{apostle.name}</Text>
+
+      {/* Subtitle / Bio in Clean Small Blue/Dark Typography */}
+      <Text style={styles.quote} numberOfLines={3}>
+        {apostle.bio || apostle.subtitle}
+      </Text>
+    </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  cardWrapper: {
-    flex: 1,
-    margin: 6,
-  },
   card: {
-    backgroundColor: Colors.cardSecondary,
-    borderRadius: 22,
-    paddingVertical: 20,
-    paddingHorizontal: 14,
+    backgroundColor: '#DCDCE1',
+    borderRadius: 24,
+    padding: 16,
     alignItems: 'center',
-    minHeight: 220,
+    width: '48%',
+    marginBottom: 14,
+    minHeight: 224,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.05,
     shadowRadius: 6,
-    elevation: 1,
+    elevation: 2,
   },
   avatarContainer: {
-    width: 82,
-    height: 82,
-    borderRadius: 41,
+    width: 94,
+    height: 94,
+    borderRadius: 47,
     overflow: 'hidden',
-    backgroundColor: '#ECECF0',
+    backgroundColor: '#9E9FA6',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
-    borderWidth: 2,
-    borderColor: '#E2E2E8',
   },
   avatar: {
     width: '100%',
@@ -82,17 +66,17 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.4 }, { translateY: 3 }],
   },
   name: {
-    fontFamily: Typography.fontSerif,
-    fontSize: 27,
-    color: Colors.textPrimary,
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 22,
+    color: '#111111',
     marginBottom: 6,
     textAlign: 'center',
   },
   quote: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 12.5,
-    color: Colors.textMuted,
+    fontSize: 10.5,
+    color: '#284682',
     textAlign: 'center',
-    lineHeight: 17.5,
+    lineHeight: 14,
   }
 });
