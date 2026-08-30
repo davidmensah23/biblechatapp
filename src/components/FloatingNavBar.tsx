@@ -10,6 +10,10 @@ interface FloatingNavBarProps {
   onTabChange: (tab: 'home' | 'bible' | 'profile') => void;
 }
 
+const TAB_BTN_SIZE = 46;
+const TAB_GAP = 12;
+const STEP_DISTANCE = TAB_BTN_SIZE + TAB_GAP; // 58px
+
 export const FloatingNavBar: React.FC<FloatingNavBarProps> = ({ activeTab, onTabChange }) => {
   const indicatorOffset = useSharedValue(0);
 
@@ -17,9 +21,9 @@ export const FloatingNavBar: React.FC<FloatingNavBarProps> = ({ activeTab, onTab
     if (activeTab === 'home') {
       indicatorOffset.value = withSpring(0, SpringConfigs.bouncy);
     } else if (activeTab === 'bible') {
-      indicatorOffset.value = withSpring(60, SpringConfigs.bouncy);
+      indicatorOffset.value = withSpring(STEP_DISTANCE, SpringConfigs.bouncy);
     } else if (activeTab === 'profile') {
-      indicatorOffset.value = withSpring(120, SpringConfigs.bouncy);
+      indicatorOffset.value = withSpring(STEP_DISTANCE * 2, SpringConfigs.bouncy);
     }
   }, [activeTab]);
 
@@ -30,7 +34,7 @@ export const FloatingNavBar: React.FC<FloatingNavBarProps> = ({ activeTab, onTab
   return (
     <View style={styles.wrapper}>
       <View style={styles.container}>
-        {/* Animated Sliding Pill Highlight */}
+        {/* Perfectly Centered Sliding Highlight Circle */}
         <Animated.View style={[styles.activePillHighlight, indicatorStyle]} />
 
         {/* Disciples / Feed Tab */}
@@ -92,6 +96,7 @@ const styles = StyleSheet.create({
     borderRadius: 36,
     paddingHorizontal: 8,
     paddingVertical: 6,
+    gap: TAB_GAP,
     position: 'relative',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
@@ -102,20 +107,20 @@ const styles = StyleSheet.create({
   activePillHighlight: {
     position: 'absolute',
     left: 8,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    top: 6,
+    width: TAB_BTN_SIZE,
+    height: TAB_BTN_SIZE,
+    borderRadius: TAB_BTN_SIZE / 2,
     backgroundColor: 'rgba(255, 255, 255, 0.18)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   tabButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: TAB_BTN_SIZE,
+    height: TAB_BTN_SIZE,
+    borderRadius: TAB_BTN_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 8,
     zIndex: 1,
   }
 });

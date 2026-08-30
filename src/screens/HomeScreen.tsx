@@ -24,7 +24,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenC
   const tabIndicatorOffset = useSharedValue(0);
 
   useEffect(() => {
-    tabIndicatorOffset.value = withSpring(activeTab === 'forYou' ? 0 : 96, SpringConfigs.bouncy);
+    // Exact centered offset: 0 for "For You" (center at 34px), 104px for "Disciples" (center at 138px)
+    tabIndicatorOffset.value = withSpring(activeTab === 'forYou' ? 20 : 124, SpringConfigs.bouncy);
   }, [activeTab]);
 
   const animatedIndicatorStyle = useAnimatedStyle(() => ({
@@ -68,7 +69,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenC
             </Text>
           </TouchableOpacity>
 
-          {/* Gliding Red Indicator */}
+          {/* Gliding Compact Red Indicator */}
           <Animated.View style={[styles.activeTabIndicator, animatedIndicatorStyle]} />
         </View>
 
@@ -121,7 +122,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenC
           data={APOSTLE_PERSONAS}
           keyExtractor={(item) => item.id}
           numColumns={2}
-          contentContainerStyle={styles.disciplesGridContainer}
+          contentContainerStyle={styles.disciplesListContent}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
             <ApostleCard
@@ -132,12 +133,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenC
         />
       )}
 
-      {/* Scripture Reader Modal */}
-      <ScriptureDetailModal
-        visible={Boolean(selectedVerse)}
-        verse={selectedVerse}
-        onClose={() => setSelectedVerse(null)}
-      />
+      {/* Scripture Detail Modal */}
+      {selectedVerse && (
+        <ScriptureDetailModal
+          visible={Boolean(selectedVerse)}
+          verse={selectedVerse}
+          onClose={() => setSelectedVerse(null)}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -177,7 +180,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     left: 0,
-    width: 68,
+    width: 28,
     height: 2.5,
     backgroundColor: Colors.accentRed,
     borderRadius: 2,
@@ -194,25 +197,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 110,
-  },
-  disciplesGridContainer: {
-    paddingHorizontal: 10,
-    paddingTop: 10,
+    paddingHorizontal: 20,
+    paddingTop: 8,
     paddingBottom: 110,
   },
   sectionHeading: {
     fontFamily: Typography.fontSerif,
     fontSize: 24,
     color: Colors.textPrimary,
-    marginTop: 6,
+    marginTop: 20,
     marginBottom: 12,
-    paddingHorizontal: 4,
   },
   gridRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  disciplesListContent: {
+    paddingHorizontal: 14,
+    paddingTop: 8,
+    paddingBottom: 110,
   }
 });
