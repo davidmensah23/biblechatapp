@@ -95,7 +95,9 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({ onSelectConversa
               onPress={() => onSelectConversation(persona)}
               activeOpacity={0.75}
             >
-              <Image source={persona.avatar} style={styles.avatar} />
+              <View style={styles.avatarContainer}>
+                <Image source={persona.avatar} style={styles.avatar} resizeMode="cover" />
+              </View>
 
               <View style={styles.chatInfo}>
                 <View style={styles.chatHeader}>
@@ -191,11 +193,22 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
   },
-  avatar: {
+  avatarContainer: {
     width: 56,
     height: 56,
     borderRadius: 28,
+    overflow: 'hidden',
+    backgroundColor: '#ECECF0',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 14,
+    borderWidth: 1.5,
+    borderColor: '#E2E2E8',
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
+    transform: [{ scale: 1.35 }, { translateY: 2 }],
   },
   chatInfo: {
     flex: 1,

@@ -211,7 +211,9 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
         </TouchableOpacity>
 
         <View style={styles.headerProfile}>
-          <Image source={apostle.avatar} style={styles.avatar} />
+          <View style={styles.headerAvatarContainer}>
+            <Image source={apostle.avatar} style={styles.headerAvatar} resizeMode="cover" />
+          </View>
           <View style={styles.headerTexts}>
             <Text style={styles.headerTitle}>{apostle.name}</Text>
             <Text style={styles.headerSubtitle} numberOfLines={1}>
@@ -364,13 +366,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 10,
   },
-  avatar: {
+  headerAvatarContainer: {
     width: 44,
     height: 44,
     borderRadius: 22,
+    overflow: 'hidden',
+    backgroundColor: '#ECECF0',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 10,
     borderWidth: 1.5,
     borderColor: '#E5E7EB',
+  },
+  headerAvatar: {
+    width: '100%',
+    height: '100%',
+    transform: [{ scale: 1.4 }, { translateY: 2 }],
   },
   headerTexts: {
     flex: 1,
