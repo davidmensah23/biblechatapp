@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
@@ -14,7 +14,7 @@ import { ChatListScreen } from './src/screens/ChatListScreen';
 import { ChatDetailScreen } from './src/screens/ChatDetailScreen';
 import { BibleReaderScreen } from './src/screens/BibleReaderScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
-import { FloatingNavBar } from './src/components/FloatingNavBar';
+import { FloatingNavBar, NavTabType } from './src/components/FloatingNavBar';
 import { ApostlePersona } from './src/types';
 import { getDB } from './src/services/database';
 
@@ -29,7 +29,7 @@ export default function App() {
   });
 
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(false);
-  const [activeNavTab, setActiveNavTab] = useState<'home' | 'bible' | 'profile'>('home');
+  const [activeNavTab, setActiveNavTab] = useState<NavTabType>('home');
   const [currentView, setCurrentView] = useState<'main' | 'chatList' | 'chat'>('main');
   const [selectedApostle, setSelectedApostle] = useState<ApostlePersona | null>(null);
   const [forceRender, setForceRender] = useState<boolean>(false);
@@ -85,7 +85,7 @@ export default function App() {
           />
         </>
       ) : (
-        /* 4. Main App (Home / Bible / Profile) with Floating Nav Bar */
+        /* 4. Main App (Home / Chats / Bible / Profile) with Floating Nav Bar */
         <View style={styles.mainContainer}>
           <StatusBar barStyle="dark-content" backgroundColor="#F6F6F6" />
 
@@ -95,7 +95,16 @@ export default function App() {
                 setSelectedApostle(apostle);
                 setCurrentView('chat');
               }}
-              onOpenChatList={() => setCurrentView('chatList')}
+            />
+          )}
+
+          {activeNavTab === 'chats' && (
+            <ChatListScreen
+              onSelectConversation={(apostle) => {
+                setSelectedApostle(apostle);
+                setCurrentView('chat');
+              }}
+              onBack={() => setActiveNavTab('home')}
             />
           )}
 

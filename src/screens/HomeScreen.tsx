@@ -10,21 +10,22 @@ import { ApostlePersona, BibleVerse } from '../types';
 import { ApostleCard } from '../components/ApostleCard';
 import { DailyScriptureCard } from '../components/DailyScriptureCard';
 import { ScriptureDetailModal } from '../components/ScriptureDetailModal';
+import { NotificationsModal } from '../components/NotificationsModal';
 import { SpringConfigs } from '../theme/animations';
 
 interface HomeScreenProps {
   onSelectApostle: (apostle: ApostlePersona) => void;
-  onOpenChatList: () => void;
 }
 
-export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenChatList }) => {
+export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
   const [activeTab, setActiveTab] = useState<'forYou' | 'disciples'>('forYou');
   const [selectedVerse, setSelectedVerse] = useState<BibleVerse | null>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const tabIndicatorOffset = useSharedValue(0);
 
   useEffect(() => {
-    // Exact centered offset: 0 for "For You" (center at 34px), 104px for "Disciples" (center at 138px)
+    // Exact centered offset: 20px for "For You", 124px for "Disciples"
     tabIndicatorOffset.value = withSpring(activeTab === 'forYou' ? 20 : 124, SpringConfigs.bouncy);
   }, [activeTab]);
 
@@ -44,7 +45,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenC
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top Header with Tabs & Chat Button */}
+      {/* Top Header with Tabs & Notification Bell Button */}
       <View style={styles.header}>
         <View style={styles.tabsContainer}>
           {/* For You Tab */}
@@ -73,9 +74,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenC
           <Animated.View style={[styles.activeTabIndicator, animatedIndicatorStyle]} />
         </View>
 
-        {/* Chats Navigation Icon */}
-        <TouchableOpacity style={styles.chatListIconBtn} onPress={onOpenChatList} activeOpacity={0.7}>
-          <Ionicons name="chatbubbles-outline" size={22} color={Colors.textPrimary} />
+        {/* Working Notification Bell Icon */}
+        <TouchableOpacity
+          style={styles.notificationBellBtn}
+          onPress={() => setShowNotifications(true)}
+          activeOpacity={0.75}
+        >
+          <Ionicons name="notifications-outline" size={22} color={Colors.textPrimary} />
+          <View style={styles.notificationUnreadDot} />
         </TouchableOpacity>
       </View>
 
@@ -141,6 +147,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenC
           onClose={() => setSelectedVerse(null)}
         />
       )}
+
+      {/* Interactive Notifications Modal */}
+      <NotificationsModal
+        visible={showNotifications}
+        onClose={() => setShowNotifications(false)}
+      />
     </SafeAreaView>
   );
 };
@@ -185,13 +197,23 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentRed,
     borderRadius: 2,
   },
-  chatListIconBtn: {
+  notificationBellBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: Colors.cardSecondary,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+  },
+  notificationUnreadDot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
   },
   content: {
     flex: 1,
