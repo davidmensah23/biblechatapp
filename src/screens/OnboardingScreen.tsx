@@ -23,7 +23,7 @@ import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
 import { SpringConfigs } from '../theme/animations';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 interface OnboardingScreenProps {
   onComplete: () => void;
@@ -73,8 +73,11 @@ const WaveVisualizer: React.FC = () => {
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
 
+  // Horizontal Carousel Translation Track
+  const translateX = useSharedValue(0);
+
   // Pagination Dot Animations
-  const dotWidth0 = useSharedValue(24);
+  const dotWidth0 = useSharedValue(26);
   const dotWidth1 = useSharedValue(6);
   const dotWidth2 = useSharedValue(6);
 
@@ -82,6 +85,10 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
   const beamPulse = useSharedValue(1);
 
   useEffect(() => {
+    // Smooth horizontal slide translation
+    translateX.value = withSpring(-currentSlide * width, SpringConfigs.cardStack);
+
+    // Animate pagination pills
     dotWidth0.value = withSpring(currentSlide === 0 ? 26 : 6, SpringConfigs.bouncy);
     dotWidth1.value = withSpring(currentSlide === 1 ? 26 : 6, SpringConfigs.bouncy);
     dotWidth2.value = withSpring(currentSlide === 2 ? 26 : 6, SpringConfigs.bouncy);
@@ -112,21 +119,32 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
     }
   };
 
-  // Swipe Gesture Handler
+  // Continuous Swipe Gesture Responder
   const panResponder = React.useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 20 && Math.abs(gestureState.dy) < 30;
+        return Math.abs(gestureState.dx) > 15 && Math.abs(gestureState.dy) < 30;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Track user's finger in real time during drag
+        translateX.value = -currentSlide * width + gestureState.dx;
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx < -50) {
-          handleNext();
-        } else if (gestureState.dx > 50) {
-          handlePrev();
+        if (gestureState.dx < -50 && currentSlide < 2) {
+          setCurrentSlide(currentSlide + 1);
+        } else if (gestureState.dx > 50 && currentSlide > 0) {
+          setCurrentSlide(currentSlide - 1);
+        } else {
+          // Snap back with spring
+          translateX.value = withSpring(-currentSlide * width, SpringConfigs.cardStack);
         }
       },
     })
   ).current;
+
+  const trackAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
 
   const dot0Style = useAnimatedStyle(() => ({ width: dotWidth0.value }));
   const dot1Style = useAnimatedStyle(() => ({ width: dotWidth1.value }));
@@ -135,22 +153,36 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
 
   return (
     <SafeAreaView style={styles.container} {...panResponder.panHandlers}>
-      {/* Top Visual Area (54% height) */}
-      <View style={[styles.visualContainer, currentSlide === 0 && styles.visualContainerFullBleed]}>
-        {currentSlide === 0 && (
-          <View style={styles.slide1Visual}>
+      {/* Continuous Sliding Track for Top Visuals and Typography */}
+      <Animated.View style={[styles.slidingTrack, trackAnimatedStyle]}>
+        {/* SLIDE 1 */}
+        <View style={styles.slidePage}>
+          {/* Slide 1 Top Visual */}
+          <View style={styles.visualContainer}>
             <Image
               source={require('../../assets/images/onboarding_disciples_hero.png')}
               style={styles.heroImageFull}
               resizeMode="cover"
             />
-            {/* Subtle bottom shadow vignette */}
             <View style={styles.bottomVignette} />
           </View>
-        )}
 
-        {currentSlide === 1 && (
-          <View style={styles.slide2Visual}>
+          {/* Slide 1 Text Area */}
+          <View style={styles.textContainer}>
+            <Text style={styles.heading}>
+              They've Got <Text style={styles.italicAccent}>Stories</Text>.{'\n'}
+              You've Got <Text style={styles.italicAccent}>Questions</Text>
+            </Text>
+            <Text style={styles.subtitle}>
+              Ask Questions, Explore Their Stories, And Discover Ancient Wisdom—Reimagined For Today.
+            </Text>
+          </View>
+        </View>
+
+        {/* SLIDE 2 */}
+        <View style={styles.slidePage}>
+          {/* Slide 2 Top Visual */}
+          <View style={[styles.visualContainer, styles.visualContainerPadded]}>
             {/* 3D Stack Layer 3 */}
             <View style={[styles.stackCard, styles.stackCardBack2]} />
             {/* 3D Stack Layer 2 */}
@@ -178,15 +210,27 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
               </View>
             </View>
           </View>
-        )}
 
-        {currentSlide === 2 && (
-          <View style={styles.slide3Visual}>
+          {/* Slide 2 Text Area */}
+          <View style={styles.textContainer}>
+            <Text style={styles.heading}>
+              Dive Into <Text style={styles.italicAccent}>Timeless</Text>{'\n'}
+              Conversations
+            </Text>
+            <Text style={styles.subtitle}>
+              From Parables To Personal Insight, Learn From 12 Disciples Brought To Life With Heart And Humility.
+            </Text>
+          </View>
+        </View>
+
+        {/* SLIDE 3 */}
+        <View style={styles.slidePage}>
+          {/* Slide 3 Top Visual */}
+          <View style={[styles.visualContainer, styles.visualContainerPadded]}>
             <View style={styles.callCard}>
               <Text style={styles.callCardTitle}>Peter Speaking</Text>
               <Text style={styles.callCardSubtitle}>You have been chatting for 30 minutes</Text>
 
-              {/* Glowing Wave Frequency Area */}
               <View style={styles.callGlowArea}>
                 <Animated.View style={[styles.callGlowHalo, beamStyle]} />
                 <WaveVisualizer />
@@ -200,70 +244,40 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
               </View>
             </View>
           </View>
-        )}
-      </View>
 
-      {/* Bottom Content Area (46% height) */}
-      <View style={styles.textContainer}>
-        <View style={styles.textHeaderGroup}>
-          {currentSlide === 0 && (
-            <>
-              <Text style={styles.heading}>
-                They've Got <Text style={styles.italicAccent}>Stories</Text>.{'\n'}
-                You've Got <Text style={styles.italicAccent}>Questions</Text>
-              </Text>
-              <Text style={styles.subtitle}>
-                Ask Questions, Explore Their Stories, And Discover Ancient Wisdom—Reimagined For Today.
-              </Text>
-            </>
-          )}
-
-          {currentSlide === 1 && (
-            <>
-              <Text style={styles.heading}>
-                Dive Into <Text style={styles.italicAccent}>Timeless</Text>{'\n'}
-                Conversations
-              </Text>
-              <Text style={styles.subtitle}>
-                From Parables To Personal Insight, Learn From 12 Disciples Brought To Life With Heart And Humility.
-              </Text>
-            </>
-          )}
-
-          {currentSlide === 2 && (
-            <>
-              <Text style={styles.heading}>
-                Thoughtful. Friendly.{'\n'}
-                <Text style={styles.italicAccent}>Always Here.</Text>
-              </Text>
-              <Text style={styles.subtitle}>
-                Enjoy Meaningful Interactions In A Respectful, Safe, And Beautifully Designed Experience.
-              </Text>
-            </>
-          )}
-        </View>
-
-        {/* Footer Navigation */}
-        <View style={styles.footerRow}>
-          {/* Animated Pagination Indicators */}
-          <View style={styles.paginationDots}>
-            <Animated.View style={[styles.dot, currentSlide === 0 ? styles.dotActive : styles.dotInactive, dot0Style]} />
-            <Animated.View style={[styles.dot, currentSlide === 1 ? styles.dotActive : styles.dotInactive, dot1Style]} />
-            <Animated.View style={[styles.dot, currentSlide === 2 ? styles.dotActive : styles.dotInactive, dot2Style]} />
+          {/* Slide 3 Text Area */}
+          <View style={styles.textContainer}>
+            <Text style={styles.heading}>
+              Thoughtful. Friendly.{'\n'}
+              <Text style={styles.italicAccent}>Always Here.</Text>
+            </Text>
+            <Text style={styles.subtitle}>
+              Enjoy Meaningful Interactions In A Respectful, Safe, And Beautifully Designed Experience.
+            </Text>
           </View>
-
-          {/* Action Button */}
-          {currentSlide < 2 ? (
-            <TouchableOpacity style={styles.nextArrowBtn} onPress={handleNext} activeOpacity={0.8}>
-              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity style={styles.getStartedBtn} onPress={onComplete} activeOpacity={0.85}>
-              <Text style={styles.getStartedText}>Get Started</Text>
-              <Ionicons name="arrow-forward" size={17} color="#FFFFFF" style={{ marginLeft: 6 }} />
-            </TouchableOpacity>
-          )}
         </View>
+      </Animated.View>
+
+      {/* Floating Bottom Footer Controls */}
+      <View style={styles.floatingFooterRow}>
+        {/* Animated Pagination Indicators */}
+        <View style={styles.paginationDots}>
+          <Animated.View style={[styles.dot, currentSlide === 0 ? styles.dotActive : styles.dotInactive, dot0Style]} />
+          <Animated.View style={[styles.dot, currentSlide === 1 ? styles.dotActive : styles.dotInactive, dot1Style]} />
+          <Animated.View style={[styles.dot, currentSlide === 2 ? styles.dotActive : styles.dotInactive, dot2Style]} />
+        </View>
+
+        {/* Action Button */}
+        {currentSlide < 2 ? (
+          <TouchableOpacity style={styles.nextArrowBtn} onPress={handleNext} activeOpacity={0.8}>
+            <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.getStartedBtn} onPress={onComplete} activeOpacity={0.85}>
+            <Text style={styles.getStartedText}>Get Started</Text>
+            <Ionicons name="arrow-forward" size={17} color="#FFFFFF" style={{ marginLeft: 6 }} />
+          </TouchableOpacity>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -274,20 +288,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.darkBackground,
   },
-  visualContainer: {
-    flex: 1.15,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    position: 'relative',
+  slidingTrack: {
+    flex: 1,
+    flexDirection: 'row',
+    width: width * 3,
   },
-  visualContainerFullBleed: {
-    paddingHorizontal: 0,
-  },
-  slide1Visual: {
+  slidePage: {
     width: width,
     height: '100%',
+    justifyContent: 'space-between',
+    paddingBottom: 90,
+  },
+  visualContainer: {
+    height: '58%',
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
     position: 'relative',
+  },
+  visualContainerPadded: {
+    paddingHorizontal: 22,
   },
   heroImageFull: {
     width: '100%',
@@ -298,15 +318,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 50,
-    backgroundColor: 'rgba(10, 10, 10, 0.65)',
-  },
-  slide2Visual: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
+    height: 60,
+    backgroundColor: 'rgba(10, 10, 10, 0.75)',
   },
   stackCard: {
     position: 'absolute',
@@ -387,12 +400,6 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 13.5,
     color: '#111827',
-  },
-  slide3Visual: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   callCard: {
     width: '94%',
@@ -479,20 +486,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   textContainer: {
-    flex: 0.85,
     paddingHorizontal: 26,
-    justifyContent: 'space-between',
-    paddingBottom: 28,
-  },
-  textHeaderGroup: {
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
   },
   heading: {
     fontFamily: Typography.fontSerif,
     fontSize: 38,
     color: Colors.darkTextPrimary,
     lineHeight: 46,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   italicAccent: {
     fontFamily: Typography.fontSerifItalic,
@@ -503,11 +505,15 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     color: '#9CA3AF',
   },
-  footerRow: {
+  floatingFooterRow: {
+    position: 'absolute',
+    bottom: 24,
+    left: 26,
+    right: 26,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 12,
+    zIndex: 100,
   },
   paginationDots: {
     flexDirection: 'row',
