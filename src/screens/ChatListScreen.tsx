@@ -208,7 +208,6 @@ const styles = StyleSheet.create({
   avatar: {
     width: '100%',
     height: '100%',
-    transform: [{ scale: 1.35 }, { translateY: 2 }],
   },
   chatInfo: {
     flex: 1,

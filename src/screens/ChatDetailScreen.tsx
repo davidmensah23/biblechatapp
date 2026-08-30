@@ -381,7 +381,6 @@ const styles = StyleSheet.create({
   headerAvatar: {
     width: '100%',
     height: '100%',
-    transform: [{ scale: 1.4 }, { translateY: 2 }],
   },
   headerTexts: {
     flex: 1,

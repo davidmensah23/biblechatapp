@@ -424,7 +424,6 @@ const styles = StyleSheet.create({
   cardAvatar: {
     width: '100%',
     height: '100%',
-    transform: [{ scale: 1.4 }, { translateY: 2 }],
   },
   cardHeaderText: {
     flex: 1,
