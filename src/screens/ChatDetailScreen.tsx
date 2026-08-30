@@ -10,7 +10,8 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  Alert
+  Alert,
+  ScrollView
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -23,15 +24,23 @@ import Animated, {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
-import { ApostlePersona, ChatMessage } from '../types';
-import { fetchMessages, saveMessage, saveBookmark } from '../services/database';
+import { ApostlePersona, ChatMessage, UserProfile } from '../types';
+import { fetchMessages, saveMessage, saveBookmark, getUserProfile } from '../services/database';
 import { generateApostleReply } from '../services/groq';
 import { VoiceCallModal } from '../components/VoiceCallModal';
+import { FormattedMessageText } from '../components/FormattedMessageText';
 
 interface ChatDetailScreenProps {
   apostle: ApostlePersona;
   onBack: () => void;
 }
+
+const QUICK_PROMPTS = [
+  { id: '1', label: '🕊️ Pray with me', text: 'Could you pray with me for peace and strength today?' },
+  { id: '2', label: '📖 Today’s wisdom', text: 'Share a word of encouragement from your time with Jesus.' },
+  { id: '3', label: '🌊 Faith in storms', text: 'How did you keep faith when the waves grew high?' },
+  { id: '4', label: '💡 Explain a parable', text: 'What is the true meaning behind the Parable of the Sower?' }
+];
 
 const BouncingDots: React.FC = () => {
   const dot1 = useSharedValue(0);
@@ -89,22 +98,34 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showCallModal, setShowCallModal] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const flatListRef = useRef<FlatList>(null);
 
   const conversationId = `conv_${apostle.id}`;
 
   useEffect(() => {
     loadChatHistory();
+    loadProfileContext();
   }, [apostle.id]);
+
+  const loadProfileContext = async () => {
+    try {
+      const p = await getUserProfile();
+      setUserProfile(p);
+    } catch (e) {
+      console.warn('Could not load user profile context:', e);
+    }
+  };
 
   const loadChatHistory = async () => {
     const history = await fetchMessages(conversationId);
     if (history.length === 0) {
+      const nameGreeting = userProfile?.name ? `, ${userProfile.name}` : '';
       const greeting: ChatMessage = {
         id: `msg_${Date.now()}`,
         conversationId: conversationId,
         sender: 'assistant',
-        content: `Peace be with you! I am ${apostle.name}. How may I encourage your faith or reflect on the scriptures with you today?`,
+        content: `Peace be with you${nameGreeting}! I am ${apostle.name}. What is on your heart today?`,
         timestamp: Date.now()
       };
       await saveMessage(greeting, apostle.title, apostle.id);
@@ -114,10 +135,10 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
     }
   };
 
-  const handleSend = async () => {
-    if (!inputText.trim() || isLoading) return;
+  const handleSendText = async (textToSend: string) => {
+    if (!textToSend.trim() || isLoading) return;
 
-    const userText = inputText.trim();
+    const userText = textToSend.trim();
     setInputText('');
 
     const userMsg: ChatMessage = {
@@ -135,7 +156,19 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
     setIsLoading(true);
 
     try {
-      const replyText = await generateApostleReply(apostle, messages, userText);
+      const replyText = await generateApostleReply(
+        apostle,
+        messages,
+        userText,
+        userProfile
+          ? {
+              name: userProfile.name,
+              age: '24',
+              location: 'Ghana',
+              bio: userProfile.bio
+            }
+          : undefined
+      );
 
       const assistantMsg: ChatMessage = {
         id: `msg_asst_${Date.now()}`,
@@ -145,101 +178,123 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
         timestamp: Date.now()
       };
 
-      const finalMessages = [...updated, assistantMsg];
-      setMessages(finalMessages);
+      setMessages([...updated, assistantMsg]);
       await saveMessage(assistantMsg, apostle.title, apostle.id);
-    } catch (err) {
-      console.error('Error generating reply:', err);
+    } catch (error) {
+      console.error('Error generating reply:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleBookmarkMessage = async (msg: ChatMessage) => {
+  const handleSend = () => {
+    handleSendText(inputText);
+  };
+
+  const handleBookmark = async (msg: ChatMessage) => {
     await saveBookmark({
-      id: `bm_msg_${msg.id}`,
-      type: 'quote',
+      id: `bm_${msg.id}`,
+      type: 'insight',
       title: `${apostle.name}'s Insight`,
       content: msg.content,
-      author: apostle.name,
       timestamp: Date.now()
     });
-    Alert.alert('Saved', `Saved quote from ${apostle.name} to your profile bookmarks!`);
+    Alert.alert('Saved', 'Added to your Bookmarks in Profile');
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.headerBtn}>
-            <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
-          </TouchableOpacity>
+      {/* Top Header Bar */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
+          <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
+        </TouchableOpacity>
 
-          <View style={styles.headerCenter}>
-            <Image source={apostle.avatar} style={styles.headerAvatar} />
-            <View>
-              <Text style={styles.headerTitle}>{apostle.name}</Text>
-              <Text style={styles.headerSubtitle} numberOfLines={1}>
-                {apostle.subtitle}
-              </Text>
-            </View>
+        <View style={styles.headerProfile}>
+          <Image source={apostle.avatar} style={styles.avatar} />
+          <View style={styles.headerTexts}>
+            <Text style={styles.headerTitle}>{apostle.name}</Text>
+            <Text style={styles.headerSubtitle} numberOfLines={1}>
+              {apostle.subtitle}
+            </Text>
           </View>
-
-          <TouchableOpacity
-            style={styles.callBtn}
-            onPress={() => setShowCallModal(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="call-outline" size={20} color={Colors.textPrimary} />
-          </TouchableOpacity>
         </View>
 
-        {/* Message Feed */}
+        <TouchableOpacity
+          onPress={() => setShowCallModal(true)}
+          style={styles.callBtn}
+          activeOpacity={0.75}
+        >
+          <Ionicons name="call-outline" size={20} color={Colors.textPrimary} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Messages List */}
+      <KeyboardAvoidingView
+        style={styles.chatArea}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
         <FlatList
           ref={flatListRef}
           data={messages}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.messageList}
+          contentContainerStyle={styles.messagesList}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
           renderItem={({ item }) => {
             const isUser = item.sender === 'user';
             return (
-              <TouchableOpacity
-                style={[styles.bubbleWrapper, isUser ? styles.userWrapper : styles.assistantWrapper]}
-                onLongPress={() => !isUser && handleBookmarkMessage(item)}
-                activeOpacity={0.9}
-              >
-                {!isUser && (
-                  <Image source={apostle.avatar} style={styles.bubbleAvatar} />
-                )}
+              <View style={[styles.messageRow, isUser ? styles.userRow : styles.assistantRow]}>
+                <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.assistantBubble]}>
+                  <FormattedMessageText
+                    content={item.content}
+                    isUser={isUser}
+                    fontSize={15.5}
+                  />
 
-                <View style={[styles.bubble, isUser ? styles.userBubble : styles.assistantBubble]}>
-                  <Text style={[styles.messageText, isUser ? styles.userText : styles.assistantText]}>
-                    {item.content}
-                  </Text>
+                  {!isUser && (
+                    <TouchableOpacity
+                      onPress={() => handleBookmark(item)}
+                      style={styles.bookmarkBtn}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="bookmark-outline" size={14} color={Colors.textMuted} />
+                    </TouchableOpacity>
+                  )}
                 </View>
-              </TouchableOpacity>
+              </View>
             );
           }}
           ListFooterComponent={
             isLoading ? (
-              <View style={styles.typingIndicator}>
-                <Image source={apostle.avatar} style={styles.bubbleAvatar} />
-                <View style={[styles.bubble, styles.assistantBubble, styles.typingBubble]}>
+              <View style={styles.typingContainer}>
+                <Image source={apostle.avatar} style={styles.typingAvatar} />
+                <View style={styles.typingBubble}>
                   <BouncingDots />
-                  <Text style={styles.typingText}>{apostle.name} is writing...</Text>
                 </View>
               </View>
             ) : null
           }
         />
 
+        {/* Quick Suggestion Chips */}
+        <View style={styles.quickPromptsContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickPromptsScroll}>
+            {QUICK_PROMPTS.map((prompt) => (
+              <TouchableOpacity
+                key={prompt.id}
+                style={styles.quickPromptChip}
+                onPress={() => handleSendText(prompt.text)}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.quickPromptText}>{prompt.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
         {/* Input Bar */}
-        <View style={styles.inputContainer}>
+        <View style={styles.inputBar}>
           <TextInput
             style={styles.textInput}
             placeholder={`Ask Apostle ${apostle.name}...`}
@@ -249,23 +304,33 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
             multiline
           />
 
-          <TouchableOpacity
-            style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
-            onPress={handleSend}
-            disabled={!inputText.trim() || isLoading}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          {inputText.trim().length === 0 ? (
+            <TouchableOpacity
+              style={styles.micBtn}
+              onPress={() => setShowCallModal(true)}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="mic-outline" size={21} color={Colors.textPrimary} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.sendBtn, !inputText.trim() && styles.sendBtnDisabled]}
+              onPress={handleSend}
+              disabled={!inputText.trim() || isLoading}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          )}
         </View>
-
-        {/* Voice Call Modal */}
-        <VoiceCallModal
-          visible={showCallModal}
-          apostle={apostle}
-          onEndCall={() => setShowCallModal(false)}
-        />
       </KeyboardAvoidingView>
+
+      {/* Voice Call Modal */}
+      <VoiceCallModal
+        visible={showCallModal}
+        apostle={apostle}
+        onClose={() => setShowCallModal(false)}
+      />
     </SafeAreaView>
   );
 };
@@ -275,38 +340,40 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  keyboardView: {
-    flex: 1,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: Colors.divider,
-    backgroundColor: Colors.background,
   },
-  headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.cardSecondary,
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.cardSecondary,
   },
-  headerCenter: {
+  headerProfile: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 10,
   },
-  headerAvatar: {
+  avatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
     marginRight: 10,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+  },
+  headerTexts: {
+    flex: 1,
   },
   headerTitle: {
     fontFamily: Typography.fontSerif,
@@ -315,113 +382,134 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.textMuted,
-    width: 175,
+    marginTop: 1,
   },
   callBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.cardSecondary,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.cardSecondary,
   },
-  messageList: {
+  chatArea: {
+    flex: 1,
+  },
+  messagesList: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
-  bubbleWrapper: {
+  messageRow: {
+    marginBottom: 14,
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    marginBottom: 16,
   },
-  userWrapper: {
+  userRow: {
     justifyContent: 'flex-end',
   },
-  assistantWrapper: {
+  assistantRow: {
     justifyContent: 'flex-start',
   },
-  bubbleAvatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    marginRight: 8,
-  },
-  bubble: {
-    maxWidth: '80%',
+  messageBubble: {
+    maxWidth: '84%',
     borderRadius: 20,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 13,
   },
   userBubble: {
-    backgroundColor: Colors.userBubble,
+    backgroundColor: Colors.chatBubbleUser,
     borderBottomRightRadius: 4,
   },
   assistantBubble: {
-    backgroundColor: Colors.assistantBubble,
+    backgroundColor: Colors.chatBubbleAssistant,
     borderBottomLeftRadius: 4,
   },
-  messageText: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 15.5,
-    lineHeight: 23,
+  bookmarkBtn: {
+    alignSelf: 'flex-end',
+    marginTop: 6,
+    padding: 3,
   },
-  userText: {
-    color: Colors.userBubbleText,
-  },
-  assistantText: {
-    color: Colors.assistantBubbleText,
-  },
-  typingIndicator: {
+  typingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
+  },
+  typingAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 8,
   },
   typingBubble: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
+    backgroundColor: Colors.chatBubbleAssistant,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   dotsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
+    height: 12,
   },
   typingDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: Colors.textMuted,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#888888',
   },
-  typingText: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 13,
-    color: Colors.textMuted,
+  quickPromptsContainer: {
+    paddingVertical: 6,
   },
-  inputContainer: {
+  quickPromptsScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  quickPromptChip: {
+    backgroundColor: Colors.cardSecondary,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  quickPromptText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 12.5,
+    color: Colors.textPrimary,
+  },
+  inputBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: Colors.background,
     borderTopWidth: 1,
     borderTopColor: Colors.divider,
+    backgroundColor: Colors.background,
   },
   textInput: {
     flex: 1,
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 15,
-    color: Colors.textPrimary,
     backgroundColor: Colors.cardSecondary,
     borderRadius: 22,
     paddingHorizontal: 16,
     paddingVertical: 10,
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 15,
+    color: Colors.textPrimary,
     maxHeight: 100,
     marginRight: 10,
   },
-  sendButton: {
+  micBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.cardSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sendBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -429,7 +517,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sendButtonDisabled: {
-    opacity: 0.35,
+  sendBtnDisabled: {
+    backgroundColor: '#CCCCCC',
   }
 });
