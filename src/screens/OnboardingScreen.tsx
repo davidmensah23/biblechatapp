@@ -22,6 +22,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
 import { SpringConfigs } from '../theme/animations';
+import { APOSTLE_PERSONAS } from '../services/personas';
+import { ApostlePersona } from '../types';
 
 const { width } = Dimensions.get('window');
 
@@ -72,6 +74,7 @@ const WaveVisualizer: React.FC = () => {
 
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [selectedPreviewApostle, setSelectedPreviewApostle] = useState<ApostlePersona>(APOSTLE_PERSONAS[0]);
 
   // Horizontal Carousel Translation Track
   const translateX = useSharedValue(0);
@@ -85,10 +88,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
   const beamPulse = useSharedValue(1);
 
   useEffect(() => {
-    // Smooth horizontal slide translation
     translateX.value = withSpring(-currentSlide * width, SpringConfigs.cardStack);
 
-    // Animate pagination pills
     dotWidth0.value = withSpring(currentSlide === 0 ? 26 : 6, SpringConfigs.bouncy);
     dotWidth1.value = withSpring(currentSlide === 1 ? 26 : 6, SpringConfigs.bouncy);
     dotWidth2.value = withSpring(currentSlide === 2 ? 26 : 6, SpringConfigs.bouncy);
@@ -126,7 +127,6 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
         return Math.abs(gestureState.dx) > 15 && Math.abs(gestureState.dy) < 30;
       },
       onPanResponderMove: (_, gestureState) => {
-        // Track user's finger in real time during drag
         translateX.value = -currentSlide * width + gestureState.dx;
       },
       onPanResponderRelease: (_, gestureState) => {
@@ -135,7 +135,6 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
         } else if (gestureState.dx > 50 && currentSlide > 0) {
           setCurrentSlide(currentSlide - 1);
         } else {
-          // Snap back with spring
           translateX.value = withSpring(-currentSlide * width, SpringConfigs.cardStack);
         }
       },
@@ -153,6 +152,19 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
 
   return (
     <SafeAreaView style={styles.container} {...panResponder.panHandlers}>
+      {/* Top Header with Skip Button */}
+      <View style={styles.topBar}>
+        <View style={styles.badgePill}>
+          <Text style={styles.badgeText}>✨ AI Theological Companion</Text>
+        </View>
+
+        {currentSlide < 2 ? (
+          <TouchableOpacity onPress={onComplete} style={styles.skipButton} activeOpacity={0.7}>
+            <Text style={styles.skipText}>Skip</Text>
+          </TouchableOpacity>
+        ) : <View style={{ width: 40 }} />}
+      </View>
+
       {/* Continuous Sliding Track for Top Visuals and Typography */}
       <Animated.View style={[styles.slidingTrack, trackAnimatedStyle]}>
         {/* SLIDE 1 */}
@@ -176,6 +188,14 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
             <Text style={styles.subtitle}>
               Ask Questions, Explore Their Stories, And Discover Ancient Wisdom—Reimagined For Today.
             </Text>
+
+            {/* Interactive Sample Prompt Chip */}
+            <View style={styles.samplePromptChip}>
+              <Ionicons name="chatbubble-ellipses-outline" size={16} color="#60A5FA" style={{ marginRight: 8 }} />
+              <Text style={styles.samplePromptText} numberOfLines={2}>
+                "Peter, what did it feel like when Jesus called you from the boat?"
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -188,25 +208,44 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
             {/* 3D Stack Layer 2 */}
             <View style={[styles.stackCard, styles.stackCardBack1]} />
 
-            {/* Front Simon Peter Card */}
+            {/* Front Selected Apostle Card */}
             <View style={[styles.stackCard, styles.stackCardFront]}>
               <View style={styles.cardHeader}>
                 <Image
-                  source={require('../../assets/avatars/peter.png')}
+                  source={selectedPreviewApostle.avatar}
                   style={styles.cardAvatar}
                 />
                 <View style={styles.cardHeaderText}>
-                  <Text style={styles.cardTitle}>Simon Peter</Text>
-                  <Text style={styles.cardSubtitle}>Seeking true wisdom through Christ our savior</Text>
+                  <Text style={styles.cardTitle}>{selectedPreviewApostle.name}</Text>
+                  <Text style={styles.cardSubtitle} numberOfLines={1}>
+                    {selectedPreviewApostle.subtitle}
+                  </Text>
                 </View>
               </View>
 
-              <Text style={styles.cardBio}>
-                I am Simon Peter, a fisherman called to follow. Bold, loyal, and sometimes impulsive—I'm the rock that helped build the early Church.
+              <Text style={styles.cardBio} numberOfLines={3}>
+                {selectedPreviewApostle.shortQuote}
               </Text>
 
+              {/* Mini Apostles Selector Chips */}
+              <View style={styles.miniAvatarsRow}>
+                {APOSTLE_PERSONAS.slice(0, 5).map((a) => {
+                  const isCurrent = a.id === selectedPreviewApostle.id;
+                  return (
+                    <TouchableOpacity
+                      key={a.id}
+                      style={[styles.miniAvatarTouch, isCurrent && styles.miniAvatarTouchActive]}
+                      onPress={() => setSelectedPreviewApostle(a)}
+                      activeOpacity={0.7}
+                    >
+                      <Image source={a.avatar} style={styles.miniAvatarImg} />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
               <View style={styles.chatWithMePill}>
-                <Text style={styles.chatWithMeText}>Chat with me</Text>
+                <Text style={styles.chatWithMeText}>Chat with {selectedPreviewApostle.name}</Text>
               </View>
             </View>
           </View>
@@ -274,8 +313,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
           </TouchableOpacity>
         ) : (
           <TouchableOpacity style={styles.getStartedBtn} onPress={onComplete} activeOpacity={0.85}>
-            <Text style={styles.getStartedText}>Get Started</Text>
-            <Ionicons name="arrow-forward" size={17} color="#FFFFFF" style={{ marginLeft: 6 }} />
+            <Text style={styles.getStartedText}>Begin Your Walk</Text>
+            <Ionicons name="arrow-forward" size={17} color="#FFFFFF" style={{ marginLeft: 8 }} />
           </TouchableOpacity>
         )}
       </View>
@@ -288,6 +327,35 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.darkBackground,
   },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 22,
+    paddingTop: 8,
+    paddingBottom: 4,
+    zIndex: 150,
+  },
+  badgePill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  badgeText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 11.5,
+    color: '#E5E7EB',
+  },
+  skipButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  skipText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 14,
+    color: '#9CA3AF',
+  },
   slidingTrack: {
     flex: 1,
     flexDirection: 'row',
@@ -297,10 +365,10 @@ const styles = StyleSheet.create({
     width: width,
     height: '100%',
     justifyContent: 'space-between',
-    paddingBottom: 90,
+    paddingBottom: 95,
   },
   visualContainer: {
-    height: '58%',
+    height: '56%',
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
@@ -327,8 +395,8 @@ const styles = StyleSheet.create({
   },
   stackCardBack2: {
     width: '84%',
-    height: 230,
-    top: 24,
+    height: 250,
+    top: 14,
     backgroundColor: '#1E1E24',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
@@ -336,8 +404,8 @@ const styles = StyleSheet.create({
   },
   stackCardBack1: {
     width: '88%',
-    height: 240,
-    top: 36,
+    height: 260,
+    top: 24,
     backgroundColor: '#2A2A32',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
@@ -346,8 +414,8 @@ const styles = StyleSheet.create({
   stackCardFront: {
     width: '94%',
     backgroundColor: '#F5F5F7',
-    padding: 22,
-    top: 48,
+    padding: 18,
+    top: 36,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.45,
@@ -357,13 +425,13 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 10,
   },
   cardAvatar: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    marginRight: 12,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    marginRight: 10,
     borderWidth: 1.5,
     borderColor: '#E5E7EB',
   },
@@ -379,26 +447,50 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontSansRegular,
     fontSize: 11,
     color: '#2563EB',
-    marginTop: 2,
+    marginTop: 1,
   },
   cardBio: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12.5,
+    lineHeight: 17,
     color: '#374151',
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  miniAvatarsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  miniAvatarTouch: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    padding: 2,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  miniAvatarTouchActive: {
+    borderColor: '#2563EB',
+    transform: [{ scale: 1.1 }],
+  },
+  miniAvatarImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 18,
   },
   chatWithMePill: {
     borderWidth: 1.5,
     borderColor: '#111827',
-    borderRadius: 24,
-    paddingVertical: 10,
+    borderRadius: 22,
+    paddingVertical: 9,
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
   },
   chatWithMeText: {
     fontFamily: Typography.fontSansSemiBold,
-    fontSize: 13.5,
+    fontSize: 13,
     color: '#111827',
   },
   callCard: {
@@ -407,7 +499,7 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     borderWidth: 1,
     borderColor: 'rgba(217, 70, 239, 0.35)',
-    padding: 24,
+    padding: 22,
     alignItems: 'center',
     shadowColor: '#D946EF',
     shadowOffset: { width: 0, height: 4 },
@@ -425,14 +517,14 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontSansRegular,
     fontSize: 12,
     color: '#9CA3AF',
-    marginBottom: 20,
+    marginBottom: 18,
   },
   callGlowArea: {
     width: '100%',
-    height: 100,
+    height: 90,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 22,
+    marginBottom: 18,
     position: 'relative',
   },
   callGlowHalo: {
@@ -446,7 +538,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    height: 80,
+    height: 75,
   },
   waveBar: {
     width: 6,
@@ -464,8 +556,8 @@ const styles = StyleSheet.create({
   },
   slideEndBar: {
     width: '100%',
-    height: 52,
-    borderRadius: 26,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: 'rgba(59, 130, 246, 0.8)',
     flexDirection: 'row',
     alignItems: 'center',
@@ -478,9 +570,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   slideEndIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: '#EF4444',
     alignItems: 'center',
     justifyContent: 'center',
@@ -494,7 +586,7 @@ const styles = StyleSheet.create({
     fontSize: 38,
     color: Colors.darkTextPrimary,
     lineHeight: 46,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   italicAccent: {
     fontFamily: Typography.fontSerifItalic,
@@ -504,6 +596,24 @@ const styles = StyleSheet.create({
     fontSize: 15.5,
     lineHeight: 23,
     color: '#9CA3AF',
+  },
+  samplePromptChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.3)',
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginTop: 14,
+  },
+  samplePromptText: {
+    flex: 1,
+    fontFamily: Typography.fontSerifItalic,
+    fontSize: 13.5,
+    color: '#93C5FD',
+    lineHeight: 18,
   },
   floatingFooterRow: {
     position: 'absolute',
