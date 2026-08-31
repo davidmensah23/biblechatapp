@@ -24,8 +24,15 @@ export const ApostleCard: React.FC<ApostleCardProps> = ({ apostle, onPress }) =>
         />
       </View>
 
-      {/* Name in Clean Bold Sans-Serif */}
-      <Text style={styles.name}>{apostle.name}</Text>
+      {/* Name in Clean Bold Sans-Serif (reduced size to prevent multi-line wrap) */}
+      <Text
+        style={styles.name}
+        numberOfLines={1}
+        adjustsFontSizeToFit={true}
+        minimumFontScale={0.8}
+      >
+        {apostle.name}
+      </Text>
 
       {/* Subtitle / Bio in Clean Small Blue/Dark Typography */}
       <Text style={styles.quote} numberOfLines={3}>
@@ -38,27 +45,23 @@ export const ApostleCard: React.FC<ApostleCardProps> = ({ apostle, onPress }) =>
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#DCDCE1',
-    borderRadius: 24,
-    padding: 16,
+    borderRadius: 22,
+    paddingVertical: 16,
+    paddingHorizontal: 10,
     alignItems: 'center',
     width: '48%',
     marginBottom: 14,
-    minHeight: 224,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    minHeight: 216,
   },
   avatarContainer: {
-    width: 94,
-    height: 94,
-    borderRadius: 47,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     overflow: 'hidden',
     backgroundColor: '#9E9FA6',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   avatar: {
     width: '100%',
@@ -66,10 +69,11 @@ const styles = StyleSheet.create({
   },
   name: {
     fontFamily: Typography.fontSansSemiBold,
-    fontSize: 22,
+    fontSize: 16.5,
     color: '#111111',
-    marginBottom: 6,
+    marginBottom: 5,
     textAlign: 'center',
+    paddingHorizontal: 2,
   },
   quote: {
     fontFamily: Typography.fontSansRegular,
@@ -77,5 +81,6 @@ const styles = StyleSheet.create({
     color: '#284682',
     textAlign: 'center',
     lineHeight: 14,
+    paddingHorizontal: 4,
   }
 });
