@@ -523,7 +523,7 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   visualContainer: {
-    height: '47%',
+    height: '53%',
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
@@ -727,7 +727,7 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     paddingHorizontal: 26,
-    marginBottom: 104,
+    marginBottom: 135,
   },
   heading: {
     fontFamily: Typography.fontSerif,
