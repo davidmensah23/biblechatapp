@@ -18,9 +18,10 @@ import { ProfileScreen } from './src/screens/ProfileScreen';
 import { FloatingNavBar, NavTabType } from './src/components/FloatingNavBar';
 import { CircularRevealTransition } from './src/components/CircularRevealTransition';
 import { ApostlePersona } from './src/types';
-import { getDB, saveUserProfile } from './src/services/database';
+import { getDB, saveUserProfile, migrateGuestDataToUser } from './src/services/database';
 import { supabase, fetchRemoteProfile, signOutUser, handleAuthDeepLink } from './src/services/supabase';
 import * as Linking from 'expo-linking';
+import { Modal } from 'react-native';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -38,6 +39,7 @@ export default function App() {
   });
 
   const [appStage, setAppStage] = useState<AppStage>('onboarding');
+  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [isRevealing, setIsRevealing] = useState<boolean>(false);
   const [revealCoords, setRevealCoords] = useState<{ x: number; y: number }>({
     x: SCREEN_WIDTH * 0.8,
@@ -66,6 +68,7 @@ export default function App() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setAppStage('main');
+        migrateGuestDataToUser(session.user.id);
         fetchRemoteProfile(session.user.id).then((profile) => {
           if (profile) saveUserProfile(profile);
         });
@@ -76,6 +79,8 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         setAppStage('main');
+        setShowAuthModal(false);
+        migrateGuestDataToUser(session.user.id);
         fetchRemoteProfile(session.user.id).then((profile) => {
           if (profile) saveUserProfile(profile);
         });
@@ -184,7 +189,10 @@ export default function App() {
           {activeNavTab === 'bible' && <BibleReaderScreen />}
 
           {activeNavTab === 'profile' && (
-            <ProfileScreen onLogout={handleLogout} />
+            <ProfileScreen
+              onLogout={handleLogout}
+              onOpenAuthModal={() => setShowAuthModal(true)}
+            />
           )}
 
           {/* Floating Bottom Nav Bar */}
@@ -192,6 +200,17 @@ export default function App() {
             activeTab={activeNavTab}
             onTabChange={(tab) => setActiveNavTab(tab)}
           />
+
+          {/* Auth Modal for Guests upgrading from Profile */}
+          <Modal visible={showAuthModal} animationType="slide" transparent={false}>
+            <View style={styles.flexOne}>
+              <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+              <AuthScreen
+                onAuthSuccess={() => setShowAuthModal(false)}
+                onSkip={() => setShowAuthModal(false)}
+              />
+            </View>
+          </Modal>
         </View>
       )}
     </SafeAreaProvider>

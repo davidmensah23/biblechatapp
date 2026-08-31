@@ -13,7 +13,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
-import { clearChatHistory, saveUserProfile } from '../services/database';
+import { clearChatHistory, saveUserProfile, deleteAllUserData } from '../services/database';
+import { updateUserPassword, deleteUserAccount, getUserAuthProvider } from '../services/supabase';
 import { UserProfile } from '../types';
 
 interface SettingsScreenProps {
@@ -33,6 +34,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 }) => {
   const [activeSubModal, setActiveSubModal] = useState<string | null>(null);
 
+  // Auth provider info
+  const [authInfo, setAuthInfo] = useState<{ provider: 'google' | 'email' | 'guest'; email?: string }>({ provider: 'guest' });
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
   // Settings states
   const [fontSizeScale, setFontSizeScale] = useState<'Small' | 'Normal' | 'Large' | 'Extra Large'>('Normal');
   const [selectedLanguage, setSelectedLanguage] = useState<string>('English (US)');
@@ -44,11 +51,66 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   // Profile edit draft inside settings
   const [draftProfile, setDraftProfile] = useState<UserProfile>(userProfile);
 
+  React.useEffect(() => {
+    if (visible) {
+      getUserAuthProvider().then(setAuthInfo);
+      setDraftProfile(userProfile);
+    }
+  }, [visible, userProfile]);
+
   const handleSaveAccount = async () => {
     onUpdateProfile(draftProfile);
     await saveUserProfile(draftProfile);
     Alert.alert('Saved', 'Account changes have been saved.');
     setActiveSubModal(null);
+  };
+
+  const handleChangePassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      Alert.alert('Password Length', 'Password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Mismatch', 'Passwords do not match.');
+      return;
+    }
+    setPasswordLoading(true);
+    try {
+      const { error } = await updateUserPassword(newPassword);
+      if (error) {
+        Alert.alert('Error', error.message);
+      } else {
+        Alert.alert('Success', 'Your password has been changed successfully.');
+        setNewPassword('');
+        setConfirmPassword('');
+        setActiveSubModal('Account');
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Could not update password.');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account & Data',
+      'This will permanently delete your account, saved reflections, and conversation history. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Permanently',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteUserAccount();
+            await deleteAllUserData();
+            onClose();
+            if (onLogout) onLogout();
+            Alert.alert('Account Deleted', 'Your account and data have been removed.');
+          }
+        }
+      ]
+    );
   };
 
   const handleLogoutPress = () => {
@@ -236,6 +298,45 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </View>
 
           <ScrollView contentContainerStyle={styles.modalContent}>
+            {/* Auth Provider Status Card */}
+            <View style={styles.authStatusCard}>
+              <View style={styles.authStatusLeft}>
+                <Ionicons
+                  name={
+                    authInfo.provider === 'google'
+                      ? 'logo-google'
+                      : authInfo.provider === 'email'
+                      ? 'mail'
+                      : 'person-circle-outline'
+                  }
+                  size={20}
+                  color={authInfo.provider === 'guest' ? '#6B7280' : '#2563EB'}
+                />
+                <View>
+                  <Text style={styles.authStatusTitle}>
+                    {authInfo.provider === 'google'
+                      ? 'Google Account'
+                      : authInfo.provider === 'email'
+                      ? 'Email Account'
+                      : 'Guest Account'}
+                  </Text>
+                  <Text style={styles.authStatusSub}>
+                    {authInfo.email || (authInfo.provider === 'guest' ? 'Local offline mode' : userProfile.email)}
+                  </Text>
+                </View>
+              </View>
+
+              {authInfo.provider === 'email' && (
+                <TouchableOpacity
+                  style={styles.changePasswordBtn}
+                  onPress={() => setActiveSubModal('ChangePassword')}
+                  activeOpacity={0.75}
+                >
+                  <Text style={styles.changePasswordBtnText}>Change</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Full Name</Text>
               <TextInput
@@ -542,12 +643,21 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
           <ScrollView contentContainerStyle={styles.modalContent}>
             <TouchableOpacity
-              style={[styles.pillRow, { backgroundColor: '#FEE2E2', marginBottom: 16 }]}
+              style={[styles.pillRow, { backgroundColor: '#FEE2E2', marginBottom: 14 }]}
               onPress={handleClearHistory}
               activeOpacity={0.7}
             >
               <Text style={[styles.pillText, { color: '#DC2626' }]}>Clear All Chat History</Text>
               <Ionicons name="trash-outline" size={18} color="#DC2626" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.pillRow, { backgroundColor: '#FEE2E2', marginBottom: 18 }]}
+              onPress={handleDeleteAccount}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.pillText, { color: '#B91C1C', fontFamily: Typography.fontSansSemiBold }]}>Delete Account & Data</Text>
+              <Ionicons name="alert-circle-outline" size={18} color="#B91C1C" />
             </TouchableOpacity>
 
             <View style={styles.previewBox}>
@@ -559,7 +669,56 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         </SafeAreaView>
       </Modal>
 
-      {/* 10. Documentation Modal */}
+      {/* 10. Change Password Modal */}
+      <Modal visible={activeSubModal === 'ChangePassword'} animationType="slide" transparent={false}>
+        <SafeAreaView style={styles.subModalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setActiveSubModal('Account')} style={styles.modalBackBtn}>
+              <Ionicons name="arrow-back" size={22} color="#111111" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Change Password</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          <ScrollView contentContainerStyle={styles.modalContent}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>New Password</Text>
+              <TextInput
+                style={styles.inputField}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                placeholder="At least 6 characters"
+                secureTextEntry
+                autoFocus
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Confirm New Password</Text>
+              <TextInput
+                style={styles.inputField}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Re-enter new password"
+                secureTextEntry
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.savePasswordBtn, passwordLoading && styles.submitBtnDisabled]}
+              onPress={handleChangePassword}
+              disabled={passwordLoading}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.savePasswordBtnText}>
+                {passwordLoading ? 'Updating...' : 'Update Password'}
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* 11. Documentation Modal */}
       <Modal visible={activeSubModal === 'Documentation'} animationType="slide" transparent={false}>
         <SafeAreaView style={styles.subModalContainer}>
           <View style={styles.modalHeader}>
@@ -779,5 +938,60 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#284682',
     marginTop: 8,
+  },
+  authStatusCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 16,
+  },
+  authStatusLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  authStatusTitle: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 14,
+    color: '#111111',
+  },
+  authStatusSub: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 1,
+  },
+  changePasswordBtn: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  changePasswordBtnText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 12.5,
+    color: '#2563EB',
+  },
+  savePasswordBtn: {
+    backgroundColor: '#111111',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  savePasswordBtnText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 15,
+    color: '#FFFFFF',
+  },
+  submitBtnDisabled: {
+    backgroundColor: '#9CA3AF',
   }
 });

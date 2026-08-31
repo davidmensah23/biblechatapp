@@ -333,6 +333,35 @@ export const updateRemoteProfile = async (userId: string, profile: Partial<UserP
   }
 };
 
+// Check current user auth provider (Google vs Email vs Guest)
+export const getUserAuthProvider = async (): Promise<{ provider: 'google' | 'email' | 'guest'; email?: string }> => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { provider: 'guest' };
+    const provider = user.app_metadata?.provider || user.identities?.[0]?.provider;
+    return {
+      provider: provider === 'google' ? 'google' : 'email',
+      email: user.email
+    };
+  } catch (e) {
+    return { provider: 'guest' };
+  }
+};
+
+// Delete User Account (Apple App Store Guideline 5.1.1(v))
+export const deleteUserAccount = async (): Promise<{ error: Error | null }> => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('profiles').delete().eq('id', user.id);
+      await supabase.auth.signOut();
+    }
+    return { error: null };
+  } catch (err: any) {
+    return { error: err };
+  }
+};
+
 const splitEmailToName = (email: string): string => {
   const parts = email.split('@')[0];
   return parts.charAt(0).toUpperCase() + parts.slice(1);

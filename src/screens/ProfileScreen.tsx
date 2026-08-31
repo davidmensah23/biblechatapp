@@ -13,18 +13,20 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { fetchBookmarks, removeBookmark, fetchUserProfile, saveUserProfile } from '../services/database';
-import { supabase, fetchRemoteProfile, updateRemoteProfile, DEFAULT_PROFILE } from '../services/supabase';
+import { supabase, fetchRemoteProfile, updateRemoteProfile, getUserAuthProvider, DEFAULT_PROFILE } from '../services/supabase';
 import { SavedBookmark, UserProfile } from '../types';
 import { SettingsScreen } from './SettingsScreen';
 
 interface ProfileScreenProps {
   onLogout?: () => void;
+  onOpenAuthModal?: () => void;
 }
 
-export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout }) => {
+export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAuthModal }) => {
   const [activeSubTab, setActiveSubTab] = useState<'bookmarks' | 'edit'>('bookmarks');
   const [bookmarks, setBookmarks] = useState<SavedBookmark[]>([]);
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
+  const [authProvider, setAuthProvider] = useState<'google' | 'email' | 'guest'>('guest');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   useEffect(() => {
@@ -35,6 +37,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout }) => {
     const bms = await fetchBookmarks();
     setBookmarks(bms);
     try {
+      const auth = await getUserAuthProvider();
+      setAuthProvider(auth.provider);
+
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const remote = await fetchRemoteProfile(user.id);
@@ -85,6 +90,31 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout }) => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Guest Mode Upgrade Card */}
+        {authProvider === 'guest' && (
+          <View style={styles.guestBannerCard}>
+            <View style={styles.guestBannerLeft}>
+              <View style={styles.guestBannerIcon}>
+                <Ionicons name="cloud-upload-outline" size={20} color="#2563EB" />
+              </View>
+              <View style={styles.guestBannerTextWrap}>
+                <Text style={styles.guestBannerTitle}>Guest Account</Text>
+                <Text style={styles.guestBannerSub}>
+                  Sign in to back up and sync your conversations to the cloud.
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.guestSignInBtn}
+              onPress={onOpenAuthModal}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.guestSignInBtnText}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* User Card */}
         <View style={styles.userCard}>
           <Image
@@ -92,7 +122,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout }) => {
             style={styles.userAvatar}
           />
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{profile.fullName}</Text>
+            <View style={styles.userNameRow}>
+              <Text style={styles.userName}>{profile.fullName}</Text>
+              {authProvider !== 'guest' && (
+                <Ionicons name="checkmark-circle" size={18} color="#2563EB" style={{ marginLeft: 6 }} />
+              )}
+            </View>
             <Text style={styles.userBio} numberOfLines={2}>{profile.bio}</Text>
             <TouchableOpacity onPress={() => setActiveSubTab('edit')} activeOpacity={0.7}>
               <Text style={styles.editBioLink}>
@@ -402,6 +437,67 @@ const styles = StyleSheet.create({
   saveBtnText: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 16,
+    color: '#FFFFFF',
+  },
+  userNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  guestBannerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+    marginBottom: 20,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  guestBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
+  },
+  guestBannerIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  guestBannerTextWrap: {
+    flex: 1,
+  },
+  guestBannerTitle: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 13.5,
+    color: '#1E40AF',
+  },
+  guestBannerSub: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 11.5,
+    color: '#6B7280',
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  guestSignInBtn: {
+    backgroundColor: '#2563EB',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+  },
+  guestSignInBtnText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 13,
     color: '#FFFFFF',
   }
 });

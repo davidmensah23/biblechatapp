@@ -1,4 +1,6 @@
 import * as SQLite from 'expo-sqlite';
+import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import { ChatMessage, ConversationThread, SavedBookmark, UserProfile } from '../types';
 import { DEFAULT_PROFILE } from './supabase';
 
@@ -281,5 +283,72 @@ export const clearChatHistory = async (): Promise<void> => {
     }
   }
 };
+
+const GUEST_ID_KEY = 'akorno_guest_device_id';
+
+// Retrieve or generate a persistent local Guest ID
+export const getOrCreateGuestId = async (): Promise<string> => {
+  try {
+    let guestId: string | null = null;
+    if (Platform.OS === 'web') {
+      guestId = typeof localStorage !== 'undefined' ? localStorage.getItem(GUEST_ID_KEY) : null;
+    } else {
+      guestId = await SecureStore.getItemAsync(GUEST_ID_KEY);
+    }
+    if (!guestId) {
+      guestId = `guest_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      if (Platform.OS === 'web') {
+        if (typeof localStorage !== 'undefined') localStorage.setItem(GUEST_ID_KEY, guestId);
+      } else {
+        await SecureStore.setItemAsync(GUEST_ID_KEY, guestId);
+      }
+    }
+    return guestId;
+  } catch (e) {
+    return `guest_${Date.now()}`;
+  }
+};
+
+// Migrate all existing guest conversations, bookmarks, and profiles to genuine user ID
+export const migrateGuestDataToUser = async (newUserId: string): Promise<{
+  bookmarksCount: number;
+  conversationsCount: number;
+}> => {
+  const bookmarks = await fetchBookmarks();
+  const conversations = await fetchConversations();
+  const currentProfile = await fetchUserProfile();
+
+  // Save the updated profile under the genuine user ID
+  await saveUserProfile({
+    ...currentProfile,
+    id: newUserId
+  });
+
+  return {
+    bookmarksCount: bookmarks.length,
+    conversationsCount: conversations.length
+  };
+};
+
+// Delete all user data completely (Account Deletion)
+export const deleteAllUserData = async (): Promise<void> => {
+  memoryConversations = [];
+  memoryMessages = {};
+  memoryBookmarks = [];
+  memoryProfile = { ...DEFAULT_PROFILE };
+
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync('DELETE FROM messages');
+      await db.runAsync('DELETE FROM conversations');
+      await db.runAsync('DELETE FROM bookmarks');
+      await db.runAsync('DELETE FROM user_profile');
+    } catch (e) {
+      console.warn('deleteAllUserData SQLite error:', e);
+    }
+  }
+};
+
 
 
