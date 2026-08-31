@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, StatusBar } from 'react-native';
+import { View, StyleSheet, StatusBar, Dimensions } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import {
@@ -9,14 +9,21 @@ import {
   Poppins_700Bold
 } from '@expo-google-fonts/poppins';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
+import { AuthScreen } from './src/screens/AuthScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { ChatListScreen } from './src/screens/ChatListScreen';
 import { ChatDetailScreen } from './src/screens/ChatDetailScreen';
 import { BibleReaderScreen } from './src/screens/BibleReaderScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { FloatingNavBar, NavTabType } from './src/components/FloatingNavBar';
+import { CircularRevealTransition } from './src/components/CircularRevealTransition';
 import { ApostlePersona } from './src/types';
-import { getDB } from './src/services/database';
+import { getDB, saveUserProfile } from './src/services/database';
+import { supabase, fetchRemoteProfile, signOutUser } from './src/services/supabase';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+type AppStage = 'onboarding' | 'auth' | 'main';
 
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({
@@ -29,7 +36,13 @@ export default function App() {
     Poppins_700Bold
   });
 
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(false);
+  const [appStage, setAppStage] = useState<AppStage>('onboarding');
+  const [isRevealing, setIsRevealing] = useState<boolean>(false);
+  const [revealCoords, setRevealCoords] = useState<{ x: number; y: number }>({
+    x: SCREEN_WIDTH * 0.8,
+    y: SCREEN_HEIGHT * 0.9
+  });
+
   const [activeNavTab, setActiveNavTab] = useState<NavTabType>('home');
   const [currentView, setCurrentView] = useState<'main' | 'chat'>('main');
   const [selectedApostle, setSelectedApostle] = useState<ApostlePersona | null>(null);
@@ -39,13 +52,55 @@ export default function App() {
     // Initialize Database
     getDB().catch(console.error);
 
+    // Check existing Supabase session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setAppStage('main');
+        fetchRemoteProfile(session.user.id).then((profile) => {
+          if (profile) saveUserProfile(profile);
+        });
+      }
+    });
+
+    // Listen to Supabase auth events
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setAppStage('main');
+        fetchRemoteProfile(session.user.id).then((profile) => {
+          if (profile) saveUserProfile(profile);
+        });
+      }
+    });
+
     // Timeout safety to ensure the screen is never stuck blank
     const timer = setTimeout(() => {
       setForceRender(true);
     }, 600);
 
-    return () => clearTimeout(timer);
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timer);
+    };
   }, []);
+
+  const handleStartTransition = (originX?: number, originY?: number) => {
+    if (originX && originY) {
+      setRevealCoords({ x: originX, y: originY });
+    }
+    setIsRevealing(true);
+  };
+
+  const handleRevealFinished = () => {
+    setIsRevealing(false);
+    setAppStage('auth');
+  };
+
+  const handleLogout = async () => {
+    await signOutUser();
+    setAppStage('auth');
+    setActiveNavTab('home');
+    setCurrentView('main');
+  };
 
   // If fonts are still loading and timeout hasn't fired yet, show a dark container
   if (!fontsLoaded && !fontError && !forceRender) {
@@ -58,23 +113,41 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      {/* 1. Onboarding Flow */}
-      {!hasCompletedOnboarding ? (
-        <>
+      {/* 1. Onboarding Screen */}
+      {appStage === 'onboarding' ? (
+        <View style={styles.flexOne}>
           <StatusBar barStyle="light-content" backgroundColor="#0B0B0B" />
-          <OnboardingScreen onComplete={() => setHasCompletedOnboarding(true)} />
-        </>
+          <OnboardingScreen onComplete={handleStartTransition} />
+
+          {/* Circular Ellipse Expanding Reveal Overlay */}
+          {isRevealing && (
+            <CircularRevealTransition
+              originX={revealCoords.x}
+              originY={revealCoords.y}
+              onFinished={handleRevealFinished}
+            />
+          )}
+        </View>
+      ) : appStage === 'auth' ? (
+        /* 2. Medium-Style Auth Screen */
+        <View style={styles.flexOne}>
+          <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+          <AuthScreen
+            onAuthSuccess={() => setAppStage('main')}
+            onSkip={() => setAppStage('main')}
+          />
+        </View>
       ) : currentView === 'chat' && selectedApostle ? (
-        /* 2. Chat Detail View */
-        <>
+        /* 3. Chat Detail View */
+        <View style={styles.flexOne}>
           <StatusBar barStyle="dark-content" backgroundColor="#F6F6F6" />
           <ChatDetailScreen
             apostle={selectedApostle}
             onBack={() => setCurrentView('main')}
           />
-        </>
+        </View>
       ) : (
-        /* 3. Main App (Home / Chats / Bible / Profile) with 4-Tab Floating Nav Bar */
+        /* 4. Main App (Home / Chats / Bible / Profile) with 4-Tab Floating Nav Bar */
         <View style={styles.mainContainer}>
           <StatusBar barStyle="dark-content" backgroundColor="#F6F6F6" />
 
@@ -100,12 +173,7 @@ export default function App() {
           {activeNavTab === 'bible' && <BibleReaderScreen />}
 
           {activeNavTab === 'profile' && (
-            <ProfileScreen
-              onLogout={() => {
-                setHasCompletedOnboarding(false);
-                setActiveNavTab('home');
-              }}
-            />
+            <ProfileScreen onLogout={handleLogout} />
           )}
 
           {/* Floating Bottom Nav Bar */}
@@ -120,6 +188,9 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  flexOne: {
+    flex: 1,
+  },
   darkBackground: {
     flex: 1,
     backgroundColor: '#0B0B0B',

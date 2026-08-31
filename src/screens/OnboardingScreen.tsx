@@ -30,7 +30,7 @@ import { SpringConfigs } from '../theme/animations';
 const { width } = Dimensions.get('window');
 
 interface OnboardingScreenProps {
-  onComplete: () => void;
+  onComplete: (originX?: number, originY?: number) => void;
 }
 
 // 5 Curated Apostles with 100% Unique, Authentic Bios for Slide 2 Card Deck
@@ -348,13 +348,13 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
     dotWidth2.value = withSpring(currentSlide === 2 ? 26 : 6, SpringConfigs.bouncy);
   }, [currentSlide]);
 
-  const handleNext = () => {
+  const handleNext = (originX?: number, originY?: number) => {
     if (currentSlide < 2) {
       const nextSlide = currentSlide + 1;
       setCurrentSlide(nextSlide);
       scrollRef.current?.scrollTo({ x: nextSlide * width, animated: true });
     } else {
-      onComplete();
+      onComplete(originX, originY);
     }
   };
 
@@ -378,6 +378,19 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Top Bar with Skip Button */}
+      <View style={styles.topHeaderBar}>
+        <View />
+        <TouchableOpacity
+          style={styles.topSkipBtn}
+          onPress={(e) => onComplete(e.nativeEvent.pageX, e.nativeEvent.pageY)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.topSkipText}>Skip</Text>
+          <Ionicons name="chevron-forward" size={13} color="#9CA3AF" />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -491,11 +504,19 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
 
         {/* Action Button */}
         {currentSlide < 2 ? (
-          <TouchableOpacity style={styles.nextArrowBtn} onPress={handleNext} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.nextArrowBtn}
+            onPress={(e) => handleNext(e.nativeEvent.pageX, e.nativeEvent.pageY)}
+            activeOpacity={0.8}
+          >
             <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity style={styles.getStartedBtn} onPress={onComplete} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.getStartedBtn}
+            onPress={(e) => onComplete(e.nativeEvent.pageX, e.nativeEvent.pageY)}
+            activeOpacity={0.85}
+          >
             <Text style={styles.getStartedText}>Get Started</Text>
             <Ionicons name="arrow-forward" size={17} color="#FFFFFF" style={{ marginLeft: 6 }} />
           </TouchableOpacity>
@@ -509,6 +530,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0B0B0B',
+  },
+  topHeaderBar: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    right: 20,
+    zIndex: 120,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  topSkipBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    gap: 3,
+  },
+  topSkipText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 13,
+    color: '#D1D5DB',
   },
   scrollView: {
     flex: 1,

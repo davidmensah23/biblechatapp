@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { fetchBookmarks, removeBookmark, fetchUserProfile, saveUserProfile } from '../services/database';
+import { supabase, fetchRemoteProfile, updateRemoteProfile, DEFAULT_PROFILE } from '../services/supabase';
 import { SavedBookmark, UserProfile } from '../types';
 import { SettingsScreen } from './SettingsScreen';
 
@@ -23,13 +24,7 @@ interface ProfileScreenProps {
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout }) => {
   const [activeSubTab, setActiveSubTab] = useState<'bookmarks' | 'edit'>('bookmarks');
   const [bookmarks, setBookmarks] = useState<SavedBookmark[]>([]);
-  const [profile, setProfile] = useState<UserProfile>({
-    fullName: 'Kofi Amartey James',
-    email: 'ko.james@gmail.com',
-    bio: 'I am an INFP with multiple interest. Introverted and artistic seeker of Christ.',
-    location: 'Ghana, Accra',
-    dateOfBirth: '28th, June, 2025'
-  });
+  const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   useEffect(() => {
@@ -39,12 +34,29 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout }) => {
   const loadData = async () => {
     const bms = await fetchBookmarks();
     setBookmarks(bms);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const remote = await fetchRemoteProfile(user.id);
+        if (remote) {
+          setProfile(remote);
+          await saveUserProfile(remote);
+          return;
+        }
+      }
+    } catch (e) {}
     const p = await fetchUserProfile();
     if (p) setProfile(p);
   };
 
   const handleSaveProfile = async () => {
     await saveUserProfile(profile);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await updateRemoteProfile(user.id, profile);
+      }
+    } catch (e) {}
     Alert.alert('Saved', 'Profile changes saved successfully!');
   };
 
