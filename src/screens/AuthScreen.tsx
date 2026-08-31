@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,12 +15,27 @@ import {
 import Svg, { Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
-import { signInWithGoogle, signInWithEmail, signUpWithEmail } from '../services/supabase';
+import {
+  signInWithGoogle,
+  signInWithEmail,
+  signUpWithEmail,
+  verifyEmailOtp,
+  sendPasswordReset,
+  updateUserPassword,
+  resendVerificationEmail
+} from '../services/supabase';
 
 interface AuthScreenProps {
   onAuthSuccess: () => void;
   onSkip: () => void;
 }
+
+type AuthViewMode =
+  | 'main'
+  | 'email_form'
+  | 'otp_verify'
+  | 'forgot_password'
+  | 'new_password';
 
 // Pixel-perfect Official Google Multi-Color Logo
 const GoogleIcon: React.FC<{ size?: number }> = ({ size = 22 }) => (
@@ -45,15 +60,40 @@ const GoogleIcon: React.FC<{ size?: number }> = ({ size = 22 }) => (
 );
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip }) => {
+  const [viewMode, setViewMode] = useState<AuthViewMode>('main');
   const [isSignUp, setIsSignUp] = useState(true);
-  const [showEmailForm, setShowEmailForm] = useState(false);
+
+  // Form Fields
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  // 6-Digit OTP State
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
+  const [otpType, setOtpType] = useState<'signup' | 'recovery'>('signup');
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Loading States
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // Handle Google OAuth Sign In
+  // Refs for 6 OTP input boxes
+  const otpInputRefs = useRef<Array<TextInput | null>>([]);
+
+  // Cooldown countdown timer for OTP resend
+  useEffect(() => {
+    let timer: any;
+    if (resendCooldown > 0) {
+      timer = setInterval(() => {
+        setResendCooldown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  // Google OAuth Sign In
   const handleGoogleAuth = async () => {
     setGoogleLoading(true);
     try {
@@ -70,7 +110,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
     }
   };
 
-  // Handle Email / Password Sign In or Sign Up
+  // Submit Email Sign In / Sign Up
   const handleEmailAuth = async () => {
     if (!email.trim() || !password.trim()) {
       Alert.alert('Required Fields', 'Please enter your email and password.');
@@ -88,12 +128,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
         const { user, session, error } = await signUpWithEmail(email, password, fullName);
         if (error) {
           Alert.alert('Sign Up Error', error.message);
-        } else if (session || user) {
-          Alert.alert('Welcome!', 'Account created successfully.');
+        } else if (session) {
+          // Email confirmation disabled -> instant session
           onAuthSuccess();
-        } else {
-          Alert.alert('Check your email', 'A confirmation link has been sent to your email.');
-          onAuthSuccess();
+        } else if (user) {
+          // Verification code sent -> Switch to OTP Screen
+          setOtpType('signup');
+          setOtpDigits(['', '', '', '', '', '']);
+          setResendCooldown(60);
+          setViewMode('otp_verify');
         }
       } else {
         const { user, error } = await signInWithEmail(email, password);
@@ -110,6 +153,138 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
     }
   };
 
+  // Handle individual OTP digit change with auto-focus advancing
+  const handleOtpDigitChange = (value: string, index: number) => {
+    // Handle paste of full 6-digit code
+    if (value.length > 1) {
+      const cleanDigits = value.replace(/[^0-9]/g, '').slice(0, 6).split('');
+      const newDigits = [...otpDigits];
+      cleanDigits.forEach((digit, i) => {
+        newDigits[i] = digit;
+      });
+      setOtpDigits(newDigits);
+
+      if (cleanDigits.length === 6) {
+        verifyOtpCode(newDigits.join(''));
+      } else if (cleanDigits.length > 0) {
+        otpInputRefs.current[Math.min(cleanDigits.length, 5)]?.focus();
+      }
+      return;
+    }
+
+    const newDigits = [...otpDigits];
+    newDigits[index] = value;
+    setOtpDigits(newDigits);
+
+    // Auto-advance to next input
+    if (value && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto-submit if all 6 digits entered
+    const completeCode = newDigits.join('');
+    if (completeCode.length === 6 && !newDigits.includes('')) {
+      verifyOtpCode(completeCode);
+    }
+  };
+
+  // Handle Backspace on OTP
+  const handleOtpKeyPress = (e: any, index: number) => {
+    if (e.nativeEvent.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  // Verify OTP with Supabase
+  const verifyOtpCode = async (token: string) => {
+    setLoading(true);
+    try {
+      const { session, user, error } = await verifyEmailOtp(email, token, otpType);
+      if (error) {
+        Alert.alert('Invalid Code', error.message || 'The verification code entered is invalid or expired.');
+      } else if (otpType === 'recovery') {
+        // Recovery OTP verified -> proceed to set new password
+        setViewMode('new_password');
+      } else if (session || user) {
+        Alert.alert('Verified!', 'Your account has been confirmed.');
+        onAuthSuccess();
+      }
+    } catch (err: any) {
+      Alert.alert('Verification Error', err?.message || 'Could not verify code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Resend OTP Code
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+    setLoading(true);
+    try {
+      if (otpType === 'recovery') {
+        await sendPasswordReset(email);
+      } else {
+        await resendVerificationEmail(email);
+      }
+      setResendCooldown(60);
+      Alert.alert('Code Resent', `A new 6-digit verification code has been sent to ${email}`);
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to resend code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Submit Password Recovery Request
+  const handleSendRecovery = async () => {
+    if (!email.trim()) {
+      Alert.alert('Email Required', 'Please enter your registered email address.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await sendPasswordReset(email);
+      if (error) {
+        Alert.alert('Error', error.message);
+      } else {
+        setOtpType('recovery');
+        setOtpDigits(['', '', '', '', '', '']);
+        setResendCooldown(60);
+        setViewMode('otp_verify');
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Could not send recovery email.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Submit New Password after Recovery
+  const handleSaveNewPassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      Alert.alert('Password Length', 'Password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Mismatch', 'Passwords do not match.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await updateUserPassword(newPassword);
+      if (error) {
+        Alert.alert('Error', error.message);
+      } else {
+        Alert.alert('Password Updated', 'Your password has been reset successfully.');
+        onAuthSuccess();
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to update password.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -121,13 +296,31 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Top Bar with Skip Button */}
+          {/* Top Bar with Navigation & Skip */}
           <View style={styles.topBar}>
-            <View style={styles.brandIconWrap}>
-              <View style={styles.brandDot} />
-              <View style={[styles.brandDot, styles.brandDotMedium]} />
-              <View style={[styles.brandDot, styles.brandDotSmall]} />
-            </View>
+            {viewMode !== 'main' ? (
+              <TouchableOpacity
+                onPress={() => {
+                  if (viewMode === 'otp_verify' || viewMode === 'forgot_password') {
+                    setViewMode('email_form');
+                  } else if (viewMode === 'email_form') {
+                    setViewMode('main');
+                  } else {
+                    setViewMode('main');
+                  }
+                }}
+                activeOpacity={0.7}
+                style={styles.backBtn}
+              >
+                <Ionicons name="arrow-back" size={20} color="#111111" />
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.brandIconWrap}>
+                <View style={styles.brandDot} />
+                <View style={[styles.brandDot, styles.brandDotMedium]} />
+                <View style={[styles.brandDot, styles.brandDotSmall]} />
+              </View>
+            )}
 
             <TouchableOpacity onPress={onSkip} activeOpacity={0.7} style={styles.skipBtn}>
               <Text style={styles.skipText}>Skip for now</Text>
@@ -135,54 +328,89 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
             </TouchableOpacity>
           </View>
 
-          {/* Main Hero Title (Medium style Serif) */}
-          <View style={styles.headerBlock}>
-            <Text style={styles.mainTitle}>
-              {isSignUp ? 'Join Akorno.' : 'Welcome back.'}
-            </Text>
-            <Text style={styles.mainSubtitle}>
-              {isSignUp
-                ? 'Discover ancient wisdom, walk in faith, and converse with the Apostles.'
-                : 'Sign in to access your saved reflections and conversations.'}
-            </Text>
-          </View>
-
-          {/* Main Auth Buttons */}
-          <View style={styles.authButtonsContainer}>
-            {/* Google Sign In Button */}
-            <TouchableOpacity
-              style={styles.pillButton}
-              onPress={handleGoogleAuth}
-              activeOpacity={0.85}
-              disabled={googleLoading || loading}
-            >
-              {googleLoading ? (
-                <ActivityIndicator size="small" color="#111111" />
-              ) : (
-                <>
-                  <GoogleIcon size={20} />
-                  <Text style={styles.pillButtonText}>
-                    {isSignUp ? 'Sign up with Google' : 'Sign in with Google'}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-
-            {/* Email Form Expand / Collapse Button */}
-            {!showEmailForm ? (
-              <TouchableOpacity
-                style={styles.pillButton}
-                onPress={() => setShowEmailForm(true)}
-                activeOpacity={0.85}
-                disabled={googleLoading || loading}
-              >
-                <Ionicons name="mail-outline" size={20} color="#111111" />
-                <Text style={styles.pillButtonText}>
-                  {isSignUp ? 'Sign up with Email' : 'Sign in with Email'}
+          {/* ========================================================================= */}
+          {/* 1. MAIN / DEFAULT AUTH VIEW (Medium Style) */}
+          {/* ========================================================================= */}
+          {viewMode === 'main' && (
+            <>
+              <View style={styles.headerBlock}>
+                <Text style={styles.mainTitle}>
+                  {isSignUp ? 'Join Akorno.' : 'Welcome back.'}
                 </Text>
-              </TouchableOpacity>
-            ) : (
-              /* Inline Email Form */
+                <Text style={styles.mainSubtitle}>
+                  {isSignUp
+                    ? 'Discover ancient wisdom, walk in faith, and converse with the Apostles.'
+                    : 'Sign in to access your saved reflections and conversations.'}
+                </Text>
+              </View>
+
+              <View style={styles.authButtonsContainer}>
+                {/* Google Sign In Button */}
+                <TouchableOpacity
+                  style={styles.pillButton}
+                  onPress={handleGoogleAuth}
+                  activeOpacity={0.85}
+                  disabled={googleLoading || loading}
+                >
+                  {googleLoading ? (
+                    <ActivityIndicator size="small" color="#111111" />
+                  ) : (
+                    <>
+                      <GoogleIcon size={20} />
+                      <Text style={styles.pillButtonText}>
+                        {isSignUp ? 'Sign up with Google' : 'Sign in with Google'}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                {/* Email Sign In / Sign Up Button */}
+                <TouchableOpacity
+                  style={styles.pillButton}
+                  onPress={() => setViewMode('email_form')}
+                  activeOpacity={0.85}
+                  disabled={googleLoading || loading}
+                >
+                  <Ionicons name="mail-outline" size={20} color="#111111" />
+                  <Text style={styles.pillButtonText}>
+                    {isSignUp ? 'Sign up with Email' : 'Sign in with Email'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Switcher between Sign In and Sign Up */}
+              <View style={styles.toggleRow}>
+                <Text style={styles.togglePrompt}>
+                  {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setIsSignUp(!isSignUp)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.toggleAction}>
+                    {isSignUp ? 'Sign in.' : 'Sign up.'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+
+          {/* ========================================================================= */}
+          {/* 2. EMAIL FORM VIEW (Sign In / Sign Up) */}
+          {/* ========================================================================= */}
+          {viewMode === 'email_form' && (
+            <View style={styles.formViewWrap}>
+              <View style={styles.headerBlock}>
+                <Text style={styles.mainTitle}>
+                  {isSignUp ? 'Create account.' : 'Sign in.'}
+                </Text>
+                <Text style={styles.mainSubtitle}>
+                  {isSignUp
+                    ? 'Enter your details to receive your 6-digit verification code.'
+                    : 'Enter your credentials to continue.'}
+                </Text>
+              </View>
+
               <View style={styles.emailFormCard}>
                 {isSignUp && (
                   <View style={styles.inputWrap}>
@@ -212,7 +440,17 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
                 </View>
 
                 <View style={styles.inputWrap}>
-                  <Text style={styles.inputLabel}>Password</Text>
+                  <View style={styles.passwordLabelRow}>
+                    <Text style={styles.inputLabel}>Password</Text>
+                    {!isSignUp && (
+                      <TouchableOpacity
+                        onPress={() => setViewMode('forgot_password')}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.forgotPasswordLink}>Forgot password?</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                   <TextInput
                     style={styles.inputField}
                     placeholder="••••••••"
@@ -223,7 +461,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
                   />
                 </View>
 
-                {/* Submit Email Button */}
                 <TouchableOpacity
                   style={styles.submitEmailBtn}
                   onPress={handleEmailAuth}
@@ -234,33 +471,200 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <Text style={styles.submitEmailText}>
-                      {isSignUp ? 'Create Account' : 'Sign In'}
+                      {isSignUp ? 'Continue' : 'Sign In'}
                     </Text>
                   )}
                 </TouchableOpacity>
               </View>
-            )}
-          </View>
 
-          {/* Toggle between Sign Up and Sign In */}
-          <View style={styles.toggleRow}>
-            <Text style={styles.togglePrompt}>
-              {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
-            </Text>
-            <TouchableOpacity
-              onPress={() => {
-                setIsSignUp(!isSignUp);
-                setShowEmailForm(false);
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.toggleAction}>
-                {isSignUp ? 'Sign in.' : 'Sign up.'}
-              </Text>
-            </TouchableOpacity>
-          </View>
+              <View style={styles.toggleRow}>
+                <Text style={styles.togglePrompt}>
+                  {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setIsSignUp(!isSignUp)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.toggleAction}>
+                    {isSignUp ? 'Sign in.' : 'Sign up.'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
-          {/* Medium-style Terms and Privacy Disclaimer */}
+          {/* ========================================================================= */}
+          {/* 3. 6-DIGIT OTP VERIFICATION VIEW */}
+          {/* ========================================================================= */}
+          {viewMode === 'otp_verify' && (
+            <View style={styles.formViewWrap}>
+              <View style={styles.headerBlock}>
+                <Text style={styles.mainTitle}>Enter code.</Text>
+                <Text style={styles.mainSubtitle}>
+                  We sent a 6-digit verification code to{'\n'}
+                  <Text style={styles.highlightEmail}>{email}</Text>
+                </Text>
+              </View>
+
+              {/* 6 Individual Pin Input Boxes */}
+              <View style={styles.otpBoxesRow}>
+                {otpDigits.map((digit, index) => (
+                  <TextInput
+                    key={index}
+                    ref={(ref) => (otpInputRefs.current[index] = ref)}
+                    style={[
+                      styles.otpBox,
+                      digit ? styles.otpBoxFilled : null
+                    ]}
+                    keyboardType="number-pad"
+                    maxLength={1}
+                    value={digit}
+                    onChangeText={(val) => handleOtpDigitChange(val, index)}
+                    onKeyPress={(e) => handleOtpKeyPress(e, index)}
+                    autoFocus={index === 0}
+                    selectTextOnFocus
+                  />
+                ))}
+              </View>
+
+              {/* Manual Submit Button (if needed) */}
+              <TouchableOpacity
+                style={[
+                  styles.submitEmailBtn,
+                  otpDigits.includes('') && styles.submitBtnDisabled
+                ]}
+                onPress={() => verifyOtpCode(otpDigits.join(''))}
+                activeOpacity={0.85}
+                disabled={loading || otpDigits.includes('')}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.submitEmailText}>Verify Code</Text>
+                )}
+              </TouchableOpacity>
+
+              {/* Resend Code Section */}
+              <View style={styles.resendRow}>
+                <Text style={styles.resendPrompt}>Didn't receive the code? </Text>
+                <TouchableOpacity
+                  onPress={handleResendOtp}
+                  disabled={resendCooldown > 0 || loading}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.resendLink,
+                      resendCooldown > 0 && styles.resendLinkDisabled
+                    ]}
+                  >
+                    {resendCooldown > 0
+                      ? `Resend in ${resendCooldown}s`
+                      : 'Resend Code'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* ========================================================================= */}
+          {/* 4. FORGOT PASSWORD VIEW */}
+          {/* ========================================================================= */}
+          {viewMode === 'forgot_password' && (
+            <View style={styles.formViewWrap}>
+              <View style={styles.headerBlock}>
+                <Text style={styles.mainTitle}>Reset password.</Text>
+                <Text style={styles.mainSubtitle}>
+                  Enter your registered email and we'll send you a 6-digit recovery code.
+                </Text>
+              </View>
+
+              <View style={styles.emailFormCard}>
+                <View style={styles.inputWrap}>
+                  <Text style={styles.inputLabel}>Email Address</Text>
+                  <TextInput
+                    style={styles.inputField}
+                    placeholder="name@example.com"
+                    placeholderTextColor="#999999"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoFocus
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={styles.submitEmailBtn}
+                  onPress={handleSendRecovery}
+                  activeOpacity={0.85}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.submitEmailText}>Send Recovery Code</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* ========================================================================= */}
+          {/* 5. SET NEW PASSWORD VIEW */}
+          {/* ========================================================================= */}
+          {viewMode === 'new_password' && (
+            <View style={styles.formViewWrap}>
+              <View style={styles.headerBlock}>
+                <Text style={styles.mainTitle}>New password.</Text>
+                <Text style={styles.mainSubtitle}>
+                  Choose a new, secure password for your account.
+                </Text>
+              </View>
+
+              <View style={styles.emailFormCard}>
+                <View style={styles.inputWrap}>
+                  <Text style={styles.inputLabel}>New Password</Text>
+                  <TextInput
+                    style={styles.inputField}
+                    placeholder="••••••••"
+                    placeholderTextColor="#999999"
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    secureTextEntry
+                    autoFocus
+                  />
+                </View>
+
+                <View style={styles.inputWrap}>
+                  <Text style={styles.inputLabel}>Confirm New Password</Text>
+                  <TextInput
+                    style={styles.inputField}
+                    placeholder="••••••••"
+                    placeholderTextColor="#999999"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={styles.submitEmailBtn}
+                  onPress={handleSaveNewPassword}
+                  activeOpacity={0.85}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.submitEmailText}>Save Password</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* Footer Disclaimer */}
           <View style={styles.footerDisclaimer}>
             <Text style={styles.disclaimerText}>
               By signing up, you agree to our{' '}
@@ -293,7 +697,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 40,
+    marginBottom: 36,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   brandIconWrap: {
     flexDirection: 'row',
@@ -334,11 +746,11 @@ const styles = StyleSheet.create({
   },
   headerBlock: {
     alignItems: 'center',
-    marginBottom: 44,
+    marginBottom: 36,
   },
   mainTitle: {
     fontFamily: Typography.fontSerif,
-    fontSize: 48,
+    fontSize: 46,
     color: '#111111',
     textAlign: 'center',
     letterSpacing: -0.5,
@@ -350,7 +762,11 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 22,
-    maxWidth: '85%',
+    maxWidth: '88%',
+  },
+  highlightEmail: {
+    fontFamily: Typography.fontSansSemiBold,
+    color: '#111111',
   },
   authButtonsContainer: {
     gap: 16,
@@ -373,6 +789,9 @@ const styles = StyleSheet.create({
     fontSize: 15.5,
     color: '#111111',
   },
+  formViewWrap: {
+    width: '100%',
+  },
   emailFormCard: {
     backgroundColor: '#F9FAFB',
     borderRadius: 24,
@@ -380,6 +799,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     gap: 14,
+    marginBottom: 24,
   },
   inputWrap: {
     gap: 5,
@@ -388,6 +808,16 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontSansMedium,
     fontSize: 13,
     color: '#374151',
+  },
+  passwordLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  forgotPasswordLink: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 12.5,
+    color: '#16A34A',
   },
   inputField: {
     backgroundColor: '#FFFFFF',
@@ -408,16 +838,61 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 4,
   },
+  submitBtnDisabled: {
+    backgroundColor: '#9CA3AF',
+  },
   submitEmailText: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 15,
     color: '#FFFFFF',
   },
+  otpBoxesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 24,
+  },
+  otpBox: {
+    flex: 1,
+    height: 54,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    textAlign: 'center',
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 22,
+    color: '#111111',
+  },
+  otpBoxFilled: {
+    borderColor: '#111111',
+    backgroundColor: '#FFFFFF',
+  },
+  resendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    marginBottom: 24,
+  },
+  resendPrompt: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 13.5,
+    color: '#6B7280',
+  },
+  resendLink: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 13.5,
+    color: '#16A34A',
+  },
+  resendLinkDisabled: {
+    color: '#9CA3AF',
+  },
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 32,
+    marginBottom: 28,
   },
   togglePrompt: {
     fontFamily: Typography.fontSansRegular,

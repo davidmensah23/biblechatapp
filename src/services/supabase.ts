@@ -170,6 +170,71 @@ export const signUpWithEmail = async (
   }
 };
 
+// Verify 6-digit OTP Code (signup, recovery, email, magiclink)
+export const verifyEmailOtp = async (
+  email: string,
+  token: string,
+  type: 'signup' | 'recovery' | 'magiclink' | 'email' = 'signup'
+): Promise<{ session: any | null; user: any | null; error: Error | null }> => {
+  try {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: token.trim(),
+      type
+    });
+    if (error) throw error;
+    return { session: data.session, user: data.user, error: null };
+  } catch (err: any) {
+    return { session: null, user: null, error: err };
+  }
+};
+
+// Send Password Reset OTP / Link
+export const sendPasswordReset = async (email: string): Promise<{ error: Error | null }> => {
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: makeRedirectUri({
+        scheme: 'akorno',
+        path: 'auth/callback'
+      })
+    });
+    if (error) throw error;
+    return { error: null };
+  } catch (err: any) {
+    return { error: err };
+  }
+};
+
+// Update User Password (after recovery OTP or in settings)
+export const updateUserPassword = async (newPassword: string): Promise<{ error: Error | null }> => {
+  try {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+    if (error) throw error;
+    return { error: null };
+  } catch (err: any) {
+    return { error: err };
+  }
+};
+
+// Resend OTP / Verification Email
+export const resendVerificationEmail = async (
+  email: string,
+  type: 'signup' | 'email_change' = 'signup'
+): Promise<{ error: Error | null }> => {
+  try {
+    const { error } = await supabase.auth.resend({
+      type,
+      email: email.trim()
+    });
+    if (error) throw error;
+    return { error: null };
+  } catch (err: any) {
+    return { error: err };
+  }
+};
+
 // Sign Out
 export const signOutUser = async (): Promise<{ error: Error | null }> => {
   try {
