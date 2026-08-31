@@ -199,10 +199,10 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
             <LinearGradient
               colors={[
                 'transparent',
-                'rgba(10, 10, 10, 0.25)',
-                'rgba(10, 10, 10, 0.7)',
-                'rgba(10, 10, 10, 0.96)',
-                '#0A0A0A'
+                'rgba(11, 11, 11, 0.25)',
+                'rgba(11, 11, 11, 0.7)',
+                'rgba(11, 11, 11, 0.96)',
+                '#0B0B0B'
               ]}
               locations={[0, 0.3, 0.6, 0.85, 1]}
               style={styles.smoothFadeGradient}
@@ -337,7 +337,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: '#0B0B0B',
   },
   scrollView: {
     flex: 1,

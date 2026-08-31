@@ -4,7 +4,7 @@ export const Colors = {
   card: '#FFFFFF',
   cardSecondary: '#ECECEC',
   cardMuted: '#F0F0F0',
-  pillNav: '#121212',
+  pillNav: '#0B0B0B',
   pillNavIconInactive: '#888888',
   pillNavIconActive: '#FFFFFF',
   textPrimary: '#111111',
@@ -21,7 +21,7 @@ export const Colors = {
   accentOrange: '#EA580C',
   
   // Onboarding Dark Theme (Figma Match)
-  darkBackground: '#0A0A0A',
+  darkBackground: '#0B0B0B',
   darkCard: '#171717',
   darkCardBorder: '#262626',
   darkTextPrimary: '#FFFFFF',

@@ -50,7 +50,7 @@ export default function App() {
   if (!fontsLoaded && !fontError && !forceRender) {
     return (
       <View style={styles.darkBackground}>
-        <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
+        <StatusBar barStyle="light-content" backgroundColor="#0B0B0B" />
       </View>
     );
   }
@@ -60,7 +60,7 @@ export default function App() {
       {/* 1. Onboarding Flow */}
       {!hasCompletedOnboarding ? (
         <>
-          <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
+          <StatusBar barStyle="light-content" backgroundColor="#0B0B0B" />
           <OnboardingScreen onComplete={() => setHasCompletedOnboarding(true)} />
         </>
       ) : currentView === 'chat' && selectedApostle ? (
@@ -114,7 +114,7 @@ export default function App() {
 const styles = StyleSheet.create({
   darkBackground: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: '#0B0B0B',
   },
   mainContainer: {
     flex: 1,
