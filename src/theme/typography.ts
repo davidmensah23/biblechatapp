@@ -1,6 +1,8 @@
 export const Typography = {
   // Exact Font Family Keys
-  fontSerif: 'InstrumentSerif-Regular',
+  fontSerif: 'InstrumentSerif-Bold',
+  fontSerifBold: 'InstrumentSerif-Bold',
+  fontSerifRegular: 'InstrumentSerif-Regular',
   fontSerifItalic: 'InstrumentSerif-Italic',
   fontSansRegular: 'Poppins_400Regular',
   fontSansMedium: 'Poppins_500Medium',
@@ -11,3 +13,4 @@ export const Typography = {
   fallbackSerif: 'Georgia, serif',
   fallbackSans: 'System, sans-serif'
 };
+

@@ -20,6 +20,7 @@ import { getDB } from './src/services/database';
 
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({
+    'InstrumentSerif-Bold': require('./assets/fonts/InstrumentSerif-Bold.ttf'),
     'InstrumentSerif-Regular': require('./assets/fonts/InstrumentSerif-Regular.ttf'),
     'InstrumentSerif-Italic': require('./assets/fonts/InstrumentSerif-Italic.ttf'),
     Poppins_400Regular,
