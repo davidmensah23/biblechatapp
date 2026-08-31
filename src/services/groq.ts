@@ -1,16 +1,12 @@
 import { ApostlePersona, ChatMessage } from '../types';
+import { buildCompanionSystemPrompt, detectConversationMode, UserProfileMemory } from './companionEngine';
 
 const GROQ_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY || '';
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const PRIMARY_MODEL = 'openai/gpt-oss-120b';
 const FALLBACK_MODEL = 'openai/gpt-oss-20b';
 
-export interface UserProfileContext {
-  fullName?: string;
-  age?: string;
-  location?: string;
-  bio?: string;
-}
+export type UserProfileContext = UserProfileMemory;
 
 interface MessagePayload {
   role: 'system' | 'user' | 'assistant';
@@ -28,26 +24,17 @@ export const generateApostleReply = async (
       throw new Error('Groq API Key is not set');
     }
 
-    let enrichedSystemPrompt = persona.systemPrompt;
+    // 1. Detect Conversation Intent & Mode
+    const mode = detectConversationMode(userPrompt);
 
-    if (userProfile && userProfile.fullName) {
-      enrichedSystemPrompt += `\n\nUser Profile Context:
-You are speaking with ${userProfile.fullName}${userProfile.age ? `, age ${userProfile.age}` : ''}${userProfile.location ? `, located in ${userProfile.location}` : ''}.
-${userProfile.bio ? `Their faith background/note: "${userProfile.bio}"` : ''}
-Address them warmly by name when natural and appropriate.`;
-    }
-
-    enrichedSystemPrompt += `\n\nConversational Style & Vibe Guidelines:
-- Keep your responses conversational, empathetic, and concise (typically 35-75 words).
-- Do NOT produce massive walls of text, multi-point bulleted outlines, or long essays unless the user explicitly asks for an in-depth study or detailed list.
-- Match the user's conversational energy: if they give a friendly greeting ("Hi", "Good morning"), reply warmly in 1-2 sentences and ask how their walk with God is going today.
-- Quote Scripture reverently and sparingly where it adds divine light to the conversation.`;
+    // 2. Build Multi-Layered Companion System Prompt
+    const fullSystemPrompt = buildCompanionSystemPrompt(persona, userProfile, mode);
 
     const messages: MessagePayload[] = [
-      { role: 'system', content: enrichedSystemPrompt }
+      { role: 'system', content: fullSystemPrompt }
     ];
 
-    // Include last 8 conversation turns for contextual memory
+    // 3. Include recent conversation history for continuity (last 8 turns)
     const recentTurns = conversationHistory.slice(-8);
     for (const msg of recentTurns) {
       messages.push({
@@ -56,7 +43,7 @@ Address them warmly by name when natural and appropriate.`;
       });
     }
 
-    // Add current user prompt
+    // 4. Append current user message
     messages.push({ role: 'user', content: userPrompt });
 
     const response = await fetch(GROQ_API_URL, {
@@ -69,7 +56,7 @@ Address them warmly by name when natural and appropriate.`;
         model: PRIMARY_MODEL,
         messages: messages,
         temperature: 0.7,
-        max_tokens: 300,
+        max_tokens: 350,
         top_p: 0.95,
         stream: false
       })
@@ -87,7 +74,7 @@ Address them warmly by name when natural and appropriate.`;
           model: FALLBACK_MODEL,
           messages: messages,
           temperature: 0.7,
-          max_tokens: 250,
+          max_tokens: 280,
           top_p: 0.95,
           stream: false
         })
