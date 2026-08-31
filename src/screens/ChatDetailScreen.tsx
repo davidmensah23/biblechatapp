@@ -29,6 +29,7 @@ import { fetchMessages, saveMessage, saveBookmark, fetchUserProfile } from '../s
 import { generateApostleReply } from '../services/groq';
 import { VoiceCallModal } from '../components/VoiceCallModal';
 import { FormattedMessageText } from '../components/FormattedMessageText';
+import { checkProactiveFollowUp } from '../services/companionFollowup';
 
 interface ChatDetailScreenProps {
   apostle: ApostlePersona;
@@ -131,6 +132,23 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
       await saveMessage(greeting, apostle.title, apostle.id);
       setMessages([greeting]);
     } else {
+      // Check for proactive follow-up check-in if user returns after some time
+      const followUp = checkProactiveFollowUp(apostle, history, userProfile?.fullName);
+      if (followUp.shouldFollowUp) {
+        const lastMsg = history[history.length - 1];
+        // If last message was from user or older than 6 hours
+        if (lastMsg.sender === 'user' || Date.now() - lastMsg.timestamp > 6 * 60 * 60 * 1000) {
+          const followUpMsg: ChatMessage = {
+            id: `msg_followup_${Date.now()}`,
+            conversationId: conversationId,
+            sender: 'assistant',
+            content: followUp.followUpMessage,
+            timestamp: Date.now()
+          };
+          await saveMessage(followUpMsg, apostle.title, apostle.id);
+          history.push(followUpMsg);
+        }
+      }
       setMessages(history);
     }
   };

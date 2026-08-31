@@ -10,12 +10,14 @@ import {
   Switch
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
+import { getTodayScripture } from '../services/dailyScriptures';
+import { getTodayApostleQuotation } from '../services/apostleQuotations';
 
 interface NotificationsModalProps {
   visible: boolean;
   onClose: () => void;
+  onOpenApostle?: (apostleId: string) => void;
 }
 
 interface NotificationItem {
@@ -26,44 +28,54 @@ interface NotificationItem {
   message: string;
   timeAgo: string;
   isUnread: boolean;
+  apostleId?: string;
 }
 
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: '1',
-    icon: 'sunny',
-    iconColor: '#F59E0B',
-    title: 'Daily Scripture is Ready',
-    message: '"Let the wise listen and add to their learning..." — Proverbs 1:5',
-    timeAgo: '2h ago',
-    isUnread: true,
-  },
-  {
-    id: '2',
-    icon: 'flame',
-    iconColor: '#EF4444',
-    title: '3-Day Faith Streak!',
-    message: 'You have been reflecting with the Apostles 3 days in a row. Keep walking in faith!',
-    timeAgo: '1d ago',
-    isUnread: false,
-  },
-  {
-    id: '3',
-    icon: 'chatbubble-ellipses',
-    iconColor: '#3B82F6',
-    title: 'Simon Peter’s Word of Grace',
-    message: 'Remember: Christ restores us even when we stumble. Cast all your anxiety on Him.',
-    timeAgo: '2d ago',
-    isUnread: false,
-  }
-];
+export const NotificationsModal: React.FC<NotificationsModalProps> = ({ visible, onClose, onOpenApostle }) => {
+  const todayScripture = getTodayScripture();
+  const todayApostle = getTodayApostleQuotation();
 
-export const NotificationsModal: React.FC<NotificationsModalProps> = ({ visible, onClose }) => {
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([
+    {
+      id: 'notif_scripture',
+      icon: 'sunny',
+      iconColor: '#F59E0B',
+      title: 'Daily Scripture is Ready',
+      message: `"${todayScripture.quote}" — ${todayScripture.reference}`,
+      timeAgo: 'Just now',
+      isUnread: true,
+    },
+    {
+      id: 'notif_apostle',
+      icon: 'chatbubble-ellipses',
+      iconColor: '#3B82F6',
+      title: `${todayApostle.apostleName} sent a Word of Grace`,
+      message: `"${todayApostle.quote.substring(0, 110)}..."`,
+      timeAgo: '1h ago',
+      isUnread: true,
+      apostleId: todayApostle.apostleId
+    },
+    {
+      id: 'notif_streak',
+      icon: 'flame',
+      iconColor: '#EF4444',
+      title: 'Faith Journey Active',
+      message: 'You have been reflecting with the Apostles. Keep abiding in the Word today!',
+      timeAgo: '1d ago',
+      isUnread: false,
+    }
+  ]);
   const [dailyRemindersEnabled, setDailyRemindersEnabled] = useState(true);
 
   const handleMarkAllRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, isUnread: false })));
+  };
+
+  const handleNotificationPress = (item: NotificationItem) => {
+    if (item.apostleId && onOpenApostle) {
+      onClose();
+      onOpenApostle(item.apostleId);
+    }
   };
 
   return (
@@ -72,7 +84,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ visible,
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.backBtn} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
+            <Ionicons name="arrow-back" size={22} color="#111111" />
           </TouchableOpacity>
 
           <Text style={styles.headerTitle}>Notifications</Text>
@@ -98,10 +110,15 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ visible,
           </View>
 
           {/* Notifications List */}
-          <Text style={styles.sectionHeading}>Recent</Text>
+          <Text style={styles.sectionHeading}>Today's Updates</Text>
 
           {notifications.map((item) => (
-            <View key={item.id} style={[styles.notificationCard, item.isUnread && styles.notificationCardUnread]}>
+            <TouchableOpacity
+              key={item.id}
+              style={[styles.notificationCard, item.isUnread && styles.notificationCardUnread]}
+              onPress={() => handleNotificationPress(item)}
+              activeOpacity={item.apostleId ? 0.75 : 1}
+            >
               <View style={[styles.iconContainer, { backgroundColor: `${item.iconColor}15` }]}>
                 <Ionicons name={item.icon as any} size={20} color={item.iconColor} />
               </View>
@@ -112,8 +129,11 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ visible,
                   <Text style={styles.timeAgoText}>{item.timeAgo}</Text>
                 </View>
                 <Text style={styles.notifMessage}>{item.message}</Text>
+                {item.apostleId && (
+                  <Text style={styles.tapToChatText}>Tap to reply in chat $\rightarrow$</Text>
+                )}
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
         </ScrollView>
       </SafeAreaView>
@@ -124,7 +144,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ visible,
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#F3F3F5',
   },
   header: {
     flexDirection: 'row',
@@ -134,20 +154,20 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.divider,
+    borderBottomColor: '#E5E5EA',
   },
   backBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.cardSecondary,
+    backgroundColor: '#E6E6EB',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontFamily: Typography.fontSerif,
     fontSize: 26,
-    color: Colors.textPrimary,
+    color: '#111111',
   },
   markReadBtn: {
     paddingVertical: 6,
@@ -167,7 +187,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Colors.cardSecondary,
+    backgroundColor: '#DCDCE1',
     borderRadius: 20,
     padding: 18,
     marginBottom: 24,
@@ -179,25 +199,25 @@ const styles = StyleSheet.create({
   reminderTitle: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 15,
-    color: Colors.textPrimary,
+    color: '#111111',
     marginBottom: 3,
   },
   reminderSubtitle: {
     fontFamily: Typography.fontSansRegular,
     fontSize: 12,
-    color: Colors.textMuted,
+    color: '#666666',
     lineHeight: 16,
   },
   sectionHeading: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 17,
-    color: Colors.textPrimary,
+    color: '#111111',
     marginBottom: 12,
   },
   notificationCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: Colors.cardSecondary,
+    backgroundColor: '#DCDCE1',
     borderRadius: 18,
     padding: 16,
     marginBottom: 12,
@@ -226,17 +246,23 @@ const styles = StyleSheet.create({
   notifTitle: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 14.5,
-    color: Colors.textPrimary,
+    color: '#111111',
   },
   timeAgoText: {
     fontFamily: Typography.fontSansRegular,
     fontSize: 11,
-    color: Colors.textLight,
+    color: '#888888',
   },
   notifMessage: {
     fontFamily: Typography.fontSansRegular,
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: '#333333',
     lineHeight: 18,
+  },
+  tapToChatText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 12,
+    color: '#2563EB',
+    marginTop: 6,
   }
 });

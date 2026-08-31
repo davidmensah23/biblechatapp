@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, FlatList, Image } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { APOSTLE_PERSONAS } from '../services/personas';
-import { DAILY_SCRIPTURE_FEATURED } from '../services/bibleData';
+import { getTodayScripture } from '../services/dailyScriptures';
+import { getTodayApostleQuotation } from '../services/apostleQuotations';
 import { ApostlePersona, BibleVerse } from '../types';
 import { ApostleCard } from '../components/ApostleCard';
 import { DailyScriptureCard } from '../components/DailyScriptureCard';
@@ -21,10 +22,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
   const [selectedVerse, setSelectedVerse] = useState<BibleVerse | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
+  const todayScripture = getTodayScripture();
+  const todayApostleQuote = getTodayApostleQuotation();
+
   const tabIndicatorOffset = useSharedValue(0);
 
   useEffect(() => {
-    // Indicator positioned right above the text: 0 for "For You", 108px for "Disciples"
     tabIndicatorOffset.value = withSpring(activeTab === 'forYou' ? 0 : 108, SpringConfigs.bouncy);
   }, [activeTab]);
 
@@ -34,12 +37,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
 
   const handleOpenVerseModal = () => {
     setSelectedVerse({
-      book: DAILY_SCRIPTURE_FEATURED.book,
-      chapter: DAILY_SCRIPTURE_FEATURED.chapter,
-      verse: DAILY_SCRIPTURE_FEATURED.verse,
-      text: DAILY_SCRIPTURE_FEATURED.quote,
+      book: todayScripture.book,
+      chapter: todayScripture.chapter,
+      verse: todayScripture.verse,
+      text: todayScripture.quote,
       translation: 'NIV'
     });
+  };
+
+  const handleOpenApostleFromQuote = () => {
+    const apostle = APOSTLE_PERSONAS.find(a => a.id === todayApostleQuote.apostleId) || APOSTLE_PERSONAS[0];
+    onSelectApostle(apostle);
   };
 
   return (
@@ -47,7 +55,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
       {/* Top Header with Tabs & Notification Icon on Top-Right */}
       <View style={styles.header}>
         <View style={styles.tabsContainer}>
-          {/* Gliding Top Red Line positioned Above the Active Tab */}
           <Animated.View style={[styles.topRedIndicator, animatedIndicatorStyle]} />
 
           {/* For You Tab */}
@@ -91,12 +98,41 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
         >
-          {/* Daily Scripture Featured Card */}
+          {/* Dynamic Daily Scripture Featured Card */}
           <DailyScriptureCard
-            quote={DAILY_SCRIPTURE_FEATURED.quote}
-            reference={DAILY_SCRIPTURE_FEATURED.reference}
+            quote={todayScripture.quote}
+            reference={todayScripture.reference}
             onReadMore={handleOpenVerseModal}
           />
+
+          {/* Daily Word of Grace from the Apostles */}
+          <View style={styles.apostleQuoteCard}>
+            <View style={styles.apostleQuoteHeader}>
+              <View style={styles.apostleAvatarWrap}>
+                <Image source={todayApostleQuote.avatar} style={styles.apostleAvatar} />
+              </View>
+              <View style={styles.apostleQuoteMeta}>
+                <Text style={styles.apostleQuoteName}>{todayApostleQuote.apostleName}</Text>
+                <Text style={styles.apostleQuoteContext}>{todayApostleQuote.contextNote}</Text>
+              </View>
+            </View>
+
+            <Text style={styles.apostleQuoteBody}>
+              "{todayApostleQuote.quote}"
+            </Text>
+
+            <View style={styles.apostleQuoteFooter}>
+              <Text style={styles.apostleQuoteRef}>{todayApostleQuote.scriptureReference}</Text>
+              <TouchableOpacity
+                style={styles.replyToApostleBtn}
+                onPress={handleOpenApostleFromQuote}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="chatbubble-outline" size={14} color="#111111" style={{ marginRight: 5 }} />
+                <Text style={styles.replyToApostleText}>Reply to {todayApostleQuote.apostleName.split(' ')[0]}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
           {/* Meet Your Heroes Section Heading */}
           <Text style={styles.sectionHeading}>Meet your heroes</Text>
@@ -228,11 +264,81 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 110,
   },
+  apostleQuoteCard: {
+    backgroundColor: '#DCDCE1',
+    borderRadius: 22,
+    padding: 16,
+    marginBottom: 20,
+  },
+  apostleQuoteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  apostleAvatarWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+    backgroundColor: '#9E9FA6',
+    marginRight: 10,
+  },
+  apostleAvatar: {
+    width: '100%',
+    height: '100%',
+  },
+  apostleQuoteMeta: {
+    flex: 1,
+  },
+  apostleQuoteName: {
+    fontFamily: Typography.fontSerif,
+    fontSize: 18,
+    color: '#111111',
+  },
+  apostleQuoteContext: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 11,
+    color: '#284682',
+    marginTop: 1,
+  },
+  apostleQuoteBody: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 13.5,
+    lineHeight: 20,
+    color: '#222222',
+    marginBottom: 12,
+  },
+  apostleQuoteFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: '#CFCFD6',
+    paddingTop: 10,
+  },
+  apostleQuoteRef: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 12,
+    color: '#666666',
+  },
+  replyToApostleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECECF0',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  replyToApostleText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 12.5,
+    color: '#111111',
+  },
   sectionHeading: {
     fontFamily: Typography.fontSerif,
     fontSize: 28,
     color: '#111111',
-    marginTop: 22,
+    marginTop: 10,
     marginBottom: 16,
     paddingHorizontal: 4,
   },
