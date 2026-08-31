@@ -3,8 +3,8 @@ import { buildCompanionSystemPrompt, detectConversationMode, UserProfileMemory }
 
 const GROQ_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY || '';
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const PRIMARY_MODEL = 'openai/gpt-oss-120b';
-const FALLBACK_MODEL = 'openai/gpt-oss-20b';
+const PRIMARY_MODEL = 'llama-3.3-70b-versatile';
+const FALLBACK_MODEL = 'llama-3.1-8b-instant';
 
 export type UserProfileContext = UserProfileMemory;
 
@@ -27,7 +27,7 @@ export const generateApostleReply = async (
     // 1. Detect Conversation Intent & Mode
     const mode = detectConversationMode(userPrompt);
 
-    // 2. Build Multi-Layered Companion System Prompt
+    // 2. Build Multi-Layered Companion System Prompt with strict character boundaries
     const fullSystemPrompt = buildCompanionSystemPrompt(persona, userProfile, mode);
 
     const messages: MessagePayload[] = [
@@ -46,6 +46,9 @@ export const generateApostleReply = async (
     // 4. Append current user message
     messages.push({ role: 'user', content: userPrompt });
 
+    // Dynamic max_tokens depending on mode (short for greetings, natural for discussion)
+    const maxTokens = mode === 'greeting' ? 60 : mode === 'casual' ? 120 : 280;
+
     const response = await fetch(GROQ_API_URL, {
       method: 'POST',
       headers: {
@@ -55,9 +58,9 @@ export const generateApostleReply = async (
       body: JSON.stringify({
         model: PRIMARY_MODEL,
         messages: messages,
-        temperature: 0.7,
-        max_tokens: 350,
-        top_p: 0.95,
+        temperature: 0.72,
+        max_tokens: maxTokens,
+        top_p: 0.92,
         stream: false
       })
     });
@@ -73,9 +76,9 @@ export const generateApostleReply = async (
         body: JSON.stringify({
           model: FALLBACK_MODEL,
           messages: messages,
-          temperature: 0.7,
-          max_tokens: 280,
-          top_p: 0.95,
+          temperature: 0.72,
+          max_tokens: maxTokens,
+          top_p: 0.92,
           stream: false
         })
       });
@@ -85,13 +88,28 @@ export const generateApostleReply = async (
       }
 
       const fallbackData = await fallbackResponse.json();
-      return fallbackData.choices?.[0]?.message?.content || 'Peace be with you. I am reflecting on your words.';
+      return cleanReply(fallbackData.choices?.[0]?.message?.content || '');
     }
 
     const data = await response.json();
-    return data.choices?.[0]?.message?.content || 'Peace be with you. I am reflecting on your words.';
+    return cleanReply(data.choices?.[0]?.message?.content || '');
   } catch (error) {
     console.error('Groq AI generation error:', error);
-    return `Peace and grace be with you. In my walk with the Lord, I learned that even in quiet moments, He hears our heart. Tell me more about what is on your mind.`;
+    if (userPrompt.trim().toLowerCase() === 'hi' || userPrompt.trim().toLowerCase() === 'hello') {
+      return `Peace be with you, ${userProfile?.fullName || 'my friend'}! How are you feeling today?`;
+    }
+    return `Peace and grace be with you. I am reflecting on your words. What is on your heart today?`;
   }
+};
+
+/**
+ * Remove artificial formatting, unnecessary leading/trailing quotes or hyphens
+ */
+const cleanReply = (text: string): string => {
+  let cleaned = text.trim();
+  // Remove wrapping quotes if the model wrapped the whole response
+  if ((cleaned.startsWith('"') && cleaned.endsWith('"')) || (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
+    cleaned = cleaned.substring(1, cleaned.length - 1).trim();
+  }
+  return cleaned;
 };
