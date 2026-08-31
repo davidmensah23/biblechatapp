@@ -18,14 +18,14 @@ import Animated, {
   withTiming,
   withRepeat,
   withSequence,
-  Easing
+  Easing,
+  runOnJS
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Defs, RadialGradient as SvgRadialGradient, Stop, Circle, Rect } from 'react-native-svg';
+import Svg, { Path, Defs, RadialGradient as SvgRadialGradient, Stop, Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { SpringConfigs } from '../theme/animations';
-import { APOSTLE_PERSONAS } from '../services/personas';
 
 const { width } = Dimensions.get('window');
 
@@ -33,7 +33,212 @@ interface OnboardingScreenProps {
   onComplete: () => void;
 }
 
-// Pixel-Perfect Starlight Spectrum for Slide 3
+// 5 Curated Apostles with 100% Unique, Authentic Bios for Slide 2 Card Deck
+interface DeckApostle {
+  id: string;
+  name: string;
+  title: string;
+  subtitle: string;
+  bio: string;
+  avatar: any;
+}
+
+const DECK_APOSTLES: DeckApostle[] = [
+  {
+    id: 'peter',
+    name: 'Peter',
+    title: 'Simon Peter',
+    subtitle: 'Seeking true wisdom through Christ our savior',
+    bio: "I am Simon Peter, a fisherman called to follow. Bold, loyal, and sometimes impulsive—I'm the rock that helped build the early Church.",
+    avatar: require('../../assets/avatars/peter.png')
+  },
+  {
+    id: 'john',
+    name: 'John',
+    title: 'John, The Beloved',
+    subtitle: 'Abiding in divine light and everlasting love',
+    bio: "I rested against His chest at the Last Supper and stood faithful at the cross. Discover how His boundless love transforms everything.",
+    avatar: require('../../assets/avatars/john.png')
+  },
+  {
+    id: 'paul',
+    name: 'Paul',
+    title: 'Paul of Tarsus',
+    subtitle: 'Captured by grace to run the race with endurance',
+    bio: "Once a fierce persecutor, blinded on the Damascus road and made new. If grace could reach me, no heart is beyond His redemption.",
+    avatar: require('../../assets/avatars/paul.png')
+  },
+  {
+    id: 'thomas',
+    name: 'Thomas',
+    title: 'Thomas (Didymus)',
+    subtitle: 'Honest questions leading to unshakeable conviction',
+    bio: "I needed to see His wounded hands with my own eyes. Bring your doubts and honest questions—He welcomes every sincere seeker.",
+    avatar: require('../../assets/avatars/thomas.png')
+  },
+  {
+    id: 'andrew',
+    name: 'Andrew',
+    title: 'Andrew',
+    subtitle: 'The quiet connector who first brought others to Christ',
+    bio: "I didn't need the spotlight; I found joy in bringing my brother and the boy with five loaves directly to Jesus. Every small step matters.",
+    avatar: require('../../assets/avatars/andrew.png')
+  }
+];
+
+// =========================================================================
+// SLIDE 2: 3D PERSPECTIVE CARD DECK COMPONENT (GSAP SHUFFLE ANIMATION)
+// =========================================================================
+const PerspectiveCardDeck: React.FC<{ isActiveSlide: boolean }> = ({ isActiveSlide }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Animation drivers
+  const cardShift = useSharedValue(0);
+  const ambientFloat = useSharedValue(0);
+
+  // Ambient gentle floating motion for depth
+  useEffect(() => {
+    ambientFloat.value = withRepeat(
+      withSequence(
+        withTiming(-4, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
+        withTiming(4, { duration: 1800, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
+  const nextCard = () => {
+    'worklet';
+    cardShift.value = withTiming(
+      1,
+      { duration: 400, easing: Easing.bezier(0.25, 1, 0.5, 1) },
+      (finished) => {
+        if (finished) {
+          runOnJS(updateCardState)();
+        }
+      }
+    );
+  };
+
+  const updateCardState = () => {
+    setCurrentIndex((prev) => (prev + 1) % DECK_APOSTLES.length);
+    cardShift.value = 0;
+  };
+
+  // Automatic shuffle interval every 3.2 seconds when on slide 2
+  useEffect(() => {
+    if (!isActiveSlide) return;
+    const interval = setInterval(() => {
+      nextCard();
+    }, 3200);
+
+    return () => clearInterval(interval);
+  }, [isActiveSlide, currentIndex]);
+
+  const activeApostle = DECK_APOSTLES[currentIndex];
+  const nextApostle = DECK_APOSTLES[(currentIndex + 1) % DECK_APOSTLES.length];
+
+  // Front Card Animation Style (Glides upward, tilts 3D, fades slightly)
+  const frontCardStyle = useAnimatedStyle(() => {
+    const translateY = ambientFloat.value - cardShift.value * 50;
+    const rotateZ = `${-cardShift.value * 6}deg`;
+    const scale = 1 + cardShift.value * 0.04;
+    const opacity = 1 - cardShift.value * 0.85;
+
+    return {
+      transform: [
+        { perspective: 1000 },
+        { translateY },
+        { rotateZ },
+        { scale }
+      ],
+      opacity
+    };
+  });
+
+  // Next Card Behind (Scales up from 0.92 to 1.0 and moves forward)
+  const nextCardBehindStyle = useAnimatedStyle(() => {
+    const scale = 0.92 + cardShift.value * 0.08;
+    const translateY = 14 - cardShift.value * 14;
+    const opacity = 0.85 + cardShift.value * 0.15;
+
+    return {
+      transform: [
+        { perspective: 1000 },
+        { translateY },
+        { scale }
+      ],
+      opacity
+    };
+  });
+
+  return (
+    <View style={styles.deckWrapper}>
+      {/* Layer 4: Distant Arch Card */}
+      <View style={[styles.stackCard, styles.stackCardLayer4]} />
+
+      {/* Layer 3: Middle Arched Card */}
+      <View style={[styles.stackCard, styles.stackCardLayer3]} />
+
+      {/* Layer 2: Next Card In Line (Smoothly Scales Forward During Shuffle) */}
+      <Animated.View style={[styles.stackCard, styles.stackCardLayer2, nextCardBehindStyle]}>
+        <View style={styles.cardHeader}>
+          <View style={styles.avatarCircleWrap}>
+            <Image source={nextApostle.avatar} style={styles.cardAvatar} resizeMode="cover" />
+          </View>
+          <View style={styles.cardHeaderText}>
+            <Text style={styles.cardTitle}>{nextApostle.title}</Text>
+            <Text style={styles.cardSubtitle} numberOfLines={2}>
+              {nextApostle.subtitle}
+            </Text>
+          </View>
+        </View>
+
+        <Text style={styles.cardBio} numberOfLines={3}>
+          {nextApostle.bio}
+        </Text>
+
+        <View style={styles.chatWithMePill}>
+          <Text style={styles.chatWithMeText}>Chat with me</Text>
+        </View>
+      </Animated.View>
+
+      {/* Layer 1: Active Front Card with 3D Float & Shuffle Gesture */}
+      <Animated.View style={[styles.stackCard, styles.stackCardFront, frontCardStyle]}>
+        <TouchableOpacity
+          activeOpacity={0.92}
+          onPress={nextCard}
+          style={styles.cardInnerTouch}
+        >
+          <View style={styles.cardHeader}>
+            <View style={styles.avatarCircleWrap}>
+              <Image source={activeApostle.avatar} style={styles.cardAvatar} resizeMode="cover" />
+            </View>
+            <View style={styles.cardHeaderText}>
+              <Text style={styles.cardTitle}>{activeApostle.title}</Text>
+              <Text style={styles.cardSubtitle} numberOfLines={2}>
+                {activeApostle.subtitle}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={styles.cardBio} numberOfLines={3}>
+            {activeApostle.bio}
+          </Text>
+
+          <View style={styles.chatWithMePill}>
+            <Text style={styles.chatWithMeText}>Chat with me</Text>
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+    </View>
+  );
+};
+
+// =========================================================================
+// SLIDE 3: PIXEL-PERFECT STARLIGHT SPECTRUM COMPONENT
+// =========================================================================
 const CosmicSpectrumVisualizer: React.FC = () => {
   const starGlow = useSharedValue(1);
   const flareScale = useSharedValue(1);
@@ -69,7 +274,6 @@ const CosmicSpectrumVisualizer: React.FC = () => {
 
   return (
     <View style={styles.spectrumContainer}>
-      {/* Background Deep Cosmic Gradient */}
       <LinearGradient
         colors={['#070311', '#140526', '#090214']}
         style={StyleSheet.absoluteFillObject}
@@ -94,7 +298,7 @@ const CosmicSpectrumVisualizer: React.FC = () => {
         />
       </Animated.View>
 
-      {/* Central 4-Pointed Radiant Flare with Radial Gradient Halo */}
+      {/* Central 4-Pointed Radiant Flare */}
       <Animated.View style={[styles.starCenterWrapper, starAnimatedStyle]}>
         <Svg height="140" width="140" viewBox="0 0 140 140">
           <Defs>
@@ -107,17 +311,14 @@ const CosmicSpectrumVisualizer: React.FC = () => {
             </SvgRadialGradient>
           </Defs>
 
-          {/* Diffuse Core Aura */}
           <Circle cx="70" cy="70" r="65" fill="url(#coreGlow)" />
 
-          {/* Primary 4-Pointed Radiant Flare */}
           <Path
             d="M 70 8 Q 70 70 8 70 Q 70 70 70 132 Q 70 70 132 70 Q 70 70 70 8 Z"
             fill="#FFFFFF"
             opacity="0.95"
           />
 
-          {/* Secondary Soft Pink Micro Flare */}
           <Path
             d="M 70 34 Q 70 70 34 70 Q 70 70 70 106 Q 70 70 106 70 Q 70 70 70 34 Z"
             fill="#FCE7F3"
@@ -129,9 +330,11 @@ const CosmicSpectrumVisualizer: React.FC = () => {
   );
 };
 
+// =========================================================================
+// MAIN ONBOARDING SCREEN
+// =========================================================================
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [activeCardIndex, setActiveCardIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
 
   // Pagination Indicators
@@ -158,38 +361,36 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
   const handleScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = event.nativeEvent.contentOffset.x;
     const pageIndex = Math.round(offsetX / width);
-    if (pageIndex !== currentSlide && pageIndex >= 0 && pageIndex <= 2) {
-      setCurrentSlide(pageIndex);
-    }
+    setCurrentSlide(pageIndex);
   };
 
-  const cycleCardStack = () => {
-    setActiveCardIndex((prev) => (prev + 1) % APOSTLE_PERSONAS.length);
-  };
+  const dot0Style = useAnimatedStyle(() => ({
+    width: dotWidth0.value,
+  }));
 
-  const dot0Style = useAnimatedStyle(() => ({ width: dotWidth0.value }));
-  const dot1Style = useAnimatedStyle(() => ({ width: dotWidth1.value }));
-  const dot2Style = useAnimatedStyle(() => ({ width: dotWidth2.value }));
+  const dot1Style = useAnimatedStyle(() => ({
+    width: dotWidth1.value,
+  }));
 
-  const currentApostle = APOSTLE_PERSONAS[activeCardIndex];
+  const dot2Style = useAnimatedStyle(() => ({
+    width: dotWidth2.value,
+  }));
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Native Horizontal Paging Carousel */}
       <ScrollView
         ref={scrollRef}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        bounces={false}
-        scrollEventThrottle={16}
         onMomentumScrollEnd={handleScrollEnd}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        scrollEventThrottle={16}
+        bounces={false}
       >
-        {/* SLIDE 1 */}
+        {/* SLIDE 1: Dissolve Disciples Hero */}
         <View style={styles.slidePage}>
-          {/* Disciples Visual with Seamless Bottom Dissolve */}
           <View style={styles.visualContainer}>
             <Image
               source={require('../../assets/images/onboarding_disciples_hero.png')}
@@ -221,40 +422,10 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
           </View>
         </View>
 
-        {/* SLIDE 2: 3D Perspective Card Deck */}
+        {/* SLIDE 2: 3D Perspective Card Deck (GSAP Shuffle) */}
         <View style={styles.slidePage}>
           <View style={[styles.visualContainer, styles.visualContainerPadded]}>
-            {/* Perspective Arched Backing Cards */}
-            <View style={[styles.stackCard, styles.stackCardLayer4]} />
-            <View style={[styles.stackCard, styles.stackCardLayer3]} />
-            <View style={[styles.stackCard, styles.stackCardLayer2]} />
-
-            {/* Front Card Matching Reference */}
-            <TouchableOpacity
-              activeOpacity={0.94}
-              onPress={cycleCardStack}
-              style={[styles.stackCard, styles.stackCardFront]}
-            >
-              <View style={styles.cardHeader}>
-                <View style={styles.avatarCircleWrap}>
-                  <Image source={currentApostle.avatar} style={styles.cardAvatar} resizeMode="cover" />
-                </View>
-                <View style={styles.cardHeaderText}>
-                  <Text style={styles.cardTitle}>{currentApostle.title}</Text>
-                  <Text style={styles.cardSubtitle} numberOfLines={2}>
-                    Seeking true wisdom through Christ our savior
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={styles.cardBio}>
-                I am Simon Peter, a fisherman called to follow. Bold, loyal, and sometimes impulsive—I'm the rock that helped build the early Church
-              </Text>
-
-              <View style={styles.chatWithMePill}>
-                <Text style={styles.chatWithMeText}>Chat with me</Text>
-              </View>
-            </TouchableOpacity>
+            <PerspectiveCardDeck isActiveSlide={currentSlide === 1} />
           </View>
 
           {/* Slide 2 Text Area */}
@@ -309,9 +480,9 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
         </View>
       </ScrollView>
 
-      {/* Floating Bottom Footer Navigation */}
+      {/* Floating Bottom Navigation Row */}
       <View style={styles.floatingFooterRow}>
-        {/* Animated Pagination Indicators */}
+        {/* Pagination Dots */}
         <View style={styles.paginationDots}>
           <Animated.View style={[styles.dot, currentSlide === 0 ? styles.dotActive : styles.dotInactive, dot0Style]} />
           <Animated.View style={[styles.dot, currentSlide === 1 ? styles.dotActive : styles.dotInactive, dot1Style]} />
@@ -373,53 +544,72 @@ const styles = StyleSheet.create({
     right: 0,
     height: 180,
   },
+  deckWrapper: {
+    width: '100%',
+    height: 255,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
   stackCard: {
     position: 'absolute',
-    borderRadius: 28,
+    borderRadius: 26,
   },
   stackCardLayer4: {
+    top: -26,
     width: '74%',
-    height: 250,
-    top: 8,
-    backgroundColor: '#38383C',
+    height: 52,
+    backgroundColor: '#1E1E22',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    opacity: 0.45,
   },
   stackCardLayer3: {
-    width: '80%',
-    height: 255,
-    top: 18,
-    backgroundColor: '#505056',
+    top: -14,
+    width: '84%',
+    height: 58,
+    backgroundColor: '#27272D',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    opacity: 0.7,
   },
   stackCardLayer2: {
-    width: '86%',
-    height: 260,
-    top: 28,
-    backgroundColor: '#72727A',
+    width: '100%',
+    backgroundColor: '#D0D0D6',
+    borderRadius: 26,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E2E6',
   },
   stackCardFront: {
-    width: '92%',
+    width: '100%',
     backgroundColor: '#DCDCE0',
-    padding: 22,
-    top: 40,
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: '#ECECF0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.4,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
     shadowRadius: 20,
-    elevation: 8,
+    elevation: 12,
+  },
+  cardInnerTouch: {
+    padding: 16,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 12,
   },
   avatarCircleWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     overflow: 'hidden',
-    backgroundColor: '#383838',
+    backgroundColor: '#9E9FA6',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: 12,
   },
   cardAvatar: {
     width: '100%',
@@ -430,7 +620,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontFamily: Typography.fontSerif,
-    fontSize: 24,
+    fontSize: 23,
     color: '#111111',
   },
   cardSubtitle: {
@@ -442,65 +632,56 @@ const styles = StyleSheet.create({
   },
   cardBio: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 13,
-    lineHeight: 18.5,
+    fontSize: 12.5,
+    lineHeight: 18,
     color: '#222222',
-    marginBottom: 18,
+    marginBottom: 14,
   },
   chatWithMePill: {
     borderWidth: 1.5,
     borderColor: '#111111',
     borderRadius: 24,
-    paddingVertical: 11,
+    paddingVertical: 10,
     alignItems: 'center',
     backgroundColor: '#D0D0D6',
   },
   chatWithMeText: {
     fontFamily: Typography.fontSansMedium,
-    fontSize: 13.5,
+    fontSize: 14,
     color: '#111111',
   },
   callCard: {
-    width: '94%',
+    width: '100%',
     backgroundColor: '#0A0612',
     borderRadius: 28,
-    borderWidth: 1.5,
-    borderColor: 'rgba(217, 70, 239, 0.45)',
-    padding: 20,
-    alignItems: 'center',
-    shadowColor: '#D946EF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 18,
-    elevation: 6,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#261344',
   },
   callCardTitle: {
     fontFamily: Typography.fontSerif,
-    fontSize: 28,
+    fontSize: 27,
     color: '#FFFFFF',
-    marginBottom: 4,
+    textAlign: 'center',
   },
   callCardSubtitle: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 12,
+    fontSize: 11.5,
     color: '#9CA3AF',
-    marginBottom: 14,
+    textAlign: 'center',
+    marginTop: 2,
+    marginBottom: 12,
   },
   spectrumOuterFrame: {
-    width: '100%',
-    height: 124,
+    height: 125,
     borderRadius: 18,
     overflow: 'hidden',
-    marginBottom: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
+    marginVertical: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: '#1E1435',
   },
   spectrumContainer: {
-    width: '100%',
-    height: '100%',
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -508,13 +689,14 @@ const styles = StyleSheet.create({
   auroraBeamWrapper: {
     position: 'absolute',
     width: '100%',
-    height: 18,
+    height: 60,
+    alignItems: 'center',
     justifyContent: 'center',
   },
   auroraBeamLine: {
     width: '100%',
-    height: 10,
-    borderRadius: 5,
+    height: 48,
+    opacity: 0.9,
   },
   starCenterWrapper: {
     position: 'absolute',
@@ -601,13 +783,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#2563EB',
-    paddingVertical: 15,
-    paddingHorizontal: 24,
-    borderRadius: 30,
+    paddingVertical: 14,
+    paddingHorizontal: 22,
+    borderRadius: 28,
   },
   getStartedText: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 16,
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 15,
     color: '#FFFFFF',
   }
 });
