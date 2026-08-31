@@ -34,7 +34,7 @@ export interface BibleVerse {
   id?: number;
   book: string;
   chapter: number;
-  verse: number;
+  verse: number | string;
   text: string;
   translation: string;
 }
