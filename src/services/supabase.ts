@@ -235,6 +235,34 @@ export const resendVerificationEmail = async (
   }
 };
 
+// Handle incoming deep links (1-click email links, OAuth callbacks)
+export const handleAuthDeepLink = async (url: string | null): Promise<void> => {
+  if (!url) return;
+  try {
+    const parsed = new URL(url);
+    let hash = parsed.hash;
+    if (hash.startsWith('#')) hash = hash.substring(1);
+    const params = new URLSearchParams(hash || parsed.search);
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+
+    if (accessToken && refreshToken) {
+      await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken
+      });
+      return;
+    }
+
+    const code = params.get('code');
+    if (code) {
+      await supabase.auth.exchangeCodeForSession(code);
+    }
+  } catch (e) {
+    console.warn('handleAuthDeepLink note:', e);
+  }
+};
+
 // Sign Out
 export const signOutUser = async (): Promise<{ error: Error | null }> => {
   try {

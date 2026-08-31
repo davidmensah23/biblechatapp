@@ -19,7 +19,8 @@ import { FloatingNavBar, NavTabType } from './src/components/FloatingNavBar';
 import { CircularRevealTransition } from './src/components/CircularRevealTransition';
 import { ApostlePersona } from './src/types';
 import { getDB, saveUserProfile } from './src/services/database';
-import { supabase, fetchRemoteProfile, signOutUser } from './src/services/supabase';
+import { supabase, fetchRemoteProfile, signOutUser, handleAuthDeepLink } from './src/services/supabase';
+import * as Linking from 'expo-linking';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -52,6 +53,15 @@ export default function App() {
     // Initialize Database
     getDB().catch(console.error);
 
+    // Handle deep links when app opens from 1-click email confirmation or OAuth redirect
+    Linking.getInitialURL().then((url) => {
+      if (url) handleAuthDeepLink(url);
+    });
+
+    const linkSubscription = Linking.addEventListener('url', (event) => {
+      if (event.url) handleAuthDeepLink(event.url);
+    });
+
     // Check existing Supabase session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -78,6 +88,7 @@ export default function App() {
     }, 600);
 
     return () => {
+      linkSubscription.remove();
       subscription.unsubscribe();
       clearTimeout(timer);
     };
