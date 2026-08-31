@@ -4,16 +4,16 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-na
 import { Ionicons } from '@expo/vector-icons';
 import { SpringConfigs } from '../theme/animations';
 
-export type NavTabType = 'home' | 'bible' | 'profile';
+export type NavTabType = 'home' | 'chats' | 'bible' | 'profile';
 
 interface FloatingNavBarProps {
   activeTab: NavTabType;
   onTabChange: (tab: NavTabType) => void;
 }
 
-const TAB_BTN_SIZE = 48;
-const TAB_GAP = 14;
-const STEP_DISTANCE = TAB_BTN_SIZE + TAB_GAP; // 62px
+const TAB_BTN_SIZE = 46;
+const TAB_GAP = 10;
+const STEP_DISTANCE = TAB_BTN_SIZE + TAB_GAP; // 56px
 
 export const FloatingNavBar: React.FC<FloatingNavBarProps> = ({ activeTab, onTabChange }) => {
   const indicatorOffset = useSharedValue(0);
@@ -21,10 +21,12 @@ export const FloatingNavBar: React.FC<FloatingNavBarProps> = ({ activeTab, onTab
   useEffect(() => {
     if (activeTab === 'home') {
       indicatorOffset.value = withSpring(0, SpringConfigs.bouncy);
-    } else if (activeTab === 'bible') {
+    } else if (activeTab === 'chats') {
       indicatorOffset.value = withSpring(STEP_DISTANCE, SpringConfigs.bouncy);
-    } else if (activeTab === 'profile') {
+    } else if (activeTab === 'bible') {
       indicatorOffset.value = withSpring(STEP_DISTANCE * 2, SpringConfigs.bouncy);
+    } else if (activeTab === 'profile') {
+      indicatorOffset.value = withSpring(STEP_DISTANCE * 3, SpringConfigs.bouncy);
     }
   }, [activeTab]);
 
@@ -38,20 +40,33 @@ export const FloatingNavBar: React.FC<FloatingNavBarProps> = ({ activeTab, onTab
         {/* Solid Pure White Sliding Active Circle */}
         <Animated.View style={[styles.activeWhiteCircle, indicatorStyle]} />
 
-        {/* 1. Feed / Disciples Tab */}
+        {/* 1. Home Tab */}
         <TouchableOpacity
           style={styles.tabButton}
           onPress={() => onTabChange('home')}
           activeOpacity={0.85}
         >
           <Ionicons
-            name={activeTab === 'home' ? 'people' : 'people-outline'}
-            size={24}
+            name={activeTab === 'home' ? 'home' : 'home-outline'}
+            size={22}
             color={activeTab === 'home' ? '#000000' : '#FFFFFF'}
           />
         </TouchableOpacity>
 
-        {/* 2. Bible Reader Tab */}
+        {/* 2. Chats / Discussions Tab */}
+        <TouchableOpacity
+          style={styles.tabButton}
+          onPress={() => onTabChange('chats')}
+          activeOpacity={0.85}
+        >
+          <Ionicons
+            name={activeTab === 'chats' ? 'chatbubbles' : 'chatbubbles-outline'}
+            size={22}
+            color={activeTab === 'chats' ? '#000000' : '#FFFFFF'}
+          />
+        </TouchableOpacity>
+
+        {/* 3. Bible Reader Tab */}
         <TouchableOpacity
           style={styles.tabButton}
           onPress={() => onTabChange('bible')}
@@ -59,12 +74,12 @@ export const FloatingNavBar: React.FC<FloatingNavBarProps> = ({ activeTab, onTab
         >
           <Ionicons
             name={activeTab === 'bible' ? 'book' : 'book-outline'}
-            size={22}
+            size={21}
             color={activeTab === 'bible' ? '#000000' : '#FFFFFF'}
           />
         </TouchableOpacity>
 
-        {/* 3. Profile Tab */}
+        {/* 4. Profile Tab */}
         <TouchableOpacity
           style={styles.tabButton}
           onPress={() => onTabChange('profile')}
@@ -72,7 +87,7 @@ export const FloatingNavBar: React.FC<FloatingNavBarProps> = ({ activeTab, onTab
         >
           <Ionicons
             name={activeTab === 'profile' ? 'person-circle' : 'person-circle-outline'}
-            size={24}
+            size={23}
             color={activeTab === 'profile' ? '#000000' : '#FFFFFF'}
           />
         </TouchableOpacity>

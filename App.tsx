@@ -30,7 +30,7 @@ export default function App() {
 
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(false);
   const [activeNavTab, setActiveNavTab] = useState<NavTabType>('home');
-  const [currentView, setCurrentView] = useState<'main' | 'chatList' | 'chat'>('main');
+  const [currentView, setCurrentView] = useState<'main' | 'chat'>('main');
   const [selectedApostle, setSelectedApostle] = useState<ApostlePersona | null>(null);
   const [forceRender, setForceRender] = useState<boolean>(false);
 
@@ -72,20 +72,8 @@ export default function App() {
             onBack={() => setCurrentView('main')}
           />
         </>
-      ) : currentView === 'chatList' ? (
-        /* 3. Chat List View */
-        <>
-          <StatusBar barStyle="dark-content" backgroundColor="#F6F6F6" />
-          <ChatListScreen
-            onSelectConversation={(apostle) => {
-              setSelectedApostle(apostle);
-              setCurrentView('chat');
-            }}
-            onBack={() => setCurrentView('main')}
-          />
-        </>
       ) : (
-        /* 4. Main App (Home / Chats / Bible / Profile) with Floating Nav Bar */
+        /* 3. Main App (Home / Chats / Bible / Profile) with 4-Tab Floating Nav Bar */
         <View style={styles.mainContainer}>
           <StatusBar barStyle="dark-content" backgroundColor="#F6F6F6" />
 
@@ -95,6 +83,16 @@ export default function App() {
                 setSelectedApostle(apostle);
                 setCurrentView('chat');
               }}
+            />
+          )}
+
+          {activeNavTab === 'chats' && (
+            <ChatListScreen
+              onSelectConversation={(apostle) => {
+                setSelectedApostle(apostle);
+                setCurrentView('chat');
+              }}
+              onBack={() => setActiveNavTab('home')}
             />
           )}
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, FlatList } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { APOSTLE_PERSONAS } from '../services/personas';
 import { DAILY_SCRIPTURE_FEATURED } from '../services/bibleData';
@@ -8,6 +9,7 @@ import { ApostlePersona, BibleVerse } from '../types';
 import { ApostleCard } from '../components/ApostleCard';
 import { DailyScriptureCard } from '../components/DailyScriptureCard';
 import { ScriptureDetailModal } from '../components/ScriptureDetailModal';
+import { NotificationsModal } from '../components/NotificationsModal';
 import { SpringConfigs } from '../theme/animations';
 
 interface HomeScreenProps {
@@ -17,6 +19,7 @@ interface HomeScreenProps {
 export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
   const [activeTab, setActiveTab] = useState<'forYou' | 'disciples'>('forYou');
   const [selectedVerse, setSelectedVerse] = useState<BibleVerse | null>(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const tabIndicatorOffset = useSharedValue(0);
 
@@ -41,7 +44,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top Header with Tabs & Top Red Indicator Bar */}
+      {/* Top Header with Tabs & Notification Icon on Top-Right */}
       <View style={styles.header}>
         <View style={styles.tabsContainer}>
           {/* Gliding Top Red Line positioned Above the Active Tab */}
@@ -69,6 +72,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* Working Notification Bell on Top Right Corner */}
+        <TouchableOpacity
+          style={styles.notificationBtn}
+          onPress={() => setNotificationsOpen(true)}
+          activeOpacity={0.75}
+        >
+          <Ionicons name="notifications-outline" size={23} color="#111111" />
+          <View style={styles.notificationBadgeDot} />
+        </TouchableOpacity>
       </View>
 
       {/* Main Tab Content */}
@@ -135,6 +148,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
           onClose={() => setSelectedVerse(null)}
         />
       )}
+
+      {/* Notifications Modal */}
+      <NotificationsModal
+        visible={notificationsOpen}
+        onClose={() => setNotificationsOpen(false)}
+      />
     </SafeAreaView>
   );
 };
@@ -145,9 +164,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F3F5',
   },
   header: {
-    paddingHorizontal: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 16,
+    paddingBottom: 8,
   },
   tabsContainer: {
     flexDirection: 'row',
@@ -166,6 +188,7 @@ const styles = StyleSheet.create({
   },
   tabButton: {
     paddingRight: 24,
+    paddingVertical: 4,
   },
   tabText: {
     fontFamily: Typography.fontSerif,
@@ -175,32 +198,55 @@ const styles = StyleSheet.create({
     color: '#111111',
   },
   tabTextInactive: {
-    color: '#A3A3A8',
+    color: '#A0A0A5',
+  },
+  notificationBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E6E6EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  notificationBadgeDot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
   },
   content: {
     flex: 1,
   },
   contentContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+    paddingTop: 12,
     paddingBottom: 110,
   },
   sectionHeading: {
     fontFamily: Typography.fontSerif,
-    fontSize: 27,
+    fontSize: 28,
     color: '#111111',
-    marginTop: 10,
+    marginTop: 22,
     marginBottom: 16,
+    paddingHorizontal: 4,
   },
   gridRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   columnWrapper: {
     justifyContent: 'space-between',
+    paddingHorizontal: 16,
   },
   disciplesListContent: {
-    paddingHorizontal: 20,
+    paddingTop: 16,
     paddingBottom: 110,
-  }
+  },
 });
