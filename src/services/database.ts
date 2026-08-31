@@ -267,3 +267,19 @@ export const saveUserProfile = async (profile: UserProfile): Promise<void> => {
     }
   }
 };
+
+export const clearChatHistory = async (): Promise<void> => {
+  memoryConversations = [];
+  memoryMessages = {};
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync('DELETE FROM messages');
+      await db.runAsync('DELETE FROM conversations');
+    } catch (e) {
+      console.warn('clearChatHistory SQLite error:', e);
+    }
+  }
+};
+
+

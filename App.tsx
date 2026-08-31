@@ -98,7 +98,14 @@ export default function App() {
 
           {activeNavTab === 'bible' && <BibleReaderScreen />}
 
-          {activeNavTab === 'profile' && <ProfileScreen />}
+          {activeNavTab === 'profile' && (
+            <ProfileScreen
+              onLogout={() => {
+                setHasCompletedOnboarding(false);
+                setActiveNavTab('home');
+              }}
+            />
+          )}
 
           {/* Floating Bottom Nav Bar */}
           <FloatingNavBar
