@@ -3,8 +3,9 @@ import { buildCompanionSystemPrompt, detectConversationMode, UserProfileMemory }
 
 const GROQ_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY || '';
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const PRIMARY_MODEL = 'llama-3.3-70b-versatile';
-const FALLBACK_MODEL = 'llama-3.1-8b-instant';
+const PRIMARY_MODEL = 'qwen/qwen3.8-27b';
+const FALLBACK_MODEL_1 = 'qwen/qwen3.6-27b';
+const FALLBACK_MODEL_2 = 'openai/gpt-oss-120b';
 
 export type UserProfileContext = UserProfileMemory;
 
@@ -46,10 +47,11 @@ export const generateApostleReply = async (
     // 4. Append current user message
     messages.push({ role: 'user', content: userPrompt });
 
-    // Dynamic max_tokens depending on mode (short for greetings, natural for discussion)
-    const maxTokens = mode === 'greeting' ? 60 : mode === 'casual' ? 120 : 280;
+    // Dynamic max_tokens depending on mode (short for greetings, expressive for discussions)
+    const maxTokens = mode === 'greeting' ? 60 : mode === 'casual' ? 140 : 350;
 
-    const response = await fetch(GROQ_API_URL, {
+    // Try Primary Model: Qwen 3.8 27B
+    let response = await fetch(GROQ_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -58,56 +60,122 @@ export const generateApostleReply = async (
       body: JSON.stringify({
         model: PRIMARY_MODEL,
         messages: messages,
-        temperature: 0.72,
+        temperature: 0.75,
         max_tokens: maxTokens,
         top_p: 0.92,
         stream: false
       })
     });
 
+    // Try Fallback Model 1: Qwen 3.6 27B
     if (!response.ok) {
-      // Fallback model retry
-      const fallbackResponse = await fetch(GROQ_API_URL, {
+      response = await fetch(GROQ_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${GROQ_API_KEY}`
         },
         body: JSON.stringify({
-          model: FALLBACK_MODEL,
+          model: FALLBACK_MODEL_1,
           messages: messages,
-          temperature: 0.72,
+          temperature: 0.75,
           max_tokens: maxTokens,
           top_p: 0.92,
           stream: false
         })
       });
+    }
 
-      if (!fallbackResponse.ok) {
-        throw new Error(`Groq API returned status ${fallbackResponse.status}`);
-      }
+    // Try Fallback Model 2: GPT-OSS 120B
+    if (!response.ok) {
+      response = await fetch(GROQ_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${GROQ_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: FALLBACK_MODEL_2,
+          messages: messages,
+          temperature: 0.75,
+          max_tokens: maxTokens,
+          top_p: 0.92,
+          stream: false
+        })
+      });
+    }
 
-      const fallbackData = await fallbackResponse.json();
-      return cleanReply(fallbackData.choices?.[0]?.message?.content || '');
+    if (!response.ok) {
+      throw new Error(`Groq API error status: ${response.status}`);
     }
 
     const data = await response.json();
-    return cleanReply(data.choices?.[0]?.message?.content || '');
+    const rawContent = data.choices?.[0]?.message?.content || '';
+    if (!rawContent.trim()) {
+      return getPersonaSpecificFallback(persona, userPrompt, userProfile);
+    }
+
+    return cleanReply(rawContent);
   } catch (error) {
     console.error('Groq AI generation error:', error);
-    if (userPrompt.trim().toLowerCase() === 'hi' || userPrompt.trim().toLowerCase() === 'hello') {
-      return `Peace be with you, ${userProfile?.fullName || 'my friend'}! How are you feeling today?`;
-    }
-    return `Peace and grace be with you. I am reflecting on your words. What is on your heart today?`;
+    return getPersonaSpecificFallback(persona, userPrompt, userProfile);
   }
 };
 
 /**
- * Remove artificial formatting, unnecessary leading/trailing quotes or hyphens
+ * Character-specific, personalized fallback responses (Never generic!)
+ */
+const getPersonaSpecificFallback = (
+  persona: ApostlePersona,
+  userPrompt: string,
+  userProfile?: UserProfileContext
+): string => {
+  const name = userProfile?.fullName ? `, ${userProfile.fullName}` : '';
+  const lower = userPrompt.trim().toLowerCase();
+
+  if (lower === 'hi' || lower === 'hello' || lower === 'hey') {
+    switch (persona.id) {
+      case 'peter':
+        return `Peace to you${name}! Simon Peter here. How are you holding up today?`;
+      case 'john':
+        return `Peace and grace be with you${name}. I am John. How is your heart resting today?`;
+      case 'paul':
+        return `Grace and peace to you in Christ${name}! What is on your mind today?`;
+      case 'thomas':
+        return `Peace be with you${name}. I am Thomas. What questions or thoughts are with you today?`;
+      case 'matthew':
+        return `Peace to you${name}! Levi Matthew here. What is on your mind today?`;
+      default:
+        return `Peace and grace be with you${name}! I am ${persona.name}. What is on your heart today?`;
+    }
+  }
+
+  switch (persona.id) {
+    case 'peter':
+      return `I know what it feels like to stumble and think all is lost. But the Lord pulled me from the deep waters and met me by the shore with forgiveness. Tell me what is weighing on you right now.`;
+    case 'john':
+      return `Beloved, remember that perfect love casts out fear. You do not walk alone; His light shines brightest in our quietest moments. What are you facing today?`;
+    case 'paul':
+      return `I was once the foremost of sinners, yet Christ showed me that His grace is made perfect in our weakness. Whatever struggle you face, His mercy is greater. Tell me more.`;
+    case 'thomas':
+      return `Do not be afraid to bring your deepest questions or doubts. The Master reached out to me with patience when I needed to see His wounds. What is on your spirit?`;
+    case 'matthew':
+      return `I was sitting at the tax booth when Jesus called me, seeing past what the world saw. He meets us right in the middle of our ordinary days. What is going on?`;
+    default:
+      return `Peace be with you. In every season, Christ invites us to cast our burdens on Him. Tell me what is on your heart.`;
+  }
+};
+
+/**
+ * Remove artificial formatting, unnecessary leading/trailing quotes
  */
 const cleanReply = (text: string): string => {
   let cleaned = text.trim();
-  // Remove wrapping quotes if the model wrapped the whole response
+  // Strip <think> tags if model produced reasoning
+  if (cleaned.includes('</think>')) {
+    cleaned = cleaned.split('</think>')[1].trim();
+  }
+  // Remove wrapping quotes
   if ((cleaned.startsWith('"') && cleaned.endsWith('"')) || (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
     cleaned = cleaned.substring(1, cleaned.length - 1).trim();
   }
