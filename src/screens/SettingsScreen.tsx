@@ -701,10 +701,35 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </View>
 
           <ScrollView contentContainerStyle={styles.modalContent}>
+            {/* 1. Theological Grounding */}
             <View style={styles.previewBox}>
-              <Text style={[styles.sectionHeading, { fontSize: 16, marginBottom: 8 }]}>Theological Grounding</Text>
+              <Text style={[styles.sectionHeading, { fontSize: 15, marginBottom: 6, marginTop: 0 }]}>Theological Grounding</Text>
               <Text style={styles.previewVerse}>
-                BibleChat connects you with the wisdom of the Apostles through faithful biblical scholarship and thoughtful AI conversational design. All Scripture references are grounded in the historical biblical text.
+                BibleChat connects you with the wisdom of the Apostles through faithful biblical scholarship and thoughtful AI conversational design. All Scripture citations are grounded in the historical biblical text.
+              </Text>
+            </View>
+
+            {/* 2. AI Processing & Third-Party Disclosure (Apple 2026 AI Guideline) */}
+            <View style={styles.previewBox}>
+              <Text style={[styles.sectionHeading, { fontSize: 15, marginBottom: 6, marginTop: 0 }]}>AI Processing Transparency</Text>
+              <Text style={styles.previewVerse}>
+                Conversational companion responses are generated using secure server-side neural models. Your queries are encrypted in transit and never used to train public commercial AI models.
+              </Text>
+            </View>
+
+            {/* 3. Account Deletion & 90-Day Recovery Policy (Apple Guideline 5.1.1(v)) */}
+            <View style={styles.previewBox}>
+              <Text style={[styles.sectionHeading, { fontSize: 15, marginBottom: 6, marginTop: 0 }]}>90-Day Account Recovery Policy</Text>
+              <Text style={styles.previewVerse}>
+                When you delete your account, your local chats are wiped immediately. Your cloud profile is retained in a dormant state for 90 days. If you return within 90 days, you can restore your spiritual progress via verified email OTP. After 90 days, all cloud records are permanently destroyed.
+              </Text>
+            </View>
+
+            {/* 4. Terms of Service & Privacy Statement */}
+            <View style={styles.previewBox}>
+              <Text style={[styles.sectionHeading, { fontSize: 15, marginBottom: 6, marginTop: 0 }]}>Privacy & Terms of Service</Text>
+              <Text style={styles.previewVerse}>
+                By using BibleChat, you agree that this application is designed for spiritual companion reflection, bible study, and devotional growth. It does not replace professional pastoral counseling or medical care.
               </Text>
             </View>
           </ScrollView>

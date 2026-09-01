@@ -365,7 +365,29 @@ export const getUserAuthProvider = async (): Promise<{ provider: 'google' | 'ema
   }
 };
 
-// Delete User Account (Apple App Store Guideline 5.1.1(v))
+// 90-Day Soft-Delete (Grace Period Cooling Off) & Immediate Hard Purge
+export const softDeleteUserAccount = async (): Promise<{ error: Error | null }> => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const now = new Date();
+      const purgeDate = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000); // 90 days
+
+      await supabase.from('profiles').update({
+        is_deleted: true,
+        deleted_at: now.toISOString(),
+        purge_scheduled_at: purgeDate.toISOString()
+      }).eq('id', user.id);
+
+      await supabase.auth.signOut();
+    }
+    return { error: null };
+  } catch (err: any) {
+    return { error: err };
+  }
+};
+
+// Immediate Hard Delete (Apple Guideline 5.1.1(v))
 export const deleteUserAccount = async (): Promise<{ error: Error | null }> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -376,6 +398,21 @@ export const deleteUserAccount = async (): Promise<{ error: Error | null }> => {
     return { error: null };
   } catch (err: any) {
     return { error: err };
+  }
+};
+
+// Restore a soft-deleted account upon verified sign-in/OTP
+export const restoreSoftDeletedAccount = async (userId: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase.from('profiles').update({
+      is_deleted: false,
+      deleted_at: null,
+      purge_scheduled_at: null
+    }).eq('id', userId);
+
+    return !error;
+  } catch (e) {
+    return false;
   }
 };
 
