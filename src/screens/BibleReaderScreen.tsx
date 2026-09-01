@@ -17,6 +17,7 @@ import { fetchChapter, BibleChapterData, ALL_BIBLE_BOOKS } from '../services/bib
 import { BibleBookPickerModal } from '../components/BibleBookPickerModal';
 import { BibleVersionsModal } from '../components/BibleVersionsModal';
 import { saveBookmark } from '../services/database';
+import { playDeepgramSpeech, stopDeepgramSpeech } from '../services/deepgramVoices';
 
 interface BibleReaderScreenProps {
   onAskApostleWithVerse?: (verseText: string, reference: string) => void;
@@ -38,6 +39,9 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ onAskApost
 
   useEffect(() => {
     loadChapterData(currentBook, currentChapter, translation);
+    return () => {
+      stopDeepgramSpeech();
+    };
   }, [currentBook, currentChapter, translation]);
 
   const loadChapterData = async (b: string, c: number, t: string) => {
@@ -142,6 +146,25 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ onAskApost
     else setTranslation('NIV');
   };
 
+  const handleToggleAudioNarration = async () => {
+    if (isPlayingAudio) {
+      await stopDeepgramSpeech();
+      setIsPlayingAudio(false);
+    } else {
+      if (!chapterData || !chapterData.verses || chapterData.verses.length === 0) return;
+      const fullChapterText = `${chapterData.book} Chapter ${chapterData.chapter}. ` +
+        chapterData.verses.map(v => `${v.verseNumber}. ${v.text}`).join(' ');
+      setIsPlayingAudio(true);
+      await playDeepgramSpeech(
+        `bible_${chapterData.book}_${chapterData.chapter}_${translation}`,
+        fullChapterText,
+        'narrator',
+        () => setIsPlayingAudio(true),
+        () => setIsPlayingAudio(false)
+      );
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Top YouVersion-style Header Bar */}
@@ -149,7 +172,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ onAskApost
         <View style={styles.topHeaderLeft}>
           <TouchableOpacity
             style={styles.headerIconBtn}
-            onPress={() => setIsPlayingAudio(!isPlayingAudio)}
+            onPress={handleToggleAudioNarration}
             activeOpacity={0.7}
           >
             <Ionicons

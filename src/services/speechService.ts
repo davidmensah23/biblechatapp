@@ -1,9 +1,9 @@
+import { playDeepgramSpeech, stopDeepgramSpeech } from './deepgramVoices';
+
 let Speech: any = null;
 try {
   Speech = require('expo-speech');
-} catch (e) {
-  console.log('expo-speech module not yet linked in local runtime, using fallback');
-}
+} catch (e) {}
 
 let isSpeakingGlobal = false;
 let currentSpeakingId: string | null = null;
@@ -16,51 +16,66 @@ export const speakApostleMessage = async (
   onDone?: () => void
 ): Promise<void> => {
   if (currentSpeakingId === messageId && isSpeakingGlobal) {
-    stopApostleSpeech();
+    await stopApostleSpeech();
     if (onDone) onDone();
     return;
   }
 
-  stopApostleSpeech();
-
-  if (!Speech || !Speech.speak) {
-    if (onStart) onStart();
-    setTimeout(() => {
-      if (onDone) onDone();
-    }, 2000);
-    return;
-  }
-
+  await stopApostleSpeech();
   isSpeakingGlobal = true;
   currentSpeakingId = messageId;
   if (onStart) onStart();
 
-  const pitch = apostleId === 'john' ? 0.95 : apostleId === 'peter' ? 1.05 : 1.0;
-  const rate = apostleId === 'john' ? 0.9 : apostleId === 'peter' ? 1.05 : 0.95;
+  try {
+    // 1. Primary: High-Fidelity Deepgram Aura Character Voice
+    await playDeepgramSpeech(
+      messageId,
+      text,
+      apostleId,
+      () => {
+        if (onStart) onStart();
+      },
+      () => {
+        isSpeakingGlobal = false;
+        currentSpeakingId = null;
+        if (onDone) onDone();
+      }
+    );
+  } catch (e) {
+    console.warn('Deepgram TTS failed, using fallback TTS:', e);
 
-  Speech.speak(text, {
-    language: 'en-US',
-    pitch: pitch,
-    rate: rate,
-    onDone: () => {
-      isSpeakingGlobal = false;
-      currentSpeakingId = null;
-      if (onDone) onDone();
-    },
-    onStopped: () => {
-      isSpeakingGlobal = false;
-      currentSpeakingId = null;
-      if (onDone) onDone();
-    },
-    onError: () => {
-      isSpeakingGlobal = false;
-      currentSpeakingId = null;
-      if (onDone) onDone();
+    // 2. Fallback: On-Device Speech
+    if (Speech && Speech.speak) {
+      Speech.speak(text, {
+        language: 'en-US',
+        onDone: () => {
+          isSpeakingGlobal = false;
+          currentSpeakingId = null;
+          if (onDone) onDone();
+        },
+        onStopped: () => {
+          isSpeakingGlobal = false;
+          currentSpeakingId = null;
+          if (onDone) onDone();
+        },
+        onError: () => {
+          isSpeakingGlobal = false;
+          currentSpeakingId = null;
+          if (onDone) onDone();
+        }
+      });
+    } else {
+      setTimeout(() => {
+        isSpeakingGlobal = false;
+        currentSpeakingId = null;
+        if (onDone) onDone();
+      }, 3000);
     }
-  });
+  }
 };
 
-export const stopApostleSpeech = () => {
+export const stopApostleSpeech = async () => {
+  await stopDeepgramSpeech();
   if (Speech && Speech.stop) {
     try {
       Speech.stop();
