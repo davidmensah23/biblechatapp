@@ -7,8 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  TextInput,
-  Alert
+  TextInput
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
@@ -21,6 +20,8 @@ import { getSpiritualGrowthProfile, SpiritualGrowthProfile, FaithBadge } from '.
 import { HoldToExplodeBadge } from '../components/HoldToExplodeBadge';
 import { ShareMilestoneModal } from '../components/ShareMilestoneModal';
 import { StreaksJourneyView } from '../components/StreaksJourneyView';
+import { ArmorOfGodView } from '../components/ArmorOfGodView';
+import { CustomActionModal } from '../components/CustomActionModal';
 import { triggerInstantMilestonePush } from '../services/pushNotificationService';
 
 interface ProfileScreenProps {
@@ -36,7 +37,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onSelectApostle,
   onOpenBible
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'streaks' | 'badges' | 'bookmarks' | 'edit'>('streaks');
+  const [activeSubTab, setActiveSubTab] = useState<'armor' | 'streaks' | 'badges' | 'bookmarks' | 'edit'>('armor');
   const [bookmarks, setBookmarks] = useState<SavedBookmark[]>([]);
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [authProvider, setAuthProvider] = useState<'google' | 'email' | 'guest'>('guest');
@@ -45,6 +46,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [avatarSeedOffset, setAvatarSeedOffset] = useState<number>(0);
   const [growthProfile, setGrowthProfile] = useState<SpiritualGrowthProfile | null>(null);
   const [celebratingBadge, setCelebratingBadge] = useState<FaithBadge | null>(null);
+  const [showSavedModal, setShowSavedModal] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -84,7 +86,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         await updateRemoteProfile(user.id, profile);
       }
     } catch (e) {}
-    Alert.alert('Saved', 'Profile changes saved successfully!');
+    setShowSavedModal(true);
   };
 
   const handleRemoveBookmark = async (id: string) => {
@@ -247,15 +249,29 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </View>
         )}
 
-        {/* 4 Clean Sub-Tabs */}
+        {/* 5 Navigation Sub-Tabs */}
         <View style={styles.subTabsRow}>
+          <TouchableOpacity
+            style={[styles.subTabButton, activeSubTab === 'armor' && styles.subTabButtonActive]}
+            onPress={() => setActiveSubTab('armor')}
+          >
+            <Ionicons
+              name={activeSubTab === 'armor' ? 'shield' : 'shield-outline'}
+              size={16}
+              color={activeSubTab === 'armor' ? '#2563EB' : '#888888'}
+            />
+            <Text style={[styles.subTabLabel, activeSubTab === 'armor' && styles.subTabLabelActive]}>
+              Armor
+            </Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={[styles.subTabButton, activeSubTab === 'streaks' && styles.subTabButtonActive]}
             onPress={() => setActiveSubTab('streaks')}
           >
             <Ionicons
               name={activeSubTab === 'streaks' ? 'flame' : 'flame-outline'}
-              size={17}
+              size={16}
               color={activeSubTab === 'streaks' ? '#D97706' : '#888888'}
             />
             <Text style={[styles.subTabLabel, activeSubTab === 'streaks' && styles.subTabLabelActive]}>
@@ -269,7 +285,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           >
             <Ionicons
               name={activeSubTab === 'badges' ? 'ribbon' : 'ribbon-outline'}
-              size={17}
+              size={16}
               color={activeSubTab === 'badges' ? '#7C3AED' : '#888888'}
             />
             <Text style={[styles.subTabLabel, activeSubTab === 'badges' && styles.subTabLabelActive]}>
@@ -283,8 +299,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           >
             <Ionicons
               name={activeSubTab === 'bookmarks' ? 'bookmark' : 'bookmark-outline'}
-              size={17}
-              color={activeSubTab === 'bookmarks' ? '#2563EB' : '#888888'}
+              size={16}
+              color={activeSubTab === 'bookmarks' ? '#059669' : '#888888'}
             />
             <Text style={[styles.subTabLabel, activeSubTab === 'bookmarks' && styles.subTabLabelActive]}>
               Saved
@@ -297,7 +313,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           >
             <Ionicons
               name={activeSubTab === 'edit' ? 'person' : 'person-outline'}
-              size={17}
+              size={16}
               color={activeSubTab === 'edit' ? '#111111' : '#888888'}
             />
             <Text style={[styles.subTabLabel, activeSubTab === 'edit' && styles.subTabLabelActive]}>
@@ -306,15 +322,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Tab 1: Streaks & Journey */}
-        {activeSubTab === 'streaks' && growthProfile ? (
+        {/* Tab 1: Armor of God & Biblical Odyssey */}
+        {activeSubTab === 'armor' ? (
+          <ArmorOfGodView />
+        ) : activeSubTab === 'streaks' && growthProfile ? (
+          /* Tab 2: Streaks & Journey */
           <StreaksJourneyView
             growthProfile={growthProfile}
             onSelectApostle={onSelectApostle}
             onOpenBible={onOpenBible}
           />
         ) : activeSubTab === 'badges' && growthProfile ? (
-          /* Tab 2: Badges with Hold-to-Explode Physics */
+          /* Tab 3: Badges with Hold-to-Explode Physics */
           <View style={styles.badgesList}>
             <Text style={styles.holdInstruction}>
               💡 Press and hold any unlocked badge to explode in celebration!
@@ -328,7 +347,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             ))}
           </View>
         ) : activeSubTab === 'bookmarks' ? (
-          /* Tab 3: Saved Bookmarks */
+          /* Tab 4: Saved Bookmarks */
           <View style={styles.bookmarksContainer}>
             {bookmarks.length === 0 ? (
               <View style={styles.emptyBookmarks}>
@@ -352,7 +371,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             )}
           </View>
         ) : (
-          /* Tab 4: Edit Profile */
+          /* Tab 5: Edit Profile */
           <View style={styles.formContainer}>
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Full Name</Text>
@@ -406,6 +425,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           onClose={() => setCelebratingBadge(null)}
         />
       )}
+
+      {/* In-App Saved Confirmation Modal */}
+      <CustomActionModal
+        visible={showSavedModal}
+        type="confirm"
+        title="Changes Saved"
+        message="Your profile updates and faith bio have been saved successfully."
+        confirmText="Done"
+        cancelText="Close"
+        onConfirm={() => setShowSavedModal(false)}
+        onClose={() => setShowSavedModal(false)}
+      />
 
       {/* Settings Modal */}
       {showSettingsModal && (
@@ -681,7 +712,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 9,
     borderRadius: 13,
-    gap: 4,
+    gap: 3,
   },
   subTabButtonActive: {
     backgroundColor: '#FFFFFF',
@@ -693,7 +724,7 @@ const styles = StyleSheet.create({
   },
   subTabLabel: {
     fontFamily: Typography.fontSansMedium,
-    fontSize: 12,
+    fontSize: 11.5,
     color: '#6B7280',
   },
   subTabLabelActive: {
