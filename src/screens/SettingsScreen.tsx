@@ -36,6 +36,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
   // Auth provider info
   const [authInfo, setAuthInfo] = useState<{ provider: 'google' | 'email' | 'guest'; email?: string }>({ provider: 'guest' });
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
@@ -66,21 +67,26 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   };
 
   const handleChangePassword = async () => {
+    if (!currentPassword) {
+      Alert.alert('Current Password Required', 'Please enter your current password to verify your identity.');
+      return;
+    }
     if (!newPassword || newPassword.length < 6) {
-      Alert.alert('Password Length', 'Password must be at least 6 characters.');
+      Alert.alert('Password Length', 'New password must be at least 6 characters.');
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert('Mismatch', 'Passwords do not match.');
+      Alert.alert('Mismatch', 'New passwords do not match.');
       return;
     }
     setPasswordLoading(true);
     try {
-      const { error } = await updateUserPassword(newPassword);
+      const { error } = await updateUserPassword(newPassword, currentPassword);
       if (error) {
         Alert.alert('Error', error.message);
       } else {
         Alert.alert('Success', 'Your password has been changed successfully.');
+        setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
         setActiveSubModal('Account');
@@ -682,6 +688,18 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
           <ScrollView contentContainerStyle={styles.modalContent}>
             <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Current Password</Text>
+              <TextInput
+                style={styles.inputField}
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                placeholder="Enter current password"
+                secureTextEntry
+                autoFocus
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>New Password</Text>
               <TextInput
                 style={styles.inputField}
@@ -689,7 +707,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 onChangeText={setNewPassword}
                 placeholder="At least 6 characters"
                 secureTextEntry
-                autoFocus
               />
             </View>
 

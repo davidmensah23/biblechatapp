@@ -205,12 +205,16 @@ export const sendPasswordReset = async (email: string): Promise<{ error: Error |
   }
 };
 
-// Update User Password (after recovery OTP or in settings)
-export const updateUserPassword = async (newPassword: string): Promise<{ error: Error | null }> => {
+// Update User Password (after recovery OTP or in settings with optional current password)
+export const updateUserPassword = async (
+  newPassword: string,
+  currentPassword?: string
+): Promise<{ error: Error | null }> => {
   try {
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword
-    });
+    const { error } = await supabase.auth.updateUser(
+      { password: newPassword },
+      currentPassword ? { currentPassword } : undefined
+    );
     if (error) throw error;
     return { error: null };
   } catch (err: any) {
