@@ -20,6 +20,7 @@ import { CircularRevealTransition } from './src/components/CircularRevealTransit
 import { ApostlePersona } from './src/types';
 import { getDB, saveUserProfile, migrateGuestDataToUser } from './src/services/database';
 import { supabase, fetchRemoteProfile, signOutUser, handleAuthDeepLink } from './src/services/supabase';
+import { initializePushNotifications } from './src/services/pushNotificationService';
 import * as Linking from 'expo-linking';
 import { Modal } from 'react-native';
 
@@ -52,8 +53,9 @@ export default function App() {
   const [forceRender, setForceRender] = useState<boolean>(false);
 
   useEffect(() => {
-    // Initialize Database
+    // Initialize Database & Native OS Push Notifications
     getDB().catch(console.error);
+    initializePushNotifications().catch(console.error);
 
     // Handle deep links when app opens from 1-click email confirmation or OAuth redirect
     Linking.getInitialURL().then((url) => {
@@ -192,6 +194,8 @@ export default function App() {
             <ProfileScreen
               onLogout={handleLogout}
               onOpenAuthModal={() => setShowAuthModal(true)}
+              onSelectApostle={() => setActiveNavTab('home')}
+              onOpenBible={() => setActiveNavTab('bible')}
             />
           )}
 

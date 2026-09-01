@@ -18,14 +18,25 @@ import { SavedBookmark, UserProfile } from '../types';
 import { SettingsScreen } from './SettingsScreen';
 import { getUserAvatarUrl, AvatarStyle, AVATAR_STYLE_OPTIONS } from '../services/avatarService';
 import { getSpiritualGrowthProfile, SpiritualGrowthProfile, FaithBadge } from '../services/gamificationService';
+import { HoldToExplodeBadge } from '../components/HoldToExplodeBadge';
+import { ShareMilestoneModal } from '../components/ShareMilestoneModal';
+import { StreaksJourneyView } from '../components/StreaksJourneyView';
+import { triggerInstantMilestonePush } from '../services/pushNotificationService';
 
 interface ProfileScreenProps {
   onLogout?: () => void;
   onOpenAuthModal?: () => void;
+  onSelectApostle?: () => void;
+  onOpenBible?: () => void;
 }
 
-export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAuthModal }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'growth' | 'bookmarks' | 'edit'>('growth');
+export const ProfileScreen: React.FC<ProfileScreenProps> = ({
+  onLogout,
+  onOpenAuthModal,
+  onSelectApostle,
+  onOpenBible
+}) => {
+  const [activeSubTab, setActiveSubTab] = useState<'streaks' | 'badges' | 'bookmarks' | 'edit'>('streaks');
   const [bookmarks, setBookmarks] = useState<SavedBookmark[]>([]);
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [authProvider, setAuthProvider] = useState<'google' | 'email' | 'guest'>('guest');
@@ -33,6 +44,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAu
   const [avatarStyle, setAvatarStyle] = useState<AvatarStyle>('notionists');
   const [avatarSeedOffset, setAvatarSeedOffset] = useState<number>(0);
   const [growthProfile, setGrowthProfile] = useState<SpiritualGrowthProfile | null>(null);
+  const [celebratingBadge, setCelebratingBadge] = useState<FaithBadge | null>(null);
 
   useEffect(() => {
     loadData();
@@ -88,6 +100,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAu
 
   const handleShuffleAvatarSeed = () => {
     setAvatarSeedOffset(prev => prev + 1);
+  };
+
+  const handleBadgeExploded = (badge: FaithBadge) => {
+    setCelebratingBadge(badge);
+    triggerInstantMilestonePush(
+      `🎉 Milestone Unlocked: ${badge.title}`,
+      `"${badge.subtitle}" — +${badge.xpReward} Grace XP added to your faith journey!`
+    );
   };
 
   const currentSeed = `${profile.fullName || profile.email || 'Disciple'}${avatarSeedOffset > 0 ? `_${avatarSeedOffset}` : ''}`;
@@ -177,25 +197,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAu
           </View>
         </View>
 
-        {/* Daily Walking Streak Hearth Banner */}
-        {growthProfile && (
-          <View style={styles.streakCard}>
-            <View style={styles.streakHeader}>
-              <View style={styles.streakFlameIcon}>
-                <Ionicons name="flame" size={20} color="#F59E0B" />
-              </View>
-              <View style={styles.streakTextWrap}>
-                <Text style={styles.streakDaysText}>
-                  {growthProfile.streakDays} Day Walking Streak
-                </Text>
-                <Text style={styles.streakSubText}>
-                  Walking daily in truth and fellowship with the Apostles
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
-
         {/* Spiritual Maturity Level & Grace XP Card */}
         {growthProfile && (
           <View style={styles.levelCard}>
@@ -229,13 +230,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAu
             {/* Key Growth Stats Row */}
             <View style={styles.statsRow}>
               <View style={styles.statBox}>
-                <Text style={styles.statValue}>{growthProfile.conversationsCount}</Text>
-                <Text style={styles.statLabel}>Conversations</Text>
+                <Text style={styles.statValue}>{growthProfile.streakDays}</Text>
+                <Text style={styles.statLabel}>Day Streak</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statBox}>
-                <Text style={styles.statValue}>{growthProfile.chaptersReadCount}</Text>
-                <Text style={styles.statLabel}>Chapters Read</Text>
+                <Text style={styles.statValue}>{growthProfile.conversationsCount}</Text>
+                <Text style={styles.statLabel}>Conversations</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statBox}>
@@ -246,19 +247,33 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAu
           </View>
         )}
 
-        {/* Sub Tab Switcher */}
+        {/* 4 Clean Sub-Tabs */}
         <View style={styles.subTabsRow}>
           <TouchableOpacity
-            style={[styles.subTabButton, activeSubTab === 'growth' && styles.subTabButtonActive]}
-            onPress={() => setActiveSubTab('growth')}
+            style={[styles.subTabButton, activeSubTab === 'streaks' && styles.subTabButtonActive]}
+            onPress={() => setActiveSubTab('streaks')}
           >
             <Ionicons
-              name={activeSubTab === 'growth' ? 'ribbon' : 'ribbon-outline'}
-              size={20}
-              color={activeSubTab === 'growth' ? '#111111' : '#888888'}
+              name={activeSubTab === 'streaks' ? 'flame' : 'flame-outline'}
+              size={17}
+              color={activeSubTab === 'streaks' ? '#D97706' : '#888888'}
             />
-            <Text style={[styles.subTabLabel, activeSubTab === 'growth' && styles.subTabLabelActive]}>
-              Milestones
+            <Text style={[styles.subTabLabel, activeSubTab === 'streaks' && styles.subTabLabelActive]}>
+              Streaks
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.subTabButton, activeSubTab === 'badges' && styles.subTabButtonActive]}
+            onPress={() => setActiveSubTab('badges')}
+          >
+            <Ionicons
+              name={activeSubTab === 'badges' ? 'ribbon' : 'ribbon-outline'}
+              size={17}
+              color={activeSubTab === 'badges' ? '#7C3AED' : '#888888'}
+            />
+            <Text style={[styles.subTabLabel, activeSubTab === 'badges' && styles.subTabLabelActive]}>
+              Badges
             </Text>
           </TouchableOpacity>
 
@@ -268,8 +283,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAu
           >
             <Ionicons
               name={activeSubTab === 'bookmarks' ? 'bookmark' : 'bookmark-outline'}
-              size={20}
-              color={activeSubTab === 'bookmarks' ? '#111111' : '#888888'}
+              size={17}
+              color={activeSubTab === 'bookmarks' ? '#2563EB' : '#888888'}
             />
             <Text style={[styles.subTabLabel, activeSubTab === 'bookmarks' && styles.subTabLabelActive]}>
               Saved
@@ -282,7 +297,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAu
           >
             <Ionicons
               name={activeSubTab === 'edit' ? 'person' : 'person-outline'}
-              size={20}
+              size={17}
               color={activeSubTab === 'edit' ? '#111111' : '#888888'}
             />
             <Text style={[styles.subTabLabel, activeSubTab === 'edit' && styles.subTabLabelActive]}>
@@ -291,42 +306,29 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAu
           </TouchableOpacity>
         </View>
 
-        {/* Tab 1: Faith Badges & Achievements */}
-        {activeSubTab === 'growth' && growthProfile ? (
-          <View style={styles.badgesGrid}>
+        {/* Tab 1: Streaks & Journey */}
+        {activeSubTab === 'streaks' && growthProfile ? (
+          <StreaksJourneyView
+            growthProfile={growthProfile}
+            onSelectApostle={onSelectApostle}
+            onOpenBible={onOpenBible}
+          />
+        ) : activeSubTab === 'badges' && growthProfile ? (
+          /* Tab 2: Badges with Hold-to-Explode Physics */
+          <View style={styles.badgesList}>
+            <Text style={styles.holdInstruction}>
+              💡 Press and hold any unlocked badge to explode in celebration!
+            </Text>
             {growthProfile.badges.map((badge) => (
-              <View
+              <HoldToExplodeBadge
                 key={badge.id}
-                style={[styles.badgeCard, !badge.isUnlocked && styles.badgeCardLocked]}
-              >
-                <View style={[styles.badgeIconWrap, { backgroundColor: badge.isUnlocked ? `${badge.iconColor}15` : '#E5E7EB' }]}>
-                  <Ionicons
-                    name={badge.iconName as any}
-                    size={24}
-                    color={badge.isUnlocked ? badge.iconColor : '#9CA3AF'}
-                  />
-                </View>
-                <View style={styles.badgeInfo}>
-                  <View style={styles.badgeTitleRow}>
-                    <Text style={[styles.badgeTitle, !badge.isUnlocked && styles.badgeTitleLocked]}>
-                      {badge.title}
-                    </Text>
-                    {badge.isUnlocked ? (
-                      <Ionicons name="checkmark-circle" size={15} color="#059669" />
-                    ) : (
-                      <Ionicons name="lock-closed-outline" size={13} color="#9CA3AF" />
-                    )}
-                  </View>
-                  <Text style={styles.badgeSubtitle} numberOfLines={2}>
-                    {badge.subtitle}
-                  </Text>
-                  <Text style={styles.badgeRewardText}>+{badge.xpReward} Grace XP</Text>
-                </View>
-              </View>
+                badge={badge}
+                onExplode={handleBadgeExploded}
+              />
             ))}
           </View>
         ) : activeSubTab === 'bookmarks' ? (
-          /* Tab 2: Bookmarks */
+          /* Tab 3: Saved Bookmarks */
           <View style={styles.bookmarksContainer}>
             {bookmarks.length === 0 ? (
               <View style={styles.emptyBookmarks}>
@@ -350,7 +352,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAu
             )}
           </View>
         ) : (
-          /* Tab 3: Edit Profile */
+          /* Tab 4: Edit Profile */
           <View style={styles.formContainer}>
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Full Name</Text>
@@ -394,6 +396,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAu
           </View>
         )}
       </ScrollView>
+
+      {/* Share Milestone Modal */}
+      {celebratingBadge && (
+        <ShareMilestoneModal
+          visible={Boolean(celebratingBadge)}
+          badge={celebratingBadge}
+          userName={profile.fullName || 'Beloved Disciple'}
+          onClose={() => setCelebratingBadge(null)}
+        />
+      )}
 
       {/* Settings Modal */}
       {showSettingsModal && (
@@ -569,46 +581,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#2563EB',
   },
-  streakCard: {
-    backgroundColor: '#FFFBEB',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    borderRadius: 18,
-    padding: 14,
-    marginBottom: 14,
-  },
-  streakHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  streakFlameIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#FEF3C7',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  streakTextWrap: {
-    flex: 1,
-  },
-  streakDaysText: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 15,
-    color: '#92400E',
-  },
-  streakSubText: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 12,
-    color: '#B45309',
-    lineHeight: 16,
-  },
   levelCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 16,
-    marginBottom: 18,
+    marginBottom: 16,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -704,7 +681,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 9,
     borderRadius: 13,
-    gap: 6,
+    gap: 4,
   },
   subTabButtonActive: {
     backgroundColor: '#FFFFFF',
@@ -716,61 +693,21 @@ const styles = StyleSheet.create({
   },
   subTabLabel: {
     fontFamily: Typography.fontSansMedium,
-    fontSize: 13,
+    fontSize: 12,
     color: '#6B7280',
   },
   subTabLabelActive: {
     color: '#111827',
   },
-  badgesGrid: {
-    gap: 10,
+  badgesList: {
+    gap: 4,
   },
-  badgeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-  },
-  badgeCardLocked: {
-    opacity: 0.6,
-  },
-  badgeIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  badgeInfo: {
-    flex: 1,
-  },
-  badgeTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 2,
-  },
-  badgeTitle: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 15,
-    color: '#111827',
-  },
-  badgeTitleLocked: {
-    color: '#6B7280',
-  },
-  badgeSubtitle: {
+  holdInstruction: {
     fontFamily: Typography.fontSansRegular,
     fontSize: 12,
     color: '#6B7280',
-    lineHeight: 16,
-    marginBottom: 4,
-  },
-  badgeRewardText: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 11,
-    color: '#7C3AED',
+    textAlign: 'center',
+    marginBottom: 8,
   },
   bookmarksContainer: {
     gap: 10,
