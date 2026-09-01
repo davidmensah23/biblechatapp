@@ -23,6 +23,7 @@ import { supabase, fetchRemoteProfile, signOutUser, handleAuthDeepLink } from '.
 import { initializePushNotifications } from './src/services/pushNotificationService';
 import * as Linking from 'expo-linking';
 import { Modal } from 'react-native';
+import { PrivacyOnboardingModal } from './src/components/PrivacyOnboardingModal';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -51,6 +52,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState<'main' | 'chat'>('main');
   const [selectedApostle, setSelectedApostle] = useState<ApostlePersona | null>(null);
   const [forceRender, setForceRender] = useState<boolean>(false);
+  const [showPrivacyNotice, setShowPrivacyNotice] = useState<boolean>(false);
 
   useEffect(() => {
     // Initialize Database & Native OS Push Notifications
@@ -151,8 +153,14 @@ export default function App() {
         <View style={styles.flexOne}>
           <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
           <AuthScreen
-            onAuthSuccess={() => setAppStage('main')}
-            onSkip={() => setAppStage('main')}
+            onAuthSuccess={() => {
+              setAppStage('main');
+              setShowPrivacyNotice(true);
+            }}
+            onSkip={() => {
+              setAppStage('main');
+              setShowPrivacyNotice(true);
+            }}
           />
         </View>
       ) : currentView === 'chat' && selectedApostle ? (
@@ -215,6 +223,12 @@ export default function App() {
               />
             </View>
           </Modal>
+
+          {/* Post-Onboarding Sacred Privacy Modal */}
+          <PrivacyOnboardingModal
+            visible={showPrivacyNotice}
+            onDismiss={() => setShowPrivacyNotice(false)}
+          />
         </View>
       )}
     </SafeAreaProvider>
