@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import {
   signInWithGoogle,
+  signInWithApple,
   signInWithEmail,
   signUpWithEmail,
   verifyEmailOtp,
@@ -78,6 +79,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
   // Loading States
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
 
   // Refs for 6 OTP input boxes
   const otpInputRefs = useRef<Array<TextInput | null>>([]);
@@ -93,7 +95,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
-  // Google OAuth Sign In
+  // Google Sign In (Native Bottom Sheet + WebBrowser Fallback)
   const handleGoogleAuth = async () => {
     setGoogleLoading(true);
     try {
@@ -107,6 +109,23 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
       Alert.alert('Sign In Error', err?.message || 'An unexpected error occurred.');
     } finally {
       setGoogleLoading(false);
+    }
+  };
+
+  // Apple Sign In (iOS Native Face ID Bottom Sheet)
+  const handleAppleAuth = async () => {
+    setAppleLoading(true);
+    try {
+      const { user, error } = await signInWithApple();
+      if (error) {
+        Alert.alert('Sign In Error', error.message || 'Apple sign in could not be completed.');
+      } else if (user) {
+        onAuthSuccess();
+      }
+    } catch (err: any) {
+      Alert.alert('Sign In Error', err?.message || 'An unexpected error occurred.');
+    } finally {
+      setAppleLoading(false);
     }
   };
 
@@ -350,7 +369,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
                   style={styles.pillButton}
                   onPress={handleGoogleAuth}
                   activeOpacity={0.85}
-                  disabled={googleLoading || loading}
+                  disabled={googleLoading || appleLoading || loading}
                 >
                   {googleLoading ? (
                     <ActivityIndicator size="small" color="#111111" />
@@ -363,6 +382,27 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
                     </>
                   )}
                 </TouchableOpacity>
+
+                {/* Apple Sign In Button (iOS Native Face ID / Touch ID Bottom Sheet) */}
+                {Platform.OS === 'ios' && (
+                  <TouchableOpacity
+                    style={[styles.pillButton, { backgroundColor: '#000000', borderColor: '#000000' }]}
+                    onPress={handleAppleAuth}
+                    activeOpacity={0.85}
+                    disabled={googleLoading || appleLoading || loading}
+                  >
+                    {appleLoading ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
+                        <Text style={[styles.pillButtonText, { color: '#FFFFFF' }]}>
+                          {isSignUp ? 'Sign up with Apple' : 'Sign in with Apple'}
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
 
                 {/* Email Sign In / Sign Up Button */}
                 <TouchableOpacity

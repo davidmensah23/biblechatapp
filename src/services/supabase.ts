@@ -4,6 +4,8 @@ import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import { Platform } from 'react-native';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 import { UserProfile } from '../types';
 
 // Complete auth session if web browser redirect is active
@@ -162,6 +164,54 @@ export const signInWithGoogle = async (): Promise<{ user: any | null; error: Err
   } catch (err: any) {
     console.error('Google Sign In Error:', err);
     return { user: null, error: err };
+  }
+};
+
+// Check if Apple Authentication is available on this device
+export const isAppleAuthAvailable = async (): Promise<boolean> => {
+  if (Platform.OS !== 'ios') return false;
+  try {
+    return await AppleAuthentication.isAvailableAsync();
+  } catch (e) {
+    return false;
+  }
+};
+
+// Native Sign in with Apple (iOS Face ID / Touch ID Bottom Sheet Modal)
+export const signInWithApple = async (): Promise<{ user: any | null; error: Error | null }> => {
+  try {
+    const rawNonce = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const hashedNonce = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      rawNonce
+    );
+
+    const credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [
+        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      ],
+      nonce: hashedNonce,
+    });
+
+    if (credential.identityToken) {
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+        nonce: rawNonce,
+      });
+
+      if (error) throw error;
+      if (data?.user) return { user: data.user, error: null };
+    }
+
+    return { user: null, error: null };
+  } catch (e: any) {
+    if (e?.code === 'ERR_REQUEST_CANCELED') {
+      return { user: null, error: null };
+    }
+    console.warn('Apple Sign In Error:', e?.message);
+    return { user: null, error: e };
   }
 };
 
