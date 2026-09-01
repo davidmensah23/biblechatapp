@@ -47,8 +47,8 @@ export const generateApostleReply = async (
     // 4. Append current user message
     messages.push({ role: 'user', content: userPrompt });
 
-    // Dynamic max_tokens depending on mode (short for greetings, expressive for discussions)
-    const maxTokens = mode === 'greeting' ? 60 : mode === 'casual' ? 140 : 350;
+    // Dynamic max_tokens depending on mode (short for greetings, expansive for sermon writing)
+    const maxTokens = mode === 'greeting' ? 60 : mode === 'casual' ? 140 : mode === 'sermon_preparation' ? 650 : 350;
 
     // Try Primary Model: Qwen 3.8 27B
     let response = await fetch(GROQ_API_URL, {
