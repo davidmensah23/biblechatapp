@@ -26,6 +26,8 @@ import Svg, { Path, Defs, RadialGradient as SvgRadialGradient, Stop, Circle } fr
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { SpringConfigs } from '../theme/animations';
+import { LanguagePickerModal } from '../components/LanguagePickerModal';
+import { getAppLanguage, SUPPORTED_LANGUAGES, AppLanguage } from '../services/localizationService';
 
 const { width } = Dimensions.get('window');
 
@@ -336,6 +338,8 @@ const CosmicSpectrumVisualizer: React.FC = () => {
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
+  const [showLangModal, setShowLangModal] = useState(false);
+  const [currentLang, setCurrentLang] = useState<AppLanguage>(getAppLanguage());
 
   // Pagination Indicators
   const dotWidth0 = useSharedValue(26);
@@ -376,11 +380,22 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
     width: dotWidth2.value,
   }));
 
+  const selectedLangOption = SUPPORTED_LANGUAGES.find(l => l.code === currentLang) || SUPPORTED_LANGUAGES[0];
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top Bar with Skip Button */}
+      {/* Top Bar with Language Selector & Skip Button */}
       <View style={styles.topHeaderBar}>
-        <View />
+        <TouchableOpacity
+          style={styles.topLangBtn}
+          onPress={() => setShowLangModal(true)}
+          activeOpacity={0.75}
+        >
+          <Text style={styles.topLangFlag}>{selectedLangOption.flag}</Text>
+          <Text style={styles.topLangText}>{selectedLangOption.nativeName}</Text>
+          <Ionicons name="chevron-down" size={11} color="#9CA3AF" />
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.topSkipBtn}
           onPress={(e) => onComplete(e.nativeEvent.pageX, e.nativeEvent.pageY)}
@@ -522,6 +537,13 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Language Picker Modal */}
+      <LanguagePickerModal
+        visible={showLangModal}
+        onClose={() => setShowLangModal(false)}
+        onLanguageSelected={setCurrentLang}
+      />
     </SafeAreaView>
   );
 };
@@ -540,6 +562,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  topLangBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    gap: 6,
+  },
+  topLangFlag: {
+    fontSize: 14,
+  },
+  topLangText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 13,
+    color: '#F3F4F6',
   },
   topSkipBtn: {
     flexDirection: 'row',
