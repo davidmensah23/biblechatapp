@@ -30,6 +30,9 @@ import { generateApostleReply } from '../services/groq';
 import { VoiceCallModal } from '../components/VoiceCallModal';
 import { FormattedMessageText } from '../components/FormattedMessageText';
 import { checkProactiveFollowUp } from '../services/companionFollowup';
+import { splitIntoThoughtBubbles } from '../services/messageSplitter';
+import { calculateBubbleTypingDelay, calculateInitialContemplationDelay } from '../services/typingSpeed';
+import { AnimatedChatBubble } from '../components/AnimatedChatBubble';
 
 interface ChatDetailScreenProps {
   apostle: ApostlePersona;
@@ -100,7 +103,9 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
   const [isLoading, setIsLoading] = useState(false);
   const [showCallModal, setShowCallModal] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  
   const flatListRef = useRef<FlatList>(null);
+  const activeDispatchIdRef = useRef<number>(0);
 
   const conversationId = `conv_${apostle.id}`;
 
@@ -136,7 +141,6 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
       const followUp = checkProactiveFollowUp(apostle, history, userProfile?.fullName);
       if (followUp.shouldFollowUp) {
         const lastMsg = history[history.length - 1];
-        // If last message was from user or older than 6 hours
         if (lastMsg.sender === 'user' || Date.now() - lastMsg.timestamp > 6 * 60 * 60 * 1000) {
           const followUpMsg: ChatMessage = {
             id: `msg_followup_${Date.now()}`,
@@ -154,7 +158,11 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
   };
 
   const handleSendText = async (textToSend: string) => {
-    if (!textToSend.trim() || isLoading) return;
+    if (!textToSend.trim()) return;
+
+    // Instant Interrupt & Pivot: Increment dispatch ID to cancel any pending chunk sequence
+    activeDispatchIdRef.current += 1;
+    const currentDispatchId = activeDispatchIdRef.current;
 
     const userText = textToSend.trim();
     setInputText('');
@@ -167,13 +175,20 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
       timestamp: Date.now()
     };
 
-    const updated = [...messages, userMsg];
-    setMessages(updated);
+    // Append user message immediately
+    setMessages(prev => [...prev, userMsg]);
     await saveMessage(userMsg, apostle.title, apostle.id);
 
     setIsLoading(true);
 
     try {
+      // Initial contemplative pause (longer for deep/emotional questions)
+      const initialDelay = calculateInitialContemplationDelay(userText);
+      await new Promise(r => setTimeout(r, initialDelay));
+
+      // Check if user interrupted with another message during initial delay
+      if (activeDispatchIdRef.current !== currentDispatchId) return;
+
       const replyText = await generateApostleReply(
         apostle,
         messages,
@@ -181,27 +196,52 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
         userProfile
           ? {
               fullName: userProfile.fullName,
-              age: '24',
               location: userProfile.location || 'Ghana',
               bio: userProfile.bio
             }
           : undefined
       );
 
-      const assistantMsg: ChatMessage = {
-        id: `msg_asst_${Date.now()}`,
-        conversationId: conversationId,
-        sender: 'assistant',
-        content: replyText,
-        timestamp: Date.now()
-      };
+      // Check if user interrupted during API request
+      if (activeDispatchIdRef.current !== currentDispatchId) return;
 
-      setMessages([...updated, assistantMsg]);
-      await saveMessage(assistantMsg, apostle.title, apostle.id);
+      // Split reply into 1-3 natural thought bubbles
+      const chunks = splitIntoThoughtBubbles(replyText);
+
+      // Sequentially deliver each thought bubble with character typing cadence
+      for (let i = 0; i < chunks.length; i++) {
+        // Check for interruption before each bubble
+        if (activeDispatchIdRef.current !== currentDispatchId) return;
+
+        const chunk = chunks[i];
+        const bubbleDelay = calculateBubbleTypingDelay(apostle.id, chunk);
+
+        // Simulate Apostle typing cadence
+        await new Promise(r => setTimeout(r, bubbleDelay));
+
+        // Check again after typing delay
+        if (activeDispatchIdRef.current !== currentDispatchId) return;
+
+        const assistantMsg: ChatMessage = {
+          id: `msg_asst_${Date.now()}_${i}`,
+          conversationId: conversationId,
+          sender: 'assistant',
+          content: chunk,
+          timestamp: Date.now()
+        };
+
+        setMessages(prev => [...prev, assistantMsg]);
+        await saveMessage(assistantMsg, apostle.title, apostle.id);
+
+        // Smooth scroll to bottom
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }
     } catch (error) {
-      console.error('Error generating reply:', error);
+      console.error('Error in multi-message generation:', error);
     } finally {
-      setIsLoading(false);
+      if (activeDispatchIdRef.current === currentDispatchId) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -222,21 +262,19 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top Header Bar */}
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
 
-        <View style={styles.headerProfile}>
-          <View style={styles.headerAvatarContainer}>
-            <Image source={apostle.avatar} style={styles.headerAvatar} resizeMode="cover" />
+        <View style={styles.headerTitleGroup}>
+          <View style={styles.headerAvatarWrap}>
+            <Image source={apostle.avatar} style={styles.headerAvatar} />
           </View>
-          <View style={styles.headerTexts}>
-            <Text style={styles.headerTitle}>{apostle.name}</Text>
-            <Text style={styles.headerSubtitle} numberOfLines={1}>
-              {apostle.subtitle}
-            </Text>
+          <View>
+            <Text style={styles.headerName}>{apostle.name}</Text>
+            <Text style={styles.headerSubtitle} numberOfLines={1}>{apostle.title}</Text>
           </View>
         </View>
 
@@ -249,7 +287,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
         </TouchableOpacity>
       </View>
 
-      {/* Messages List */}
+      {/* Messages List with Elastic Anchor Pop */}
       <KeyboardAvoidingView
         style={styles.chatArea}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -265,23 +303,25 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
             const isUser = item.sender === 'user';
             return (
               <View style={[styles.messageRow, isUser ? styles.userRow : styles.assistantRow]}>
-                <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.assistantBubble]}>
-                  <FormattedMessageText
-                    content={item.content}
-                    isUser={isUser}
-                    fontSize={15.5}
-                  />
+                <AnimatedChatBubble isUser={isUser}>
+                  <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.assistantBubble]}>
+                    <FormattedMessageText
+                      content={item.content}
+                      isUser={isUser}
+                      fontSize={15.5}
+                    />
 
-                  {!isUser && (
-                    <TouchableOpacity
-                      onPress={() => handleBookmark(item)}
-                      style={styles.bookmarkBtn}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons name="bookmark-outline" size={14} color={Colors.textMuted} />
-                    </TouchableOpacity>
-                  )}
-                </View>
+                    {!isUser && (
+                      <TouchableOpacity
+                        onPress={() => handleBookmark(item)}
+                        style={styles.bookmarkBtn}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="bookmark-outline" size={14} color={Colors.textMuted} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </AnimatedChatBubble>
               </View>
             );
           }}
@@ -336,7 +376,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
             <TouchableOpacity
               style={[styles.sendBtn, !inputText.trim() && styles.sendBtnDisabled]}
               onPress={handleSend}
-              disabled={!inputText.trim() || isLoading}
+              disabled={!inputText.trim()}
               activeOpacity={0.8}
             >
               <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
@@ -369,58 +409,51 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: Colors.divider,
+    backgroundColor: Colors.background,
   },
   backBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
+    backgroundColor: Colors.cardSecondary,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.cardSecondary,
   },
-  headerProfile: {
-    flex: 1,
+  headerTitleGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 10,
+    flex: 1,
+    marginLeft: 12,
   },
-  headerAvatarContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  headerAvatarWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     overflow: 'hidden',
-    backgroundColor: '#ECECF0',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#9E9FA6',
     marginRight: 10,
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
   },
   headerAvatar: {
     width: '100%',
     height: '100%',
   },
-  headerTexts: {
-    flex: 1,
-  },
-  headerTitle: {
+  headerName: {
     fontFamily: Typography.fontSerif,
-    fontSize: 25,
+    fontSize: 20,
     color: Colors.textPrimary,
   },
   headerSubtitle: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 11,
+    fontSize: 11.5,
     color: Colors.textMuted,
-    marginTop: 1,
   },
   callBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.cardSecondary,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.cardSecondary,
   },
   chatArea: {
     flex: 1,
@@ -428,51 +461,54 @@ const styles = StyleSheet.create({
   messagesList: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 8,
+    paddingBottom: 20,
   },
   messageRow: {
-    marginBottom: 14,
-    flexDirection: 'row',
+    marginBottom: 10,
+    width: '100%',
   },
   userRow: {
-    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
   },
   assistantRow: {
-    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
   },
   messageBubble: {
-    maxWidth: '84%',
-    borderRadius: 20,
+    maxWidth: '82%',
     paddingHorizontal: 16,
-    paddingVertical: 13,
+    paddingVertical: 12,
+    borderRadius: 20,
   },
   userBubble: {
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#2563EB',
     borderBottomRightRadius: 4,
   },
   assistantBubble: {
-    backgroundColor: Colors.cardSecondary,
+    backgroundColor: '#DCDCE1',
     borderBottomLeftRadius: 4,
   },
   bookmarkBtn: {
     alignSelf: 'flex-end',
-    marginTop: 6,
-    padding: 3,
+    marginTop: 4,
+    padding: 2,
   },
   typingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 10,
+    alignSelf: 'flex-start',
   },
   typingAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#9E9FA6',
     marginRight: 8,
   },
   typingBubble: {
-    backgroundColor: Colors.cardSecondary,
+    backgroundColor: '#DCDCE1',
     borderRadius: 18,
+    borderBottomLeftRadius: 4,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
@@ -480,60 +516,59 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    height: 12,
+    height: 10,
   },
   typingDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#888888',
+    backgroundColor: '#666666',
   },
   quickPromptsContainer: {
-    paddingVertical: 6,
+    paddingVertical: 8,
+    backgroundColor: Colors.background,
   },
   quickPromptsScroll: {
     paddingHorizontal: 16,
     gap: 8,
   },
   quickPromptChip: {
-    backgroundColor: Colors.cardSecondary,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
+    backgroundColor: '#DCDCE1',
     borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
   quickPromptText: {
     fontFamily: Typography.fontSansMedium,
-    fontSize: 12.5,
-    color: Colors.textPrimary,
+    fontSize: 13,
+    color: '#111111',
   },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
+    backgroundColor: Colors.background,
     borderTopWidth: 1,
     borderTopColor: Colors.divider,
-    backgroundColor: Colors.background,
+    gap: 10,
   },
   textInput: {
     flex: 1,
-    backgroundColor: Colors.cardSecondary,
+    backgroundColor: '#DCDCE1',
     borderRadius: 22,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontFamily: Typography.fontSansRegular,
     fontSize: 15,
-    color: Colors.textPrimary,
+    color: '#111111',
     maxHeight: 100,
-    marginRight: 10,
   },
   micBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: Colors.cardSecondary,
+    backgroundColor: '#DCDCE1',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -541,11 +576,11 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: Colors.textPrimary,
+    backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
   },
   sendBtnDisabled: {
-    backgroundColor: '#CCCCCC',
+    opacity: 0.5,
   }
 });
