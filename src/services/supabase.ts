@@ -205,16 +205,29 @@ export const sendPasswordReset = async (email: string): Promise<{ error: Error |
   }
 };
 
-// Update User Password (after recovery OTP or in settings with optional current password)
+// Update User Password (after recovery OTP or in settings with optional current password verification)
 export const updateUserPassword = async (
   newPassword: string,
   currentPassword?: string
 ): Promise<{ error: Error | null }> => {
   try {
-    const { error } = await supabase.auth.updateUser(
-      { password: newPassword },
-      currentPassword ? { currentPassword } : undefined
-    );
+    // If currentPassword is provided, verify it first with Supabase
+    if (currentPassword) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        const { error: verifyError } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: currentPassword
+        });
+        if (verifyError) {
+          throw new Error('Incorrect current password. Please try again.');
+        }
+      }
+    }
+
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
     if (error) throw error;
     return { error: null };
   } catch (err: any) {
