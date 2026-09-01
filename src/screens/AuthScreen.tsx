@@ -25,6 +25,7 @@ import {
   updateUserPassword,
   resendVerificationEmail
 } from '../services/supabase';
+import { MascotSpriteAnimator } from '../components/MascotSpriteAnimator';
 
 interface AuthScreenProps {
   onAuthSuccess: () => void;
@@ -353,6 +354,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
           {viewMode === 'main' && (
             <>
               <View style={styles.headerBlock}>
+                {/* 2D Animated Welcome Mascot Group */}
+                <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                  <MascotSpriteAnimator action="welcome_wave" mascot="group" size={100} />
+                </View>
+
                 <Text style={styles.mainTitle}>
                   {isSignUp ? 'Join Akorno.' : 'Welcome back.'}
                 </Text>

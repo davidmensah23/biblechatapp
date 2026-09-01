@@ -5,4 +5,6 @@ export const MascotAssets = {
   blossom: require('../../assets/mascots/faith_mascot_blossom.jpg'),
   dewdrop: require('../../assets/mascots/faith_mascot_dewdrop.jpg'),
   flame: require('../../assets/mascots/faith_mascot_flame.jpg'),
+  rock: require('../../assets/mascots/faith_mascot_rock.jpg'),
+  cedar: require('../../assets/mascots/faith_mascot_cedar.jpg'),
 };

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { SpiritualGrowthProfile } from '../services/gamificationService';
+import { MascotSpriteAnimator } from './MascotSpriteAnimator';
 
 interface StreaksJourneyViewProps {
   growthProfile: SpiritualGrowthProfile;
@@ -31,6 +32,11 @@ export const StreaksJourneyView: React.FC<StreaksJourneyViewProps> = ({
     <View style={styles.container}>
       {/* 7-Day Walking Path Stepper */}
       <View style={styles.pathCard}>
+        {/* Animated Walking Faith Mascot */}
+        <View style={{ alignItems: 'center', marginBottom: 8 }}>
+          <MascotSpriteAnimator action="faith_walk" mascot="bread" size={68} />
+        </View>
+
         <View style={styles.pathHeader}>
           <Text style={styles.pathTitle}>7-Day Walk Path</Text>
           <Text style={styles.pathStreakBadge}>{growthProfile.streakDays} Days Strong</Text>
