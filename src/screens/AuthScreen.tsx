@@ -356,9 +356,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
           {viewMode === 'main' && (
             <>
               <View style={styles.headerBlock}>
-                {/* Real 4-Frame Sequential PNG Welcome Animation */}
+                {/* 4-Frame Sequential Mascot Group (Smile ➔ Blink ➔ Surprise ➔ Bliss) */}
                 <View style={{ alignItems: 'center', marginBottom: 16 }}>
-                  <FrameSequencePlayer frames={MascotSequences.wave} fps={3} size={110} />
+                  <FrameSequencePlayer frames={MascotSequences.group_nano} fps={3} width={180} height={120} />
                 </View>
 
                 <Text style={styles.mainTitle}>

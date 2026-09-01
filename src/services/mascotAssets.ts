@@ -34,4 +34,10 @@ export const MascotSequences = {
     require('../../assets/mascots/sequences/group/group_frame_2.png'),
     require('../../assets/mascots/sequences/group/group_frame_3.png'),
   ],
+  group_nano: [
+    require('../../assets/mascots/sequences/group_nano/group_f0_smile.png'),
+    require('../../assets/mascots/sequences/group_nano/group_f1_blink.png'),
+    require('../../assets/mascots/sequences/group_nano/group_f2_surprise.png'),
+    require('../../assets/mascots/sequences/group_nano/group_f3_praise.png'),
+  ],
 };
