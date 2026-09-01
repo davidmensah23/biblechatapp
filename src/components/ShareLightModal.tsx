@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { CardStyles } from '../theme/cardStyles';
+import { FaithMascots } from './FaithMascots';
 
 interface ShareLightModalProps {
   visible: boolean;
@@ -60,17 +61,9 @@ export const ShareLightModal: React.FC<ShareLightModalProps> = ({
           </TouchableOpacity>
 
           <View style={styles.content}>
-            {/* 3D Pastel Mascots Cluster */}
-            <View style={styles.mascotCluster}>
-              <View style={[styles.mascotBubble, styles.mascotPeach]}>
-                <Text style={styles.mascotEmoji}>🕊️</Text>
-              </View>
-              <View style={[styles.mascotBubble, styles.mascotPink]}>
-                <Text style={styles.mascotEmoji}>✨</Text>
-              </View>
-              <View style={[styles.mascotBubble, styles.mascotPurple]}>
-                <Text style={styles.mascotEmoji}>🌿</Text>
-              </View>
+            {/* 2D Soft Gradient Organic Mascots (Kawaii Cloud / Manna Blossom) */}
+            <View style={{ marginBottom: 12 }}>
+              <FaithMascots size={180} />
             </View>
 
             {/* Headline in Instrument Serif */}

@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { CardStyles } from '../theme/cardStyles';
 import { ShareLightModal } from './ShareLightModal';
+import { FaithMascots } from './FaithMascots';
 
 interface InviteFriendsBannerProps {
   userName?: string;
@@ -42,15 +43,8 @@ export const InviteFriendsBanner: React.FC<InviteFriendsBannerProps> = ({ userNa
           end={{ x: 1, y: 0.5 }}
           style={styles.chromaticAura}
         >
-          {/* Peeking 3D Mascots */}
-          <View style={styles.peekingMascotRow}>
-            <View style={[styles.miniMascot, styles.mascotPurple]}>
-              <Text style={styles.miniEmoji}>🌿</Text>
-            </View>
-            <View style={[styles.miniMascot, styles.mascotPeach]}>
-              <Text style={styles.miniEmoji}>🕊️</Text>
-            </View>
-          </View>
+          {/* 2D Soft Gradient Mascots */}
+          <FaithMascots size={100} />
         </LinearGradient>
       </TouchableOpacity>
 
