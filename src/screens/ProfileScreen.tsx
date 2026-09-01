@@ -16,6 +16,8 @@ import { fetchBookmarks, removeBookmark, fetchUserProfile, saveUserProfile } fro
 import { supabase, fetchRemoteProfile, updateRemoteProfile, getUserAuthProvider, DEFAULT_PROFILE } from '../services/supabase';
 import { SavedBookmark, UserProfile } from '../types';
 import { SettingsScreen } from './SettingsScreen';
+import { getUserAvatarUrl, AvatarStyle, AVATAR_STYLE_OPTIONS } from '../services/avatarService';
+import { getSpiritualGrowthProfile, SpiritualGrowthProfile, FaithBadge } from '../services/gamificationService';
 
 interface ProfileScreenProps {
   onLogout?: () => void;
@@ -23,11 +25,14 @@ interface ProfileScreenProps {
 }
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAuthModal }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'bookmarks' | 'edit'>('bookmarks');
+  const [activeSubTab, setActiveSubTab] = useState<'growth' | 'bookmarks' | 'edit'>('growth');
   const [bookmarks, setBookmarks] = useState<SavedBookmark[]>([]);
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [authProvider, setAuthProvider] = useState<'google' | 'email' | 'guest'>('guest');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [avatarStyle, setAvatarStyle] = useState<AvatarStyle>('notionists');
+  const [avatarSeedOffset, setAvatarSeedOffset] = useState<number>(0);
+  const [growthProfile, setGrowthProfile] = useState<SpiritualGrowthProfile | null>(null);
 
   useEffect(() => {
     loadData();
@@ -36,6 +41,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAu
   const loadData = async () => {
     const bms = await fetchBookmarks();
     setBookmarks(bms);
+
+    const growth = await getSpiritualGrowthProfile();
+    setGrowthProfile(growth);
+
     try {
       const auth = await getUserAuthProvider();
       setAuthProvider(auth.provider);
@@ -50,6 +59,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAu
         }
       }
     } catch (e) {}
+
     const p = await fetchUserProfile();
     if (p) setProfile(p);
   };
@@ -70,16 +80,28 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAu
     setBookmarks(bookmarks.filter(b => b.id !== id));
   };
 
+  const handleCycleAvatarStyle = () => {
+    const currentIndex = AVATAR_STYLE_OPTIONS.findIndex(s => s.id === avatarStyle);
+    const nextIndex = (currentIndex + 1) % AVATAR_STYLE_OPTIONS.length;
+    setAvatarStyle(AVATAR_STYLE_OPTIONS[nextIndex].id);
+  };
+
+  const handleShuffleAvatarSeed = () => {
+    setAvatarSeedOffset(prev => prev + 1);
+  };
+
+  const currentSeed = `${profile.fullName || profile.email || 'Disciple'}${avatarSeedOffset > 0 ? `_${avatarSeedOffset}` : ''}`;
+  const avatarUrl = getUserAvatarUrl(currentSeed, avatarStyle);
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top Header: "Profile" in Instrument Serif with Red Indicator Above */}
+      {/* Top Header */}
       <View style={styles.header}>
         <View style={styles.titleContainer}>
           <View style={styles.topRedIndicator} />
           <Text style={styles.title}>Profile</Text>
         </View>
 
-        {/* Top-Right Settings / Sliders Icon Button to Open Extended Settings Modal */}
         <TouchableOpacity
           style={styles.settingsBtn}
           onPress={() => setShowSettingsModal(true)}
@@ -90,7 +112,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAu
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Guest Mode Upgrade Card */}
+        {/* Guest Mode Upgrade Banner */}
         {authProvider === 'guest' && (
           <View style={styles.guestBannerCard}>
             <View style={styles.guestBannerLeft}>
@@ -100,7 +122,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAu
               <View style={styles.guestBannerTextWrap}>
                 <Text style={styles.guestBannerTitle}>Guest Account</Text>
                 <Text style={styles.guestBannerSub}>
-                  Sign in to back up and sync your conversations to the cloud.
+                  Sign in to back up and sync your faith journey.
                 </Text>
               </View>
             </View>
@@ -115,39 +137,143 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAu
           </View>
         )}
 
-        {/* User Card */}
+        {/* User Card with Illustrated Avatar */}
         <View style={styles.userCard}>
-          <Image
-            source={require('../../assets/avatars/user_profile.png')}
-            style={styles.userAvatar}
-          />
+          <View style={styles.avatarWrapper}>
+            <Image
+              source={{ uri: avatarUrl }}
+              style={styles.userAvatar}
+            />
+            <TouchableOpacity
+              style={styles.shuffleAvatarBtn}
+              onPress={handleShuffleAvatarSeed}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="dice-outline" size={14} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.userInfo}>
             <View style={styles.userNameRow}>
-              <Text style={styles.userName}>{profile.fullName}</Text>
+              <Text style={styles.userName}>{profile.fullName || 'Beloved Disciple'}</Text>
               {authProvider !== 'guest' && (
-                <Ionicons name="checkmark-circle" size={18} color="#2563EB" style={{ marginLeft: 6 }} />
+                <Ionicons name="checkmark-circle" size={17} color="#2563EB" style={{ marginLeft: 6 }} />
               )}
             </View>
             <Text style={styles.userBio} numberOfLines={2}>{profile.bio}</Text>
-            <TouchableOpacity onPress={() => setActiveSubTab('edit')} activeOpacity={0.7}>
-              <Text style={styles.editBioLink}>
-                <Ionicons name="create-outline" size={14} color="#3B82F6" /> Edit your bio
-              </Text>
-            </TouchableOpacity>
+
+            <View style={styles.avatarStyleRow}>
+              <TouchableOpacity
+                style={styles.avatarStylePill}
+                onPress={handleCycleAvatarStyle}
+                activeOpacity={0.75}
+              >
+                <Ionicons name="color-palette-outline" size={12} color="#2563EB" style={{ marginRight: 4 }} />
+                <Text style={styles.avatarStylePillText}>
+                  Style: {AVATAR_STYLE_OPTIONS.find(s => s.id === avatarStyle)?.label}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
-        {/* Sub Tab Switcher (Folder vs Person) */}
+        {/* Daily Walking Streak Hearth Banner */}
+        {growthProfile && (
+          <View style={styles.streakCard}>
+            <View style={styles.streakHeader}>
+              <View style={styles.streakFlameIcon}>
+                <Ionicons name="flame" size={20} color="#F59E0B" />
+              </View>
+              <View style={styles.streakTextWrap}>
+                <Text style={styles.streakDaysText}>
+                  {growthProfile.streakDays} Day Walking Streak
+                </Text>
+                <Text style={styles.streakSubText}>
+                  Walking daily in truth and fellowship with the Apostles
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Spiritual Maturity Level & Grace XP Card */}
+        {growthProfile && (
+          <View style={styles.levelCard}>
+            <View style={styles.levelHeaderRow}>
+              <View>
+                <Text style={styles.levelBadgeText}>LEVEL {growthProfile.currentLevel}</Text>
+                <Text style={styles.levelTitleText}>{growthProfile.levelTitle}</Text>
+              </View>
+              <View style={styles.xpPill}>
+                <Ionicons name="sparkles" size={12} color="#7C3AED" style={{ marginRight: 4 }} />
+                <Text style={styles.xpPillText}>{growthProfile.totalXp} Grace XP</Text>
+              </View>
+            </View>
+
+            {/* XP Progress Bar */}
+            <View style={styles.progressBarTrack}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  {
+                    width: `${Math.min(100, Math.round((growthProfile.currentLevelXp / growthProfile.nextLevelXp) * 100))}%`
+                  }
+                ]}
+              />
+            </View>
+
+            <Text style={styles.progressDetailText}>
+              {growthProfile.currentLevelXp} / {growthProfile.nextLevelXp} XP to next level
+            </Text>
+
+            {/* Key Growth Stats Row */}
+            <View style={styles.statsRow}>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{growthProfile.conversationsCount}</Text>
+                <Text style={styles.statLabel}>Conversations</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{growthProfile.chaptersReadCount}</Text>
+                <Text style={styles.statLabel}>Chapters Read</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{growthProfile.badges.filter(b => b.isUnlocked).length}</Text>
+                <Text style={styles.statLabel}>Faith Badges</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Sub Tab Switcher */}
         <View style={styles.subTabsRow}>
+          <TouchableOpacity
+            style={[styles.subTabButton, activeSubTab === 'growth' && styles.subTabButtonActive]}
+            onPress={() => setActiveSubTab('growth')}
+          >
+            <Ionicons
+              name={activeSubTab === 'growth' ? 'ribbon' : 'ribbon-outline'}
+              size={20}
+              color={activeSubTab === 'growth' ? '#111111' : '#888888'}
+            />
+            <Text style={[styles.subTabLabel, activeSubTab === 'growth' && styles.subTabLabelActive]}>
+              Milestones
+            </Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={[styles.subTabButton, activeSubTab === 'bookmarks' && styles.subTabButtonActive]}
             onPress={() => setActiveSubTab('bookmarks')}
           >
             <Ionicons
-              name={activeSubTab === 'bookmarks' ? 'folder' : 'folder-outline'}
-              size={22}
+              name={activeSubTab === 'bookmarks' ? 'bookmark' : 'bookmark-outline'}
+              size={20}
               color={activeSubTab === 'bookmarks' ? '#111111' : '#888888'}
             />
+            <Text style={[styles.subTabLabel, activeSubTab === 'bookmarks' && styles.subTabLabelActive]}>
+              Saved
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -156,41 +282,67 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAu
           >
             <Ionicons
               name={activeSubTab === 'edit' ? 'person' : 'person-outline'}
-              size={22}
+              size={20}
               color={activeSubTab === 'edit' ? '#111111' : '#888888'}
             />
+            <Text style={[styles.subTabLabel, activeSubTab === 'edit' && styles.subTabLabelActive]}>
+              Profile
+            </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Tab 1: Bookmarks & Saved Items */}
-        {activeSubTab === 'bookmarks' ? (
+        {/* Tab 1: Faith Badges & Achievements */}
+        {activeSubTab === 'growth' && growthProfile ? (
+          <View style={styles.badgesGrid}>
+            {growthProfile.badges.map((badge) => (
+              <View
+                key={badge.id}
+                style={[styles.badgeCard, !badge.isUnlocked && styles.badgeCardLocked]}
+              >
+                <View style={[styles.badgeIconWrap, { backgroundColor: badge.isUnlocked ? `${badge.iconColor}15` : '#E5E7EB' }]}>
+                  <Ionicons
+                    name={badge.iconName as any}
+                    size={24}
+                    color={badge.isUnlocked ? badge.iconColor : '#9CA3AF'}
+                  />
+                </View>
+                <View style={styles.badgeInfo}>
+                  <View style={styles.badgeTitleRow}>
+                    <Text style={[styles.badgeTitle, !badge.isUnlocked && styles.badgeTitleLocked]}>
+                      {badge.title}
+                    </Text>
+                    {badge.isUnlocked ? (
+                      <Ionicons name="checkmark-circle" size={15} color="#059669" />
+                    ) : (
+                      <Ionicons name="lock-closed-outline" size={13} color="#9CA3AF" />
+                    )}
+                  </View>
+                  <Text style={styles.badgeSubtitle} numberOfLines={2}>
+                    {badge.subtitle}
+                  </Text>
+                  <Text style={styles.badgeRewardText}>+{badge.xpReward} Grace XP</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : activeSubTab === 'bookmarks' ? (
+          /* Tab 2: Bookmarks */
           <View style={styles.bookmarksContainer}>
             {bookmarks.length === 0 ? (
               <View style={styles.emptyBookmarks}>
                 <Ionicons name="bookmark-outline" size={36} color="#A0A0A5" />
-                <Text style={styles.emptyText}>No bookmarks yet. Tap the heart icon in chats or reader to save reflections!</Text>
+                <Text style={styles.emptyText}>No bookmarks yet. Tap the bookmark icon in Scripture reader to save verses!</Text>
               </View>
             ) : (
               bookmarks.map((bm) => (
                 <View key={bm.id} style={styles.bookmarkCard}>
                   <View style={styles.bmHeader}>
-                    {bm.type === 'verse' ? (
-                      <Image
-                        source={require('../../assets/images/daily_scripture_banner.png')}
-                        style={styles.bmThumbnail}
-                      />
-                    ) : (
-                      <Image
-                        source={require('../../assets/avatars/peter.png')}
-                        style={styles.bmAvatar}
-                      />
-                    )}
                     <View style={styles.bmContent}>
                       <Text style={styles.bmText} numberOfLines={3}>{bm.content}</Text>
                       <Text style={styles.bmReference}>{bm.type === 'verse' ? 'Read in Bible' : 'Saved Reflection'}</Text>
                     </View>
                     <TouchableOpacity onPress={() => handleRemoveBookmark(bm.id)}>
-                      <Ionicons name="heart" size={20} color="#E11D48" />
+                      <Ionicons name="trash-outline" size={18} color="#9CA3AF" />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -198,7 +350,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAu
             )}
           </View>
         ) : (
-          /* Tab 2: Edit Profile Form */
+          /* Tab 3: Edit Profile */
           <View style={styles.formContainer}>
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Full Name</Text>
@@ -206,6 +358,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAu
                 style={styles.inputField}
                 value={profile.fullName}
                 onChangeText={(t) => setProfile({ ...profile, fullName: t })}
+                placeholder="Your Name"
               />
             </View>
 
@@ -221,43 +374,40 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, onOpenAu
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Location</Text>
+              <Text style={styles.inputLabel}>Faith Bio & Reflection</Text>
               <TextInput
-                style={styles.inputField}
-                value={profile.location}
-                onChangeText={(t) => setProfile({ ...profile, location: t })}
+                style={[styles.inputField, styles.textArea]}
+                value={profile.bio}
+                onChangeText={(t) => setProfile({ ...profile, bio: t })}
+                multiline
+                numberOfLines={3}
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Date of Birth</Text>
-              <TextInput
-                style={styles.inputField}
-                value={profile.dateOfBirth}
-                onChangeText={(t) => setProfile({ ...profile, dateOfBirth: t })}
-              />
-            </View>
-
-            {/* Green Save Changes Button */}
             <TouchableOpacity
-              style={styles.saveBtn}
+              style={styles.saveButton}
               onPress={handleSaveProfile}
               activeOpacity={0.85}
             >
-              <Text style={styles.saveBtnText}>Save changes</Text>
+              <Text style={styles.saveButtonText}>Save Changes</Text>
             </TouchableOpacity>
           </View>
         )}
       </ScrollView>
 
-      {/* Extended Settings Sliding Modal Sheet (triggers from top-right icon) */}
-      <SettingsScreen
-        visible={showSettingsModal}
-        onClose={() => setShowSettingsModal(false)}
-        userProfile={profile}
-        onUpdateProfile={(updated) => setProfile(updated)}
-        onLogout={onLogout}
-      />
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <SettingsScreen
+          visible={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          onLogout={onLogout}
+          userProfile={profile}
+          onUpdateProfile={(updated) => {
+            setProfile(updated);
+            saveUserProfile(updated);
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -271,193 +421,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingHorizontal: 22,
+    paddingTop: 14,
     paddingBottom: 10,
   },
   titleContainer: {
-    position: 'relative',
-    paddingTop: 8,
+    alignItems: 'flex-start',
   },
   topRedIndicator: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: 46,
+    width: 24,
     height: 3,
-    backgroundColor: '#D92D20',
+    backgroundColor: '#DC2626',
     borderRadius: 2,
+    marginBottom: 4,
   },
   title: {
     fontFamily: Typography.fontSerif,
-    fontSize: 32,
+    fontSize: 28,
     color: '#111111',
   },
   settingsBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#E6E6EB',
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 6,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 110,
-  },
-  userCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  userAvatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    marginRight: 16,
-  },
-  userInfo: {
-    flex: 1,
-  },
-  userName: {
-    fontFamily: Typography.fontSerif,
-    fontSize: 29,
-    color: '#111111',
-  },
-  userBio: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 13.5,
-    color: '#666666',
-    marginTop: 3,
-    lineHeight: 19,
-  },
-  editBioLink: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 13,
-    color: '#3B82F6',
-    marginTop: 5,
-  },
-  subTabsRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E2E8',
-    marginBottom: 20,
-  },
-  subTabButton: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  subTabButtonActive: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#111111',
-  },
-  bookmarksContainer: {
-    gap: 12,
-  },
-  emptyBookmarks: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 20,
-  },
-  emptyText: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 14,
-    color: '#777777',
-    textAlign: 'center',
-    marginTop: 12,
-    lineHeight: 20,
-  },
-  bookmarkCard: {
-    backgroundColor: '#DCDCE1',
-    borderRadius: 18,
-    padding: 16,
-  },
-  bmHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  bmThumbnail: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
-    marginRight: 12,
-  },
-  bmAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: 12,
-  },
-  bmContent: {
-    flex: 1,
-    marginRight: 8,
-  },
-  bmText: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#111111',
-  },
-  bmReference: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 12.5,
-    color: '#284682',
-    marginTop: 4,
-    textDecorationLine: 'underline',
-  },
-  formContainer: {
-    gap: 16,
-  },
-  inputGroup: {
-    gap: 6,
-  },
-  inputLabel: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 13.5,
-    color: '#444444',
-  },
-  inputField: {
-    backgroundColor: '#DCDCE1',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 15,
-    color: '#111111',
-  },
-  saveBtn: {
-    backgroundColor: '#52C480',
-    borderRadius: 18,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  saveBtnText: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 16,
-    color: '#FFFFFF',
-  },
-  userNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    paddingBottom: 100,
   },
   guestBannerCard: {
+    backgroundColor: '#EEF2FF',
+    borderRadius: 18,
+    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#DBEAFE',
-    marginBottom: 20,
-    shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    marginBottom: 16,
   },
   guestBannerLeft: {
     flexDirection: 'row',
@@ -466,38 +463,396 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   guestBannerIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#EFF6FF',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#DBEAFE',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   guestBannerTextWrap: {
     flex: 1,
   },
   guestBannerTitle: {
     fontFamily: Typography.fontSansSemiBold,
-    fontSize: 13.5,
+    fontSize: 14,
     color: '#1E40AF',
   },
   guestBannerSub: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 11.5,
-    color: '#6B7280',
+    fontSize: 12,
+    color: '#3B82F6',
     lineHeight: 16,
-    marginTop: 2,
   },
   guestSignInBtn: {
     backgroundColor: '#2563EB',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
     borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
   guestSignInBtnText: {
-    fontFamily: Typography.fontSansSemiBold,
+    fontFamily: Typography.fontSansMedium,
     fontSize: 13,
+    color: '#FFFFFF',
+  },
+  userCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 14,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  avatarWrapper: {
+    position: 'relative',
+    marginRight: 14,
+  },
+  userAvatar: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#E0E7FF',
+  },
+  shuffleAvatarBtn: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#2563EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  userName: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 18,
+    color: '#111827',
+  },
+  userBio: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 13,
+    color: '#6B7280',
+    lineHeight: 18,
+    marginBottom: 6,
+  },
+  avatarStyleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarStylePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  avatarStylePillText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 11,
+    color: '#2563EB',
+  },
+  streakCard: {
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 14,
+  },
+  streakHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  streakFlameIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  streakTextWrap: {
+    flex: 1,
+  },
+  streakDaysText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 15,
+    color: '#92400E',
+  },
+  streakSubText: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 12,
+    color: '#B45309',
+    lineHeight: 16,
+  },
+  levelCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 18,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  levelHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  levelBadgeText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 11,
+    color: '#7C3AED',
+    letterSpacing: 0.5,
+  },
+  levelTitleText: {
+    fontFamily: Typography.fontSerif,
+    fontSize: 20,
+    color: '#111827',
+  },
+  xpPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F3FF',
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  xpPillText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 12,
+    color: '#7C3AED',
+  },
+  progressBarTrack: {
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#F3F4F6',
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#7C3AED',
+    borderRadius: 4,
+  },
+  progressDetailText: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 11.5,
+    color: '#9CA3AF',
+    marginBottom: 14,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    paddingTop: 12,
+  },
+  statBox: {
+    alignItems: 'center',
+  },
+  statValue: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 17,
+    color: '#111827',
+  },
+  statLabel: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#E5E7EB',
+  },
+  subTabsRow: {
+    flexDirection: 'row',
+    backgroundColor: '#E5E5EA',
+    borderRadius: 16,
+    padding: 3,
+    marginBottom: 16,
+  },
+  subTabButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 9,
+    borderRadius: 13,
+    gap: 6,
+  },
+  subTabButtonActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  subTabLabel: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  subTabLabelActive: {
+    color: '#111827',
+  },
+  badgesGrid: {
+    gap: 10,
+  },
+  badgeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+  },
+  badgeCardLocked: {
+    opacity: 0.6,
+  },
+  badgeIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  badgeInfo: {
+    flex: 1,
+  },
+  badgeTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
+  },
+  badgeTitle: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 15,
+    color: '#111827',
+  },
+  badgeTitleLocked: {
+    color: '#6B7280',
+  },
+  badgeSubtitle: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 12,
+    color: '#6B7280',
+    lineHeight: 16,
+    marginBottom: 4,
+  },
+  badgeRewardText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 11,
+    color: '#7C3AED',
+  },
+  bookmarksContainer: {
+    gap: 10,
+  },
+  emptyBookmarks: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 13,
+    color: '#888888',
+    textAlign: 'center',
+    marginTop: 10,
+    paddingHorizontal: 20,
+    lineHeight: 18,
+  },
+  bookmarkCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+  },
+  bmHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  bmContent: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  bmText: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 13.5,
+    color: '#1F2937',
+    lineHeight: 19,
+    marginBottom: 4,
+  },
+  bmReference: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 11.5,
+    color: '#2563EB',
+  },
+  formContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 18,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 13,
+    color: '#374151',
+    marginBottom: 6,
+  },
+  inputField: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 14,
+    color: '#111827',
+  },
+  textArea: {
+    height: 70,
+    textAlignVertical: 'top',
+  },
+  saveButton: {
+    backgroundColor: '#2563EB',
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  saveButtonText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 14,
     color: '#FFFFFF',
   }
 });
