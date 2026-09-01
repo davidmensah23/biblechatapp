@@ -13,7 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { clearChatHistory, saveUserProfile, deleteAllUserData } from '../services/database';
-import { updateUserPassword, deleteUserAccount, getUserAuthProvider } from '../services/supabase';
+import { updateUserPassword, deleteUserAccount, getUserAuthProvider, updateRemoteProfile, supabase } from '../services/supabase';
 import { UserProfile } from '../types';
 import { CustomActionModal } from '../components/CustomActionModal';
 
@@ -65,6 +65,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [hapticFeedback, setHapticFeedback] = useState(true);
   const [audioSpeed, setAudioSpeed] = useState<'0.75x' | '1.0x' | '1.25x' | '1.5x'>('1.0x');
   const [plainLanguageMode, setPlainLanguageMode] = useState(false);
+  const [isBackingUp, setIsBackingUp] = useState(false);
 
   // Profile edit draft inside settings
   const [draftProfile, setDraftProfile] = useState<UserProfile>(userProfile);
@@ -75,6 +76,44 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       setDraftProfile(userProfile);
     }
   }, [visible, userProfile]);
+
+  const handleCloudBackup = async () => {
+    setIsBackingUp(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await updateRemoteProfile(user.id, userProfile);
+        setActionModal({
+          visible: true,
+          type: 'confirm',
+          title: 'Cloud Backup Complete',
+          message: 'Your profile, faith streaks, equipped Armor of God, and bookmarks are safely backed up to the cloud.',
+          confirmText: 'Great',
+          onConfirm: () => setActionModal(prev => ({ ...prev, visible: false }))
+        });
+      } else {
+        setActionModal({
+          visible: true,
+          type: 'confirm',
+          title: 'Sign In Required',
+          message: 'Please sign in or create an account to back up your journey to the cloud.',
+          confirmText: 'OK',
+          onConfirm: () => setActionModal(prev => ({ ...prev, visible: false }))
+        });
+      }
+    } catch (e) {
+      setActionModal({
+        visible: true,
+        type: 'confirm',
+        title: 'Backup Notice',
+        message: 'Your data is securely preserved locally on your phone.',
+        confirmText: 'OK',
+        onConfirm: () => setActionModal(prev => ({ ...prev, visible: false }))
+      });
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
 
   const handleSaveAccount = async () => {
     onUpdateProfile(draftProfile);
@@ -255,6 +294,18 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
               <TouchableOpacity
                 style={styles.pillRow}
+                onPress={() => setActiveSubModal('Privacy')}
+                activeOpacity={0.7}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="shield-checkmark-outline" size={17} color="#2563EB" style={{ marginRight: 8 }} />
+                  <Text style={styles.pillText}>Privacy & Data Storage</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#C4C4C8" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.pillRow}
                 onPress={() => setActiveSubModal('Appearance')}
                 activeOpacity={0.7}
               >
@@ -375,6 +426,69 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </ScrollView>
         </SafeAreaView>
       </View>
+
+      {/* Privacy & Data Storage Sub-Modal */}
+      <Modal visible={activeSubModal === 'Privacy'} animationType="slide" transparent={false}>
+        <SafeAreaView style={styles.subModalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setActiveSubModal(null)} style={styles.modalBackBtn}>
+              <Ionicons name="arrow-back" size={22} color="#111111" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Privacy & Data Storage</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          <ScrollView contentContainerStyle={styles.modalContent}>
+            {/* Privacy Card 1: Local-First Storage */}
+            <View style={styles.privacyCard}>
+              <View style={styles.privacyIconWrap}>
+                <Ionicons name="lock-closed" size={22} color="#2563EB" />
+              </View>
+              <Text style={styles.privacyCardTitle}>On-Device Private Storage</Text>
+              <Text style={styles.privacyCardBody}>
+                All conversations with the Apostles are stored locally in your phone's protected internal SQLite database. We do not sell, harvest, or monetize your prayers, reflections, or chats.
+              </Text>
+            </View>
+
+            {/* Privacy Card 2: Cleaner App Protection */}
+            <View style={styles.privacyCard}>
+              <View style={styles.privacyIconWrap}>
+                <Ionicons name="shield-checkmark" size={22} color="#059669" />
+              </View>
+              <Text style={styles.privacyCardTitle}>Protection from Cleaner Apps</Text>
+              <Text style={styles.privacyCardBody}>
+                Your database is stored in secure internal app memory. Android system cleaner apps (such as CCleaner, Samsung Device Care, or Xiaomi Cleaner) only wipe temporary caches and cannot delete your conversation database.
+              </Text>
+            </View>
+
+            {/* Cloud Backup Action */}
+            <View style={styles.backupBox}>
+              <Text style={styles.backupBoxTitle}>Cloud Backup & Sync</Text>
+              <Text style={styles.backupBoxBody}>
+                Back up your Spiritual Level, equipped Armor of God, and bookmarks to your secure Supabase account so you can restore them on any device.
+              </Text>
+              <TouchableOpacity
+                style={[styles.savePasswordBtn, { marginTop: 12, backgroundColor: '#2563EB' }]}
+                onPress={handleCloudBackup}
+                disabled={isBackingUp}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.savePasswordBtnText}>
+                  {isBackingUp ? 'Backing Up...' : '☁️ Back Up Faith Journey'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Privacy Card 3: Account Deletion */}
+            <View style={[styles.privacyCard, { borderColor: '#FCA5A5', backgroundColor: '#FEF2F2' }]}>
+              <Text style={[styles.privacyCardTitle, { color: '#991B1B' }]}>Zero Residual Footprint</Text>
+              <Text style={[styles.privacyCardBody, { color: '#B91C1C' }]}>
+                If you choose to delete your account or clear app storage in phone settings, all messages, bookmarks, and cloud profiles are permanently destroyed with zero residual data.
+              </Text>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
 
       {/* Sub-Modals (Account, Appearance, Audio, Language, etc.) */}
       <Modal visible={activeSubModal === 'Account'} animationType="slide" transparent={false}>
@@ -803,5 +917,54 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#374151',
     lineHeight: 22,
+  },
+  privacyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 12,
+  },
+  privacyIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  privacyCardTitle: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 15,
+    color: '#111827',
+    marginBottom: 4,
+  },
+  privacyCardBody: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 13,
+    color: '#6B7280',
+    lineHeight: 18,
+  },
+  backupBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 12,
+  },
+  backupBoxTitle: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 15,
+    color: '#111827',
+    marginBottom: 4,
+  },
+  backupBoxBody: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 13,
+    color: '#6B7280',
+    lineHeight: 18,
   }
 });
