@@ -48,4 +48,12 @@ export const MascotSequences = {
     require('../../assets/mascots/sequences/group_async/async_f4.png'),
     require('../../assets/mascots/sequences/group_async/async_f5.png'),
   ],
+  group_opposing: [
+    require('../../assets/mascots/sequences/group_opposing/oppose_f0.png'),
+    require('../../assets/mascots/sequences/group_opposing/oppose_f1.png'),
+    require('../../assets/mascots/sequences/group_opposing/oppose_f2.png'),
+    require('../../assets/mascots/sequences/group_opposing/oppose_f3.png'),
+    require('../../assets/mascots/sequences/group_opposing/oppose_f4.png'),
+    require('../../assets/mascots/sequences/group_opposing/oppose_f5.png'),
+  ],
 };

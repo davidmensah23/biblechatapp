@@ -356,9 +356,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
           {viewMode === 'main' && (
             <>
               <View style={styles.headerBlock}>
-                {/* 6-Frame Asynchronous Mascot Animation (Anticipation ➔ Staggered Acting ➔ Surprise ➔ Bliss) */}
+                {/* 6-Frame Opposing Asynchronous Mascot Animation (Cloud UP ↕ Bread DOWN ↔ Dewdrop SIDEWAYS) */}
                 <View style={{ alignItems: 'center', marginBottom: 16 }}>
-                  <FrameSequencePlayer frames={MascotSequences.group_async} fps={3} width={180} height={120} />
+                  <FrameSequencePlayer frames={MascotSequences.group_opposing} fps={3} width={180} height={120} />
                 </View>
 
                 <Text style={styles.mainTitle}>
