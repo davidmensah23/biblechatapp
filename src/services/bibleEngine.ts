@@ -415,7 +415,7 @@ export async function fetchChapter(
           try {
             await db.runAsync(
               'INSERT OR REPLACE INTO offline_bible_chapters (id, translation, book, chapter, section_title, verses_json, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)',
-              [cacheKey, transCode, book, chapter, result.sectionTitle, JSON.stringify(parsedVerses), Date.now()]
+              [cacheKey, transCode, book, chapter, result.sectionTitle || '', JSON.stringify(parsedVerses), Date.now()]
             );
           } catch (e) {}
         }
