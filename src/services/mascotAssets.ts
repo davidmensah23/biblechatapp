@@ -8,3 +8,30 @@ export const MascotAssets = {
   rock: require('../../assets/mascots/faith_mascot_rock.jpg'),
   cedar: require('../../assets/mascots/faith_mascot_cedar.jpg'),
 };
+
+export const MascotSequences = {
+  walk: [
+    require('../../assets/mascots/sequences/walk/walk_frame_0.png'),
+    require('../../assets/mascots/sequences/walk/walk_frame_1.png'),
+    require('../../assets/mascots/sequences/walk/walk_frame_2.png'),
+    require('../../assets/mascots/sequences/walk/walk_frame_3.png'),
+  ],
+  wave: [
+    require('../../assets/mascots/sequences/wave/wave_frame_0.png'),
+    require('../../assets/mascots/sequences/wave/wave_frame_1.png'),
+    require('../../assets/mascots/sequences/wave/wave_frame_2.png'),
+    require('../../assets/mascots/sequences/wave/wave_frame_3.png'),
+  ],
+  read: [
+    require('../../assets/mascots/sequences/read/read_frame_0.png'),
+    require('../../assets/mascots/sequences/read/read_frame_1.png'),
+    require('../../assets/mascots/sequences/read/read_frame_2.png'),
+    require('../../assets/mascots/sequences/read/read_frame_3.png'),
+  ],
+  group: [
+    require('../../assets/mascots/sequences/group/group_frame_0.png'),
+    require('../../assets/mascots/sequences/group/group_frame_1.png'),
+    require('../../assets/mascots/sequences/group/group_frame_2.png'),
+    require('../../assets/mascots/sequences/group/group_frame_3.png'),
+  ],
+};

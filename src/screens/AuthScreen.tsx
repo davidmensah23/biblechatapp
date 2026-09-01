@@ -26,6 +26,8 @@ import {
   resendVerificationEmail
 } from '../services/supabase';
 import { MascotSpriteAnimator } from '../components/MascotSpriteAnimator';
+import { FrameSequencePlayer } from '../components/FrameSequencePlayer';
+import { MascotSequences } from '../services/mascotAssets';
 
 interface AuthScreenProps {
   onAuthSuccess: () => void;
@@ -354,9 +356,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
           {viewMode === 'main' && (
             <>
               <View style={styles.headerBlock}>
-                {/* 2D Animated Welcome Mascot Group */}
+                {/* Real 4-Frame Sequential PNG Welcome Animation */}
                 <View style={{ alignItems: 'center', marginBottom: 16 }}>
-                  <MascotSpriteAnimator action="welcome_wave" mascot="group" size={100} />
+                  <FrameSequencePlayer frames={MascotSequences.wave} fps={3} size={110} />
                 </View>
 
                 <Text style={styles.mainTitle}>
