@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import { Platform } from 'react-native';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { UserProfile } from '../types';
 
 // Complete auth session if web browser redirect is active
@@ -73,8 +74,39 @@ export const DEFAULT_PROFILE: UserProfile = {
   dateOfBirth: '2025'
 };
 
-// Google OAuth Sign In using Expo WebBrowser & AuthSession
+// Google Sign-In (Native Android Bottom Sheet Picker + WebBrowser Fallback)
+try {
+  GoogleSignin.configure({
+    scopes: ['email', 'profile'],
+  });
+} catch (e) {}
+
 export const signInWithGoogle = async (): Promise<{ user: any | null; error: Error | null }> => {
+  // 1. Try Native Google Play Services Bottom Sheet Account Picker
+  try {
+    if (Platform.OS !== 'web') {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const signInResult = await GoogleSignin.signIn();
+      const idToken = (signInResult as any)?.data?.idToken || (signInResult as any)?.idToken;
+
+      if (idToken) {
+        const { data, error } = await supabase.auth.signInWithIdToken({
+          provider: 'google',
+          token: idToken,
+        });
+
+        if (error) throw error;
+        if (data?.user) return { user: data.user, error: null };
+      }
+    }
+  } catch (nativeErr: any) {
+    if (nativeErr?.code === statusCodes?.SIGN_IN_CANCELLED) {
+      return { user: null, error: null };
+    }
+    console.warn('Native Google Sign-In note, falling back to WebBrowser auth:', nativeErr?.message);
+  }
+
+  // 2. Fallback to WebBrowser.openAuthSessionAsync
   try {
     const redirectUrl = makeRedirectUri({
       scheme: 'akorno',
