@@ -212,10 +212,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
         />
       )}
 
-      {/* Notifications Modal */}
+      {/* Notifications Modal with Live Navigation */}
       <NotificationsModal
         visible={notificationsOpen}
         onClose={() => setNotificationsOpen(false)}
+        onOpenApostle={(apostleId) => {
+          const found = APOSTLE_PERSONAS.find(a => a.id === apostleId) || APOSTLE_PERSONAS[0];
+          onSelectApostle(found);
+        }}
+        onOpenScripture={handleOpenVerseModal}
       />
     </SafeAreaView>
   );

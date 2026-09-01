@@ -64,3 +64,15 @@ export interface UserProfile {
   dateOfBirth: string;
   avatarUrl?: string;
 }
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'daily_scripture' | 'apostle_word' | 'faith_streak' | 'chat_followup' | 'sermon_workshop';
+  icon: string;
+  iconColor: string;
+  targetParam?: string;
+  isRead: boolean;
+  timestamp: number;
+}

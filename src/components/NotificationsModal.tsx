@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -11,71 +11,74 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
-import { getTodayScripture } from '../services/dailyScriptures';
-import { getTodayApostleQuotation } from '../services/apostleQuotations';
+import { AppNotification } from '../types';
+import {
+  syncRealNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  deleteNotification
+} from '../services/notificationService';
 
 interface NotificationsModalProps {
   visible: boolean;
   onClose: () => void;
   onOpenApostle?: (apostleId: string) => void;
+  onOpenScripture?: () => void;
 }
 
-interface NotificationItem {
-  id: string;
-  icon: string;
-  iconColor: string;
-  title: string;
-  message: string;
-  timeAgo: string;
-  isUnread: boolean;
-  apostleId?: string;
-}
-
-export const NotificationsModal: React.FC<NotificationsModalProps> = ({ visible, onClose, onOpenApostle }) => {
-  const todayScripture = getTodayScripture();
-  const todayApostle = getTodayApostleQuotation();
-
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    {
-      id: 'notif_scripture',
-      icon: 'sunny',
-      iconColor: '#F59E0B',
-      title: 'Daily Scripture is Ready',
-      message: `"${todayScripture.quote}" — ${todayScripture.reference}`,
-      timeAgo: 'Just now',
-      isUnread: true,
-    },
-    {
-      id: 'notif_apostle',
-      icon: 'chatbubble-ellipses',
-      iconColor: '#3B82F6',
-      title: `${todayApostle.apostleName} sent a Word of Grace`,
-      message: `"${todayApostle.quote.substring(0, 110)}..."`,
-      timeAgo: '1h ago',
-      isUnread: true,
-      apostleId: todayApostle.apostleId
-    },
-    {
-      id: 'notif_streak',
-      icon: 'flame',
-      iconColor: '#EF4444',
-      title: 'Faith Journey Active',
-      message: 'You have been reflecting with the Apostles. Keep abiding in the Word today!',
-      timeAgo: '1d ago',
-      isUnread: false,
-    }
-  ]);
+export const NotificationsModal: React.FC<NotificationsModalProps> = ({
+  visible,
+  onClose,
+  onOpenApostle,
+  onOpenScripture
+}) => {
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [dailyRemindersEnabled, setDailyRemindersEnabled] = useState(true);
 
-  const handleMarkAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isUnread: false })));
+  useEffect(() => {
+    if (visible) {
+      loadNotifications();
+    }
+  }, [visible]);
+
+  const loadNotifications = async () => {
+    const list = await syncRealNotifications();
+    setNotifications(list);
   };
 
-  const handleNotificationPress = (item: NotificationItem) => {
-    if (item.apostleId && onOpenApostle) {
+  const handleMarkAllRead = async () => {
+    await markAllNotificationsAsRead();
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+  };
+
+  const handleNotificationPress = async (item: AppNotification) => {
+    await markNotificationAsRead(item.id);
+    setNotifications(prev =>
+      prev.map(n => (n.id === item.id ? { ...n, isRead: true } : n))
+    );
+
+    if (item.type === 'daily_scripture' && onOpenScripture) {
       onClose();
-      onOpenApostle(item.apostleId);
+      onOpenScripture();
+    } else if (item.targetParam && onOpenApostle) {
+      onClose();
+      onOpenApostle(item.targetParam);
     }
+  };
+
+  const handleDeleteItem = async (id: string, e: any) => {
+    e.stopPropagation();
+    await deleteNotification(id);
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  const formatTimeAgo = (timestamp: number) => {
+    const diffMin = Math.floor((Date.now() - timestamp) / 60000);
+    if (diffMin < 2) return 'Just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${Math.floor(diffHours / 24)}d ago`;
   };
 
   return (
@@ -112,29 +115,49 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ visible,
           {/* Notifications List */}
           <Text style={styles.sectionHeading}>Today's Updates</Text>
 
-          {notifications.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={[styles.notificationCard, item.isUnread && styles.notificationCardUnread]}
-              onPress={() => handleNotificationPress(item)}
-              activeOpacity={item.apostleId ? 0.75 : 1}
-            >
-              <View style={[styles.iconContainer, { backgroundColor: `${item.iconColor}15` }]}>
-                <Ionicons name={item.icon as any} size={20} color={item.iconColor} />
-              </View>
-
-              <View style={styles.textContainer}>
-                <View style={styles.titleRow}>
-                  <Text style={styles.notifTitle}>{item.title}</Text>
-                  <Text style={styles.timeAgoText}>{item.timeAgo}</Text>
+          {notifications.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="notifications-off-outline" size={36} color="#999999" />
+              <Text style={styles.emptyText}>No notifications right now</Text>
+            </View>
+          ) : (
+            notifications.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.notificationCard, !item.isRead && styles.notificationCardUnread]}
+                onPress={() => handleNotificationPress(item)}
+                activeOpacity={0.75}
+              >
+                <View style={[styles.iconContainer, { backgroundColor: `${item.iconColor}15` }]}>
+                  <Ionicons name={item.icon as any} size={20} color={item.iconColor} />
                 </View>
-                <Text style={styles.notifMessage}>{item.message}</Text>
-                {item.apostleId && (
-                  <Text style={styles.tapToChatText}>Tap to reply in chat $\rightarrow$</Text>
-                )}
-              </View>
-            </TouchableOpacity>
-          ))}
+
+                <View style={styles.textContainer}>
+                  <View style={styles.titleRow}>
+                    <Text style={styles.notifTitle}>{item.title}</Text>
+                    <Text style={styles.timeAgoText}>{formatTimeAgo(item.timestamp)}</Text>
+                  </View>
+                  <Text style={styles.notifMessage}>{item.message}</Text>
+                  <View style={styles.footerRow}>
+                    <Text style={styles.tapToChatText}>
+                      {item.type === 'daily_scripture'
+                        ? 'Tap to open scripture $\rightarrow$'
+                        : item.targetParam
+                        ? 'Tap to reply in chat $\rightarrow$'
+                        : 'Tap to view $\rightarrow$'}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={(e) => handleDeleteItem(item.id, e)}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      style={styles.deleteBtn}
+                    >
+                      <Ionicons name="trash-outline" size={14} color="#999999" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
         </ScrollView>
       </SafeAreaView>
     </Modal>
@@ -259,10 +282,29 @@ const styles = StyleSheet.create({
     color: '#333333',
     lineHeight: 18,
   },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 6,
+  },
   tapToChatText: {
     fontFamily: Typography.fontSansMedium,
     fontSize: 12,
     color: '#2563EB',
-    marginTop: 6,
+  },
+  deleteBtn: {
+    padding: 4,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 14,
+    color: '#888888',
+    marginTop: 10,
   }
 });
