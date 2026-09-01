@@ -10,7 +10,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  ScrollView
+  ScrollView,
+  Image
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,9 +26,7 @@ import {
   updateUserPassword,
   resendVerificationEmail
 } from '../services/supabase';
-import { MascotSpriteAnimator } from '../components/MascotSpriteAnimator';
-import { FrameSequencePlayer } from '../components/FrameSequencePlayer';
-import { MascotSequences } from '../services/mascotAssets';
+import { MascotAssets } from '../services/mascotAssets';
 
 interface AuthScreenProps {
   onAuthSuccess: () => void;
@@ -356,9 +355,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
           {viewMode === 'main' && (
             <>
               <View style={styles.headerBlock}>
-                {/* 6-Frame Opposing Asynchronous Mascot Animation (Cloud UP ↕ Bread DOWN ↔ Dewdrop SIDEWAYS) */}
+                {/* Static AI Generated Fellowship Mascot Group */}
                 <View style={{ alignItems: 'center', marginBottom: 16 }}>
-                  <FrameSequencePlayer frames={MascotSequences.group_opposing} fps={3} width={180} height={120} />
+                  <Image
+                    source={MascotAssets.group}
+                    style={{ width: 190, height: 125, borderRadius: 24 }}
+                    resizeMode="contain"
+                  />
                 </View>
 
                 <Text style={styles.mainTitle}>
