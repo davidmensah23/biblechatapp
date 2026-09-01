@@ -467,14 +467,14 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
 
               {/* Slide to End Call Pill */}
               <LinearGradient
-                colors={['#2563EB', '#3B82F6', '#60A5FA']}
+                colors={['#DC2626', '#EF4444', '#F87171']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.slideEndBar}
               >
                 <Text style={styles.slideEndText}>Slide to end call</Text>
                 <View style={styles.slideEndIcon}>
-                  <Ionicons name="call" size={14} color="#1E1E24" style={{ transform: [{ rotate: '135deg' }] }} />
+                  <Ionicons name="call" size={14} color="#DC2626" style={{ transform: [{ rotate: '135deg' }] }} />
                 </View>
               </LinearGradient>
             </View>
@@ -772,7 +772,8 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     paddingHorizontal: 26,
-    marginBottom: 135,
+    marginBottom: 168,
+    transform: [{ translateY: -12 }],
   },
   heading: {
     fontFamily: Typography.fontSerif,
