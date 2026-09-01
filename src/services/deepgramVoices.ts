@@ -1,7 +1,8 @@
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 
-const DEEPGRAM_API_KEY = process.env.EXPO_PUBLIC_DEEPGRAM_API_KEY || '71faeae2c16de8413f5b5a3ab7865e798afaf83b';
+const SUPABASE_EDGE_SPEAK_URL = 'https://lhkduknpbbhcxftspukz.supabase.co/functions/v1/speak-apostle';
+const DEEPGRAM_API_KEY = process.env.EXPO_PUBLIC_DEEPGRAM_API_KEY || '';
 
 export interface ApostleVoiceConfig {
   voiceModel: string;
@@ -41,7 +42,7 @@ let currentSound: Audio.Sound | null = null;
 let activeAudioId: string | null = null;
 
 /**
- * Fetches and plays high-fidelity neural speech using Deepgram Aura
+ * Fetches and plays high-fidelity neural speech using Supabase Edge Function gateway (with direct fallback)
  */
 export const playDeepgramSpeech = async (
   audioId: string,
@@ -76,22 +77,46 @@ export const playDeepgramSpeech = async (
       playThroughEarpieceAndroid: false
     });
 
-    // Request Deepgram Aura TTS Stream
-    const res = await fetch(`https://api.deepgram.com/v1/speak?model=${voiceConfig.voiceModel}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Token ${DEEPGRAM_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ text: cleanText })
-    });
+    // 1. Try Secure Supabase Edge Function Gateway (Zero Keys on Device)
+    let audioBlob: Blob | null = null;
+    try {
+      const edgeRes = await fetch(SUPABASE_EDGE_SPEAK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: cleanText,
+          voiceModel: voiceConfig.voiceModel
+        })
+      });
 
-    if (!res.ok) {
-      throw new Error(`Deepgram TTS request failed: ${res.status}`);
+      if (edgeRes.ok) {
+        audioBlob = await edgeRes.blob();
+      }
+    } catch (edgeErr) {
+      console.warn('Supabase Edge TTS fallback to direct Deepgram:', edgeErr);
+    }
+
+    // 2. Direct Client Fallback (if Edge Function is unreachable)
+    if (!audioBlob && DEEPGRAM_API_KEY) {
+      const directRes = await fetch(`https://api.deepgram.com/v1/speak?model=${voiceConfig.voiceModel}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${DEEPGRAM_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ text: cleanText })
+      });
+
+      if (directRes.ok) {
+        audioBlob = await directRes.blob();
+      }
+    }
+
+    if (!audioBlob) {
+      throw new Error('TTS audio generation failed');
     }
 
     // Convert response stream to base64 audio and save temporarily
-    const blob = await res.blob();
     const reader = new FileReader();
 
     reader.onloadend = async () => {
@@ -123,7 +148,7 @@ export const playDeepgramSpeech = async (
       }
     };
 
-    reader.readAsDataURL(blob);
+    reader.readAsDataURL(audioBlob);
   } catch (e) {
     console.error('Deepgram play error:', e);
     stopDeepgramSpeech();
