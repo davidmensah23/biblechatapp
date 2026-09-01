@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { CardStyles } from '../theme/cardStyles';
 import { MascotAssets } from '../services/mascotAssets';
+import { getReferralCodeForUser, buildInviteLink, getUserReferralStats, ReferralStats } from '../services/referralsService';
 
 interface ShareLightModalProps {
   visible: boolean;
@@ -27,11 +28,24 @@ export const ShareLightModal: React.FC<ShareLightModalProps> = ({
   userName = 'Pilgrim'
 }) => {
   const [copied, setCopied] = useState(false);
+  const [stats, setStats] = useState<ReferralStats>({
+    totalInvites: 0,
+    joinedFriends: 0,
+    graceEarned: 0,
+    referralCode: getReferralCodeForUser(userName)
+  });
   const [message, setMessage] = useState(
     "I found a peaceful biblical companion app that lets you converse with the Apostles and walk in Scripture. Walk with me on Akorno!"
   );
 
-  const inviteLink = `https://akorno.app/join/${userName.toLowerCase().replace(/\s+/g, '')}`;
+  const referralCode = getReferralCodeForUser(userName);
+  const inviteLink = buildInviteLink(referralCode);
+
+  useEffect(() => {
+    if (visible) {
+      getUserReferralStats(undefined, userName).then(setStats);
+    }
+  }, [visible, userName]);
 
   const handleShare = async () => {
     try {

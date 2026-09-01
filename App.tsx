@@ -24,6 +24,7 @@ import { initializePushNotifications } from './src/services/pushNotificationServ
 import * as Linking from 'expo-linking';
 import { Modal } from 'react-native';
 import { PrivacyOnboardingModal } from './src/components/PrivacyOnboardingModal';
+import { initReferralsTable, extractReferralFromUrl, claimReferralCode } from './src/services/referralsService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -55,17 +56,26 @@ export default function App() {
   const [showPrivacyNotice, setShowPrivacyNotice] = useState<boolean>(false);
 
   useEffect(() => {
-    // Initialize Database & Native OS Push Notifications
+    // Initialize Database, Push Notifications & Referral System
     getDB().catch(console.error);
     initializePushNotifications().catch(console.error);
+    initReferralsTable().catch(console.error);
 
-    // Handle deep links when app opens from 1-click email confirmation or OAuth redirect
+    // Handle deep links when app opens from 1-click email confirmation, OAuth, or Friend Invites
+    const processDeepLink = (url: string) => {
+      handleAuthDeepLink(url);
+      const refCode = extractReferralFromUrl(url);
+      if (refCode) {
+        claimReferralCode(refCode).catch(console.warn);
+      }
+    };
+
     Linking.getInitialURL().then((url) => {
-      if (url) handleAuthDeepLink(url);
+      if (url) processDeepLink(url);
     });
 
     const linkSubscription = Linking.addEventListener('url', (event) => {
-      if (event.url) handleAuthDeepLink(event.url);
+      if (event.url) processDeepLink(event.url);
     });
 
     // Check existing Supabase session
