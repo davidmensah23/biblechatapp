@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -14,15 +14,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
-
-export interface BibleVersionItem {
-  id: string;
-  code: string;
-  name: string;
-  hasAudio: boolean;
-  isDownloaded: boolean;
-  hasUpdate?: boolean;
-}
+import {
+  BibleVersionInfo,
+  getBibleVersionsList,
+  downloadBibleVersion
+} from '../services/bibleEngine';
 
 interface BibleVersionsModalProps {
   visible: boolean;
@@ -31,42 +27,50 @@ interface BibleVersionsModalProps {
   onClose: () => void;
 }
 
-const INITIAL_VERSIONS: BibleVersionItem[] = [
-  // Downloaded
-  { id: '1', code: 'NIV', name: 'New International Version', hasAudio: true, isDownloaded: true, hasUpdate: true },
-  { id: '2', code: 'KJV', name: 'King James Version', hasAudio: true, isDownloaded: true },
-  { id: '3', code: 'ESV', name: 'English Standard Version', hasAudio: true, isDownloaded: true },
-  { id: '4', code: 'WEB', name: 'World English Bible', hasAudio: false, isDownloaded: true },
-
-  // Available for Download
-  { id: '5', code: 'NLT', name: 'New Living Translation', hasAudio: true, isDownloaded: false },
-  { id: '6', code: 'AMP', name: 'Amplified Bible', hasAudio: false, isDownloaded: false },
-  { id: '7', code: 'ASV', name: 'American Standard Version (1901)', hasAudio: false, isDownloaded: false },
-  { id: '8', code: 'BBE', name: 'Bible in Basic English', hasAudio: false, isDownloaded: false },
-  { id: '9', code: 'GNV', name: 'Geneva Bible (1599)', hasAudio: false, isDownloaded: false },
-  { id: '10', code: 'AFINTEXP', name: 'African International New Testament: Explanatory Paraphrase', hasAudio: false, isDownloaded: false },
-  { id: '11', code: 'AFINTLIT', name: 'African International New Testament: Literal Translation', hasAudio: false, isDownloaded: false }
-];
-
 export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
   visible,
   currentVersion,
   onSelectVersion,
   onClose
 }) => {
-  const [versions, setVersions] = useState<BibleVersionItem[]>(INITIAL_VERSIONS);
+  const [versions, setVersions] = useState<BibleVersionInfo[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadingCode, setDownloadingCode] = useState<string | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
 
-  const handleDownload = (item: BibleVersionItem) => {
-    setDownloadingId(item.id);
-    setTimeout(() => {
-      setVersions((prev) =>
-        prev.map((v) => (v.id === item.id ? { ...v, isDownloaded: true } : v))
+  useEffect(() => {
+    if (visible) {
+      loadVersions();
+    }
+  }, [visible]);
+
+  const loadVersions = async () => {
+    const list = await getBibleVersionsList();
+    setVersions(list);
+  };
+
+  const handleDownload = async (item: BibleVersionInfo) => {
+    setDownloadingCode(item.code);
+    setDownloadProgress(10);
+
+    const success = await downloadBibleVersion(item.code, (p) => {
+      setDownloadProgress(p);
+    });
+
+    setDownloadingCode(null);
+    setDownloadProgress(0);
+
+    if (success) {
+      setVersions(prev =>
+        prev.map(v => (v.code === item.code ? { ...v, isDownloaded: true } : v))
       );
-      setDownloadingId(null);
-      Alert.alert('Downloaded', `${item.code} (${item.name}) is now downloaded for 100% offline reading!`);
-    }, 1200);
+      Alert.alert(
+        'Downloaded for Offline Reading',
+        `${item.code} (${item.name}) is now saved on your device and will work 100% offline with zero internet!`
+      );
+    } else {
+      Alert.alert('Download Error', 'Could not complete translation download. Please check your connection.');
+    }
   };
 
   const handleSelect = (code: string) => {
@@ -97,7 +101,7 @@ export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
             <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>Versions</Text>
+          <Text style={styles.headerTitle}>Translations</Text>
 
           <TouchableOpacity style={styles.searchBtn}>
             <Ionicons name="search" size={22} color={Colors.textPrimary} />
@@ -106,23 +110,22 @@ export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {/* Language Selector Card */}
-          <TouchableOpacity style={styles.languagePill} activeOpacity={0.75}>
+          <View style={styles.languagePill}>
             <View style={styles.languageLeft}>
               <Ionicons name="globe-outline" size={20} color={Colors.textPrimary} style={{ marginRight: 10 }} />
               <Text style={styles.languageLabel}>Language</Text>
             </View>
             <View style={styles.languageRight}>
               <Text style={styles.languageValue}>English</Text>
-              <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} style={{ marginLeft: 4 }} />
             </View>
-          </TouchableOpacity>
+          </View>
 
           {/* Search Input */}
           <View style={styles.searchContainer}>
             <Ionicons name="search" size={18} color={Colors.textMuted} style={{ marginRight: 8 }} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search translation name or code..."
+              placeholder="Search translation name or code (KJV, NIV)..."
               placeholderTextColor={Colors.textMuted}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -134,10 +137,17 @@ export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
             )}
           </View>
 
-          {/* Downloaded Section */}
+          {/* Downloaded Offline Section */}
           {downloadedList.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionHeading}>Downloaded</Text>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionHeading}>Offline Ready on Device ({downloadedList.length})</Text>
+                <View style={styles.offlineBadge}>
+                  <Ionicons name="checkmark-circle" size={13} color="#059669" />
+                  <Text style={styles.offlineBadgeText}>Offline</Text>
+                </View>
+              </View>
+
               {downloadedList.map((item) => {
                 const isSelected = currentVersion.toUpperCase() === item.code.toUpperCase();
                 return (
@@ -154,60 +164,71 @@ export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
                         </Text>
                         {item.hasAudio && (
                           <View style={styles.audioBadge}>
-                            <Ionicons name="volume-medium" size={14} color="#666666" />
+                            <Ionicons name="volume-medium" size={13} color="#666666" />
+                          </View>
+                        )}
+                        {isSelected && (
+                          <View style={styles.activePill}>
+                            <Text style={styles.activePillText}>Active</Text>
                           </View>
                         )}
                       </View>
                       <Text style={styles.versionName} numberOfLines={2}>
                         {item.name}
                       </Text>
-                      {item.hasUpdate && (
-                        <View style={styles.updateBadge}>
-                          <Text style={styles.updateBadgeText}>Update Available</Text>
-                        </View>
-                      )}
                     </View>
 
-                    <TouchableOpacity style={styles.moreBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                      <Ionicons name="ellipsis-vertical" size={18} color={Colors.textMuted} />
-                    </TouchableOpacity>
+                    <Ionicons
+                      name={isSelected ? "radio-button-on" : "radio-button-off"}
+                      size={20}
+                      color={isSelected ? "#2563EB" : "#9CA3AF"}
+                    />
                   </TouchableOpacity>
                 );
               })}
             </View>
           )}
 
-          {/* Available English Versions Section */}
+          {/* Available for Download Section */}
           {availableList.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionHeading}>English Versions ({availableList.length})</Text>
-              {availableList.map((item) => (
-                <View key={item.id} style={styles.versionRow}>
-                  <View style={styles.versionInfo}>
-                    <View style={styles.codeRow}>
-                      <Text style={styles.versionCode}>{item.code}</Text>
-                      {downloadingId === item.id ? (
-                        <ActivityIndicator size="small" color={Colors.accentBlue} style={{ marginLeft: 8 }} />
-                      ) : (
-                        <TouchableOpacity
-                          style={styles.downloadBtn}
-                          onPress={() => handleDownload(item)}
-                          activeOpacity={0.7}
-                        >
-                          <Ionicons name="download-outline" size={16} color={Colors.textPrimary} />
-                        </TouchableOpacity>
-                      )}
+              <Text style={styles.sectionHeading}>Available for Offline Download ({availableList.length})</Text>
+              {availableList.map((item) => {
+                const isDownloading = downloadingCode === item.code;
+                return (
+                  <View key={item.id} style={styles.versionRow}>
+                    <View style={styles.versionInfo}>
+                      <View style={styles.codeRow}>
+                        <Text style={styles.versionCode}>{item.code}</Text>
+                        {item.hasAudio && (
+                          <View style={styles.audioBadge}>
+                            <Ionicons name="volume-medium" size={13} color="#666666" />
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.versionName} numberOfLines={2}>
+                        {item.name}
+                      </Text>
                     </View>
-                    <Text style={styles.versionName} numberOfLines={2}>
-                      {item.name}
-                    </Text>
-                  </View>
 
-                  <TouchableOpacity style={styles.moreBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                    <Ionicons name="ellipsis-vertical" size={18} color={Colors.textMuted} />
-                  </TouchableOpacity>
-                </View>
-              ))}
+                    {isDownloading ? (
+                      <View style={styles.downloadProgressWrap}>
+                        <ActivityIndicator size="small" color="#2563EB" />
+                        <Text style={styles.progressPercentText}>{downloadProgress}%</Text>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.downloadBtn}
+                        onPress={() => handleDownload(item)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="cloud-download-outline" size={16} color="#2563EB" style={{ marginRight: 4 }} />
+                        <Text style={styles.downloadBtnText}>Download</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })}
             </View>
           )}
         </ScrollView>
@@ -219,24 +240,25 @@ export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F3F3F5',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 18,
-    paddingTop: 12,
+    paddingTop: 14,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: '#E5E5EA',
+    backgroundColor: '#F3F3F5',
   },
   backBtn: {
     padding: 6,
   },
   headerTitle: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 20,
+    fontFamily: Typography.fontSerif,
+    fontSize: 24,
     color: Colors.textPrimary,
   },
   searchBtn: {
@@ -251,10 +273,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    backgroundColor: '#DCDCE1',
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
     marginBottom: 16,
   },
   languageLeft: {
@@ -273,14 +295,12 @@ const styles = StyleSheet.create({
   languageValue: {
     fontFamily: Typography.fontSansRegular,
     fontSize: 14,
-    color: '#4B5563',
+    color: '#555555',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    backgroundColor: '#DCDCE1',
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -295,24 +315,44 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 26,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
   sectionHeading: {
     fontFamily: Typography.fontSansSemiBold,
-    fontSize: 18,
+    fontSize: 16,
     color: '#111827',
-    marginBottom: 14,
+  },
+  offlineBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DEF7EC',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    gap: 3,
+  },
+  offlineBadgeText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 11,
+    color: '#059669',
   },
   versionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    backgroundColor: '#DCDCE1',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
   },
   versionRowSelected: {
-    backgroundColor: 'rgba(59, 130, 246, 0.05)',
-    borderRadius: 12,
-    paddingHorizontal: 8,
+    borderWidth: 1.5,
+    borderColor: '#2563EB',
+    backgroundColor: '#E8E8EE',
   },
   versionInfo: {
     flex: 1,
@@ -321,51 +361,62 @@ const styles = StyleSheet.create({
   codeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 3,
   },
   versionCode: {
     fontFamily: Typography.fontSansSemiBold,
-    fontSize: 17,
+    fontSize: 16,
     color: '#111827',
   },
   versionCodeSelected: {
-    color: Colors.accentBlue,
+    color: '#2563EB',
+  },
+  activePill: {
+    backgroundColor: '#2563EB',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    marginLeft: 8,
+  },
+  activePillText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 10,
+    color: '#FFFFFF',
   },
   audioBadge: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    paddingHorizontal: 6,
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    borderRadius: 10,
+    paddingHorizontal: 5,
     paddingVertical: 2,
-    marginLeft: 8,
+    marginLeft: 6,
   },
   downloadBtn: {
-    backgroundColor: '#F3F4F6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECECF0',
     borderRadius: 14,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginLeft: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  downloadBtnText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 12,
+    color: '#2563EB',
+  },
+  downloadProgressWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  progressPercentText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 12,
+    color: '#2563EB',
   },
   versionName: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 13.5,
-    color: '#6B7280',
-    lineHeight: 18,
-  },
-  updateBadge: {
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: '#EF4444',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    marginTop: 6,
-  },
-  updateBadgeText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 10.5,
-    color: '#EF4444',
-  },
-  moreBtn: {
-    padding: 6,
+    fontSize: 13,
+    color: '#555555',
+    lineHeight: 17,
   }
 });

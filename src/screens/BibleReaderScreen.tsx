@@ -25,7 +25,7 @@ interface BibleReaderScreenProps {
 export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ onAskApostleWithVerse }) => {
   const [currentBook, setCurrentBook] = useState('2 Samuel');
   const [currentChapter, setCurrentChapter] = useState(23);
-  const [translation, setTranslation] = useState<'NIV' | 'KJV' | 'ESV'>('NIV');
+  const [translation, setTranslation] = useState<string>('NIV');
   const [chapterData, setChapterData] = useState<BibleChapterData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedVerseNumber, setSelectedVerseNumber] = useState<number | null>(null);
