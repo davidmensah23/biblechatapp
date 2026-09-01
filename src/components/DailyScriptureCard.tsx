@@ -9,6 +9,8 @@ import { SpringConfigs } from '../theme/animations';
 interface DailyScriptureCardProps {
   quote: string;
   reference: string;
+  theme?: string;
+  imageUrl?: string;
   onReadMore: () => void;
   onBookmarkToggle?: (saved: boolean) => void;
 }
@@ -16,10 +18,13 @@ interface DailyScriptureCardProps {
 export const DailyScriptureCard: React.FC<DailyScriptureCardProps> = ({
   quote,
   reference,
+  theme,
+  imageUrl,
   onReadMore,
   onBookmarkToggle
 }) => {
   const [bookmarked, setBookmarked] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const heartScale = useSharedValue(1);
 
   const heartAnimatedStyle = useAnimatedStyle(() => ({
@@ -42,13 +47,23 @@ export const DailyScriptureCard: React.FC<DailyScriptureCardProps> = ({
 
   return (
     <View style={styles.card}>
-      {/* Painting Artwork Header */}
+      {/* Painting Artwork Header with Online Scripture Image Database Support */}
       <View style={styles.imageContainer}>
         <Image
-          source={require('../../assets/images/daily_scripture_banner.png')}
+          source={
+            imageUrl && !imageError
+              ? { uri: imageUrl }
+              : require('../../assets/images/daily_scripture_banner.png')
+          }
+          onError={() => setImageError(true)}
           style={styles.bannerImage}
           resizeMode="cover"
         />
+        {theme && (
+          <View style={styles.themeBadge}>
+            <Text style={styles.themeBadgeText}>{theme}</Text>
+          </View>
+        )}
       </View>
 
       {/* Quote Body */}
@@ -118,5 +133,19 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#111111',
     textDecorationLine: 'underline',
+  },
+  themeBadge: {
+    position: 'absolute',
+    bottom: 10,
+    left: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  themeBadgeText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 11.5,
+    color: '#FFFFFF',
   }
 });

@@ -5,9 +5,10 @@ export interface DailyScriptureItem {
   reference: string;
   book: string;
   chapter: number;
-  verse: string;
+  verse: string | number;
   theme: string;
   reflection: string;
+  imageUrl: string;
   bannerImage: any;
 }
 
@@ -22,6 +23,7 @@ export const DAILY_SCRIPTURES_DATABASE: DailyScriptureItem[] = [
     verse: '5-6',
     theme: 'Trust & Guidance',
     reflection: 'When the road ahead seems uncertain, wisdom begins not with our limited foresight, but with resting our hearts in His faithful hand.',
+    imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
     bannerImage: require('../../assets/images/daily_scripture_banner.png')
   },
   {
@@ -31,9 +33,10 @@ export const DAILY_SCRIPTURES_DATABASE: DailyScriptureItem[] = [
     reference: '1 Peter 5:7',
     book: '1 Peter',
     chapter: 5,
-    verse: '7',
+    verse: 7,
     theme: 'Peace & Comfort',
     reflection: 'You do not have to carry the weight of tomorrow alone. Hand your heaviest worries to the One whose shoulders bore the cross.',
+    imageUrl: 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?auto=format&fit=crop&w=1200&q=80',
     bannerImage: require('../../assets/images/daily_scripture_banner.png')
   },
   {
@@ -43,9 +46,10 @@ export const DAILY_SCRIPTURES_DATABASE: DailyScriptureItem[] = [
     reference: '1 John 4:18',
     book: '1 John',
     chapter: 4,
-    verse: '18',
+    verse: 18,
     theme: 'Divine Love',
     reflection: 'Fear shrinks our souls, but God’s unfailing love expands our capacity to live boldly and without condemnation.',
+    imageUrl: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=80',
     bannerImage: require('../../assets/images/daily_scripture_banner.png')
   },
   {
@@ -55,9 +59,10 @@ export const DAILY_SCRIPTURES_DATABASE: DailyScriptureItem[] = [
     reference: 'Philippians 4:13',
     book: 'Philippians',
     chapter: 4,
-    verse: '13',
+    verse: 13,
     theme: 'Strength & Endurance',
     reflection: 'Contentment and resilience do not come from our personal circumstances, but from the indwelling presence of Christ.',
+    imageUrl: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1200&q=80',
     bannerImage: require('../../assets/images/daily_scripture_banner.png')
   },
   {
@@ -70,6 +75,7 @@ export const DAILY_SCRIPTURES_DATABASE: DailyScriptureItem[] = [
     verse: '1-3',
     theme: 'Restoration',
     reflection: 'In a noisy and hurried world, the Good Shepherd invites your soul into stillness and spiritual renewal.',
+    imageUrl: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1200&q=80',
     bannerImage: require('../../assets/images/daily_scripture_banner.png')
   },
   {
@@ -79,9 +85,10 @@ export const DAILY_SCRIPTURES_DATABASE: DailyScriptureItem[] = [
     reference: 'Matthew 11:28',
     book: 'Matthew',
     chapter: 11,
-    verse: '28',
+    verse: 28,
     theme: 'Rest in Christ',
     reflection: 'Jesus does not demand that you fix your weariness before approaching Him; His invitation is to come precisely as you are.',
+    imageUrl: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80',
     bannerImage: require('../../assets/images/daily_scripture_banner.png')
   },
   {
@@ -91,16 +98,14 @@ export const DAILY_SCRIPTURES_DATABASE: DailyScriptureItem[] = [
     reference: 'John 14:27',
     book: 'John',
     chapter: 14,
-    verse: '27',
+    verse: 27,
     theme: 'Shalom Peace',
     reflection: 'Worldly peace depends on quiet surroundings; Christ’s peace is an anchor that holds steady even in the midst of stormy seas.',
+    imageUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80',
     bannerImage: require('../../assets/images/daily_scripture_banner.png')
   }
 ];
 
-/**
- * Returns today's featured daily scripture based on calendar day
- */
 export const getTodayScripture = (): DailyScriptureItem => {
   const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
   const index = dayOfYear % DAILY_SCRIPTURES_DATABASE.length;

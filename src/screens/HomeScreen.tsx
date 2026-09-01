@@ -98,10 +98,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
         >
-          {/* Dynamic Daily Scripture Featured Card */}
+          {/* Dynamic Daily Scripture Featured Card with High-Res Spiritual Imagery */}
           <DailyScriptureCard
             quote={todayScripture.quote}
             reference={todayScripture.reference}
+            theme={todayScripture.theme}
+            imageUrl={todayScripture.imageUrl}
             onReadMore={handleOpenVerseModal}
           />
 
@@ -133,6 +135,31 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* Interactive Sunday Sermon Preparation Hub */}
+          <TouchableOpacity
+            style={styles.sermonPrepCard}
+            onPress={() => {
+              const paul = APOSTLE_PERSONAS.find(a => a.id === 'paul') || APOSTLE_PERSONAS[0];
+              onSelectApostle(paul);
+            }}
+            activeOpacity={0.85}
+          >
+            <View style={styles.sermonPrepHeader}>
+              <View style={styles.sermonIconBadge}>
+                <Ionicons name="book-outline" size={18} color="#FFFFFF" />
+              </View>
+              <Text style={styles.sermonPrepBadgeText}>Sunday Sermon Workshop</Text>
+            </View>
+            <Text style={styles.sermonPrepTitle}>Preparing a message to feed the flock?</Text>
+            <Text style={styles.sermonPrepSubtitle}>
+              Collaborate step-by-step with the Apostles or generate a complete, Scripture-anchored sermon manuscript.
+            </Text>
+            <View style={styles.sermonActionRow}>
+              <Text style={styles.sermonActionText}>Start Sermon Prep with Paul</Text>
+              <Ionicons name="arrow-forward" size={15} color="#2563EB" />
+            </View>
+          </TouchableOpacity>
 
           {/* Meet Your Heroes Section Heading */}
           <Text style={styles.sectionHeading}>Meet your heroes</Text>
@@ -333,6 +360,59 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontSansMedium,
     fontSize: 12.5,
     color: '#111111',
+  },
+  sermonPrepCard: {
+    backgroundColor: '#DCDCE1',
+    borderRadius: 22,
+    padding: 18,
+    marginBottom: 20,
+  },
+  sermonPrepHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  sermonIconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#2563EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  sermonPrepBadgeText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 13.5,
+    color: '#2563EB',
+  },
+  sermonPrepTitle: {
+    fontFamily: Typography.fontSerif,
+    fontSize: 20,
+    color: '#111111',
+    marginBottom: 6,
+  },
+  sermonPrepSubtitle: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#444444',
+    marginBottom: 14,
+  },
+  sermonActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#ECECF0',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    gap: 6,
+  },
+  sermonActionText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 12.5,
+    color: '#2563EB',
   },
   sectionHeading: {
     fontFamily: Typography.fontSerif,

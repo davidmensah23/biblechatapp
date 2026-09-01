@@ -11,7 +11,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  ScrollView
+  ScrollView,
+  Share
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -33,18 +34,13 @@ import { checkProactiveFollowUp } from '../services/companionFollowup';
 import { splitIntoThoughtBubbles } from '../services/messageSplitter';
 import { calculateBubbleTypingDelay, calculateInitialContemplationDelay } from '../services/typingSpeed';
 import { AnimatedChatBubble } from '../components/AnimatedChatBubble';
+import { getContextualChips } from '../services/quickChips';
+import { speakApostleMessage, stopApostleSpeech } from '../services/speechService';
 
 interface ChatDetailScreenProps {
   apostle: ApostlePersona;
   onBack: () => void;
 }
-
-const QUICK_PROMPTS = [
-  { id: '1', label: '🕊️ Pray with me', text: 'Could you pray with me for peace and strength today?' },
-  { id: '2', label: '📖 Today’s wisdom', text: 'Share a word of encouragement from your time with Jesus.' },
-  { id: '3', label: '🌊 Faith in storms', text: 'How did you keep faith when the waves grew high?' },
-  { id: '4', label: '💡 Explain a parable', text: 'What is the true meaning behind the Parable of the Sower?' }
-];
 
 const BouncingDots: React.FC = () => {
   const dot1 = useSharedValue(0);
@@ -103,6 +99,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
   const [isLoading, setIsLoading] = useState(false);
   const [showCallModal, setShowCallModal] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   
   const flatListRef = useRef<FlatList>(null);
   const activeDispatchIdRef = useRef<number>(0);
@@ -112,6 +109,9 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
   useEffect(() => {
     loadChatHistory();
     loadProfileContext();
+    return () => {
+      stopApostleSpeech();
+    };
   }, [apostle.id]);
 
   const loadProfileContext = async () => {
@@ -137,7 +137,6 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
       await saveMessage(greeting, apostle.title, apostle.id);
       setMessages([greeting]);
     } else {
-      // Check for proactive follow-up check-in if user returns after some time
       const followUp = checkProactiveFollowUp(apostle, history, userProfile?.fullName);
       if (followUp.shouldFollowUp) {
         const lastMsg = history[history.length - 1];
@@ -160,7 +159,6 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
   const handleSendText = async (textToSend: string) => {
     if (!textToSend.trim()) return;
 
-    // Instant Interrupt & Pivot: Increment dispatch ID to cancel any pending chunk sequence
     activeDispatchIdRef.current += 1;
     const currentDispatchId = activeDispatchIdRef.current;
 
@@ -175,18 +173,15 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
       timestamp: Date.now()
     };
 
-    // Append user message immediately
     setMessages(prev => [...prev, userMsg]);
     await saveMessage(userMsg, apostle.title, apostle.id);
 
     setIsLoading(true);
 
     try {
-      // Initial contemplative pause (longer for deep/emotional questions)
       const initialDelay = calculateInitialContemplationDelay(userText);
       await new Promise(r => setTimeout(r, initialDelay));
 
-      // Check if user interrupted with another message during initial delay
       if (activeDispatchIdRef.current !== currentDispatchId) return;
 
       const replyText = await generateApostleReply(
@@ -202,24 +197,18 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
           : undefined
       );
 
-      // Check if user interrupted during API request
       if (activeDispatchIdRef.current !== currentDispatchId) return;
 
-      // Split reply into 1-3 natural thought bubbles
       const chunks = splitIntoThoughtBubbles(replyText);
 
-      // Sequentially deliver each thought bubble with character typing cadence
       for (let i = 0; i < chunks.length; i++) {
-        // Check for interruption before each bubble
         if (activeDispatchIdRef.current !== currentDispatchId) return;
 
         const chunk = chunks[i];
         const bubbleDelay = calculateBubbleTypingDelay(apostle.id, chunk);
 
-        // Simulate Apostle typing cadence
         await new Promise(r => setTimeout(r, bubbleDelay));
 
-        // Check again after typing delay
         if (activeDispatchIdRef.current !== currentDispatchId) return;
 
         const assistantMsg: ChatMessage = {
@@ -232,8 +221,6 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
 
         setMessages(prev => [...prev, assistantMsg]);
         await saveMessage(assistantMsg, apostle.title, apostle.id);
-
-        // Smooth scroll to bottom
         flatListRef.current?.scrollToEnd({ animated: true });
       }
     } catch (error) {
@@ -259,6 +246,36 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
     });
     Alert.alert('Saved', 'Added to your Bookmarks in Profile');
   };
+
+  const handleToggleSpeak = async (msg: ChatMessage) => {
+    if (speakingMessageId === msg.id) {
+      stopApostleSpeech();
+      setSpeakingMessageId(null);
+    } else {
+      setSpeakingMessageId(msg.id);
+      await speakApostleMessage(
+        msg.id,
+        msg.content,
+        apostle.id,
+        () => setSpeakingMessageId(msg.id),
+        () => setSpeakingMessageId(null)
+      );
+    }
+  };
+
+  const handleShareMessage = async (msg: ChatMessage) => {
+    try {
+      await Share.share({
+        message: `"${msg.content}"\n\n— Apostle ${apostle.name} (Bible Chat App)`,
+        title: `Word from ${apostle.name}`
+      });
+    } catch (e) {
+      console.warn('Share error:', e);
+    }
+  };
+
+  const lastAssistantMsg = [...messages].reverse().find(m => m.sender === 'assistant')?.content;
+  const dynamicChips = getContextualChips(apostle.id, lastAssistantMsg);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -301,6 +318,8 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
           renderItem={({ item }) => {
             const isUser = item.sender === 'user';
+            const isSpeaking = speakingMessageId === item.id;
+
             return (
               <View style={[styles.messageRow, isUser ? styles.userRow : styles.assistantRow]}>
                 <AnimatedChatBubble isUser={isUser}>
@@ -312,13 +331,38 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
                     />
 
                     {!isUser && (
-                      <TouchableOpacity
-                        onPress={() => handleBookmark(item)}
-                        style={styles.bookmarkBtn}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons name="bookmark-outline" size={14} color={Colors.textMuted} />
-                      </TouchableOpacity>
+                      <View style={styles.bubbleActionRow}>
+                        {/* Audio Voice Readout */}
+                        <TouchableOpacity
+                          onPress={() => handleToggleSpeak(item)}
+                          style={styles.actionIconBtn}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons
+                            name={isSpeaking ? "volume-high" : "volume-medium-outline"}
+                            size={16}
+                            color={isSpeaking ? "#2563EB" : Colors.textMuted}
+                          />
+                        </TouchableOpacity>
+
+                        {/* Share Insight */}
+                        <TouchableOpacity
+                          onPress={() => handleShareMessage(item)}
+                          style={styles.actionIconBtn}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="share-outline" size={15} color={Colors.textMuted} />
+                        </TouchableOpacity>
+
+                        {/* Bookmark */}
+                        <TouchableOpacity
+                          onPress={() => handleBookmark(item)}
+                          style={styles.actionIconBtn}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="bookmark-outline" size={15} color={Colors.textMuted} />
+                        </TouchableOpacity>
+                      </View>
                     )}
                   </View>
                 </AnimatedChatBubble>
@@ -337,10 +381,10 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
           }
         />
 
-        {/* Quick Suggestion Chips */}
+        {/* Dynamic Contextual Suggestion Chips */}
         <View style={styles.quickPromptsContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickPromptsScroll}>
-            {QUICK_PROMPTS.map((prompt) => (
+            {dynamicChips.map((prompt) => (
               <TouchableOpacity
                 key={prompt.id}
                 style={styles.quickPromptChip}
@@ -474,7 +518,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   messageBubble: {
-    maxWidth: '82%',
+    maxWidth: '85%',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 20,
@@ -487,10 +531,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#DCDCE1',
     borderBottomLeftRadius: 4,
   },
-  bookmarkBtn: {
-    alignSelf: 'flex-end',
-    marginTop: 4,
-    padding: 2,
+  bubbleActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 6,
+    gap: 8,
+  },
+  actionIconBtn: {
+    padding: 3,
   },
   typingContainer: {
     flexDirection: 'row',
