@@ -40,4 +40,12 @@ export const MascotSequences = {
     require('../../assets/mascots/sequences/group_nano/group_f2_surprise.png'),
     require('../../assets/mascots/sequences/group_nano/group_f3_praise.png'),
   ],
+  group_async: [
+    require('../../assets/mascots/sequences/group_async/async_f0.png'),
+    require('../../assets/mascots/sequences/group_async/async_f1.png'),
+    require('../../assets/mascots/sequences/group_async/async_f2.png'),
+    require('../../assets/mascots/sequences/group_async/async_f3.png'),
+    require('../../assets/mascots/sequences/group_async/async_f4.png'),
+    require('../../assets/mascots/sequences/group_async/async_f5.png'),
+  ],
 };
