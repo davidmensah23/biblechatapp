@@ -7,12 +7,13 @@ import {
   TouchableOpacity,
   SafeAreaView,
   TextInput,
-  Share
+  Share,
+  Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { CardStyles } from '../theme/cardStyles';
-import { FaithMascots } from './FaithMascots';
+import { MascotAssets } from '../services/mascotAssets';
 
 interface ShareLightModalProps {
   visible: boolean;
@@ -61,9 +62,13 @@ export const ShareLightModal: React.FC<ShareLightModalProps> = ({
           </TouchableOpacity>
 
           <View style={styles.content}>
-            {/* 2D Soft Gradient Organic Mascots (Kawaii Cloud / Manna Blossom) */}
-            <View style={{ marginBottom: 12 }}>
-              <FaithMascots size={180} />
+            {/* 2D Soft Gradient Organic Mascots (Cotton Cloud / Manna Bread / Dewdrop) */}
+            <View style={{ marginBottom: 12, alignItems: 'center' }}>
+              <Image
+                source={MascotAssets.group}
+                style={{ width: 220, height: 140, borderRadius: 20 }}
+                resizeMode="contain"
+              />
             </View>
 
             {/* Headline in Instrument Serif */}

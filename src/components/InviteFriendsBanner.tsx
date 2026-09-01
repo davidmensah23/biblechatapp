@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { CardStyles } from '../theme/cardStyles';
 import { ShareLightModal } from './ShareLightModal';
-import { FaithMascots } from './FaithMascots';
+import { MascotAssets } from '../services/mascotAssets';
 
 interface InviteFriendsBannerProps {
   userName?: string;
@@ -44,7 +44,11 @@ export const InviteFriendsBanner: React.FC<InviteFriendsBannerProps> = ({ userNa
           style={styles.chromaticAura}
         >
           {/* 2D Soft Gradient Mascots */}
-          <FaithMascots size={100} />
+          <Image
+            source={MascotAssets.group}
+            style={{ width: 105, height: 65, borderRadius: 14 }}
+            resizeMode="contain"
+          />
         </LinearGradient>
       </TouchableOpacity>
 
