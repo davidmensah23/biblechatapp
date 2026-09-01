@@ -11,6 +11,10 @@ import { ApostleCard } from '../components/ApostleCard';
 import { DailyScriptureCard } from '../components/DailyScriptureCard';
 import { ScriptureDetailModal } from '../components/ScriptureDetailModal';
 import { NotificationsModal } from '../components/NotificationsModal';
+import { DailyDeedCard } from '../components/DailyDeedCard';
+import { DeedCompletionModal } from '../components/DeedCompletionModal';
+import { getTodayDeedForUser, initDeedsDatabase, KingdomDeed } from '../services/deedsService';
+import { CardStyles } from '../theme/cardStyles';
 import { SpringConfigs } from '../theme/animations';
 
 interface HomeScreenProps {
@@ -22,10 +26,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
   const [selectedVerse, setSelectedVerse] = useState<BibleVerse | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
+  // Daily Kingdom Deed Challenge State
+  const [todayDeed, setTodayDeed] = useState<KingdomDeed>(getTodayDeedForUser());
+  const [deedCompleted, setDeedCompleted] = useState(false);
+  const [deedModalVisible, setDeedModalVisible] = useState(false);
+  const [deedModalMode, setDeedModalMode] = useState<'complete' | 'scripture'>('complete');
+
   const todayScripture = getTodayScripture();
   const todayApostleQuote = getTodayApostleQuotation();
 
   const tabIndicatorOffset = useSharedValue(0);
+
+  useEffect(() => {
+    initDeedsDatabase().catch(console.error);
+    setTodayDeed(getTodayDeedForUser());
+  }, []);
 
   useEffect(() => {
     tabIndicatorOffset.value = withSpring(activeTab === 'forYou' ? 0 : 108, SpringConfigs.bouncy);
@@ -105,6 +120,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
             theme={todayScripture.theme}
             imageUrl={todayScripture.imageUrl}
             onReadMore={handleOpenVerseModal}
+          />
+
+          {/* Daily Kingdom Deed Challenge Card (Continuous G2 Squircle Luxury UI) */}
+          <DailyDeedCard
+            deed={todayDeed}
+            isCompleted={deedCompleted}
+            onBeginDeed={() => {
+              setDeedModalMode('complete');
+              setDeedModalVisible(true);
+            }}
+            onViewScripture={() => {
+              setDeedModalMode('scripture');
+              setDeedModalVisible(true);
+            }}
           />
 
           {/* Daily Word of Grace from the Apostles */}
@@ -222,6 +251,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
         }}
         onOpenScripture={handleOpenVerseModal}
       />
+
+      {/* Daily Deed Completion & Reflection Modal */}
+      <DeedCompletionModal
+        visible={deedModalVisible}
+        deed={todayDeed}
+        mode={deedModalMode}
+        onClose={() => setDeedModalVisible(false)}
+        onSuccess={() => {
+          setDeedCompleted(true);
+        }}
+      />
     </SafeAreaView>
   );
 };
@@ -297,9 +337,8 @@ const styles = StyleSheet.create({
     paddingBottom: 110,
   },
   apostleQuoteCard: {
-    backgroundColor: '#DCDCE1',
-    borderRadius: 22,
-    padding: 16,
+    ...CardStyles.smoothCard,
+    padding: 20,
     marginBottom: 20,
   },
   apostleQuoteHeader: {
@@ -345,8 +384,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderTopWidth: 1,
-    borderTopColor: '#CFCFD6',
-    paddingTop: 10,
+    borderTopColor: '#F3F4F6',
+    paddingTop: 12,
   },
   apostleQuoteRef: {
     fontFamily: Typography.fontSansMedium,
@@ -356,10 +395,11 @@ const styles = StyleSheet.create({
   replyToApostleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ECECF0',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 18,
+    borderCurve: 'continuous',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
   },
   replyToApostleText: {
     fontFamily: Typography.fontSansMedium,
@@ -367,9 +407,8 @@ const styles = StyleSheet.create({
     color: '#111111',
   },
   sermonPrepCard: {
-    backgroundColor: '#DCDCE1',
-    borderRadius: 22,
-    padding: 18,
+    ...CardStyles.smoothCard,
+    padding: 20,
     marginBottom: 20,
   },
   sermonPrepHeader: {
@@ -378,10 +417,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   sermonIconBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#2563EB',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#1E40AF',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,

@@ -21,7 +21,9 @@ import { HoldToExplodeBadge } from '../components/HoldToExplodeBadge';
 import { ShareMilestoneModal } from '../components/ShareMilestoneModal';
 import { StreaksJourneyView } from '../components/StreaksJourneyView';
 import { ArmorOfGodView } from '../components/ArmorOfGodView';
+import { DeedsChronicleView } from '../components/DeedsChronicleView';
 import { CustomActionModal } from '../components/CustomActionModal';
+import { CardStyles } from '../theme/cardStyles';
 import { triggerInstantMilestonePush } from '../services/pushNotificationService';
 
 interface ProfileScreenProps {
@@ -37,7 +39,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onSelectApostle,
   onOpenBible
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'armor' | 'streaks' | 'badges' | 'bookmarks' | 'edit'>('armor');
+  const [activeSubTab, setActiveSubTab] = useState<'armor' | 'deeds' | 'streaks' | 'badges' | 'bookmarks' | 'edit'>('armor');
   const [bookmarks, setBookmarks] = useState<SavedBookmark[]>([]);
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [authProvider, setAuthProvider] = useState<'google' | 'email' | 'guest'>('guest');
@@ -266,6 +268,20 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </TouchableOpacity>
 
           <TouchableOpacity
+            style={[styles.subTabButton, activeSubTab === 'deeds' && styles.subTabButtonActive]}
+            onPress={() => setActiveSubTab('deeds')}
+          >
+            <Ionicons
+              name={activeSubTab === 'deeds' ? 'sparkles' : 'sparkles-outline'}
+              size={16}
+              color={activeSubTab === 'deeds' ? '#2563EB' : '#888888'}
+            />
+            <Text style={[styles.subTabLabel, activeSubTab === 'deeds' && styles.subTabLabelActive]}>
+              Deeds
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={[styles.subTabButton, activeSubTab === 'streaks' && styles.subTabButtonActive]}
             onPress={() => setActiveSubTab('streaks')}
           >
@@ -325,8 +341,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         {/* Tab 1: Armor of God & Biblical Odyssey */}
         {activeSubTab === 'armor' ? (
           <ArmorOfGodView />
+        ) : activeSubTab === 'deeds' ? (
+          /* Tab 2: Acts of Grace Chronicle & Strava-Style Footsteps Route */
+          <DeedsChronicleView />
         ) : activeSubTab === 'streaks' && growthProfile ? (
-          /* Tab 2: Streaks & Journey */
+          /* Tab 3: Streaks & Journey */
           <StreaksJourneyView
             growthProfile={growthProfile}
             onSelectApostle={onSelectApostle}
