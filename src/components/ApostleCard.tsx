@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { ApostlePersona } from '../types';
 import { Typography } from '../theme/typography';
+import { CardStyles } from '../theme/cardStyles';
 
 interface ApostleCardProps {
   apostle: ApostlePersona;
@@ -24,12 +25,12 @@ export const ApostleCard: React.FC<ApostleCardProps> = ({ apostle, onPress }) =>
         />
       </View>
 
-      {/* Name in Clean Bold Sans-Serif (reduced size to prevent multi-line wrap) */}
+      {/* Name in Bold Instrument Serif */}
       <Text
         style={styles.name}
         numberOfLines={1}
         adjustsFontSizeToFit={true}
-        minimumFontScale={0.8}
+        minimumFontScale={0.85}
       >
         {apostle.name}
       </Text>
@@ -44,14 +45,14 @@ export const ApostleCard: React.FC<ApostleCardProps> = ({ apostle, onPress }) =>
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#DCDCE1',
-    borderRadius: 22,
-    paddingVertical: 16,
-    paddingHorizontal: 10,
+    ...CardStyles.smoothCard,
+    paddingVertical: 18,
+    paddingHorizontal: 12,
     alignItems: 'center',
     width: '48%',
     marginBottom: 14,
-    minHeight: 216,
+    minHeight: 220,
+    backgroundColor: '#FFFFFF',
   },
   avatarContainer: {
     width: 90,
@@ -68,8 +69,9 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   name: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 16.5,
+    fontFamily: Typography.fontSerifBold,
+    fontSize: 19,
+    letterSpacing: -0.5,
     color: '#111111',
     marginBottom: 5,
     textAlign: 'center',

@@ -16,6 +16,8 @@ import { clearChatHistory, saveUserProfile, deleteAllUserData } from '../service
 import { updateUserPassword, deleteUserAccount, getUserAuthProvider, updateRemoteProfile, supabase } from '../services/supabase';
 import { UserProfile } from '../types';
 import { CustomActionModal } from '../components/CustomActionModal';
+import { InviteFriendsBanner } from '../components/InviteFriendsBanner';
+import { CardStyles } from '../theme/cardStyles';
 
 interface SettingsScreenProps {
   visible: boolean;
@@ -277,6 +279,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
+            {/* Chromatic Aura Invite Friends Banner */}
+            <InviteFriendsBanner userName={userProfile.fullName || 'Pilgrim'} />
+
             {/* SECTION 1: General */}
             <Text style={styles.sectionHeading}>General</Text>
             <View style={styles.group}>
@@ -803,10 +808,16 @@ const styles = StyleSheet.create({
   },
   group: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    borderRadius: 24,
+    borderCurve: 'continuous',
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: 'rgba(0, 0, 0, 0.04)',
     overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.03,
+    shadowRadius: 14,
+    elevation: 2,
   },
   pillRow: {
     flexDirection: 'row',

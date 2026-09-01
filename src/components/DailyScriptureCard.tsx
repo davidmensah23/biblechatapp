@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
 import { SpringConfigs } from '../theme/animations';
+import { CardStyles } from '../theme/cardStyles';
 
 interface DailyScriptureCardProps {
   quote: string;
@@ -94,14 +95,14 @@ export const DailyScriptureCard: React.FC<DailyScriptureCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#DCDCE1',
-    borderRadius: 24,
+    ...CardStyles.heroCard,
     overflow: 'hidden',
     marginBottom: 22,
+    backgroundColor: '#FFFFFF',
   },
   imageContainer: {
     width: '100%',
-    height: 140,
+    height: 145,
     backgroundColor: '#222222',
     overflow: 'hidden',
   },
@@ -113,9 +114,10 @@ const styles = StyleSheet.create({
     padding: 18,
   },
   verseText: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 15.5,
-    lineHeight: 23,
+    fontFamily: Typography.fontSerifBold,
+    fontSize: 20,
+    lineHeight: 26,
+    letterSpacing: -0.5,
     color: '#111111',
     marginBottom: 14,
   },
