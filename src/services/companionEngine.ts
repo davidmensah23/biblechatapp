@@ -11,6 +11,7 @@ export type ConversationMode =
   | 'greeting'
   | 'casual'
   | 'bible_study'
+  | 'sermon_preparation'
   | 'prayer_and_comfort'
   | 'theological_question'
   | 'story_and_reflection';
@@ -36,6 +37,19 @@ export const detectConversationMode = (userPrompt: string): ConversationMode => 
     lower === 'shalom'
   ) {
     return 'greeting';
+  }
+
+  // Sermon & Preaching Preparation Detection
+  if (
+    lower.includes('sermon') ||
+    lower.includes('preach') ||
+    lower.includes('homily') ||
+    lower.includes('message for sunday') ||
+    lower.includes('sunday school') ||
+    lower.includes('bible talk') ||
+    lower.includes('teach on sunday')
+  ) {
+    return 'sermon_preparation';
   }
 
   if (
@@ -154,6 +168,13 @@ Memory Usage Rule:
       break;
     case 'bible_study':
       prompt += `- The user is inquiring about specific scripture or doctrine. Provide clear, grounded biblical context from your perspective, and explain the core spiritual truth simply.`;
+      break;
+    case 'sermon_preparation':
+      prompt += `- The user is preparing a sermon, homily, or Sunday teaching.
+- Greet this sacred responsibility with brotherly joy and encouragement.
+- Anchor their sermon in the person and power of Jesus Christ.
+- Offer 2 to 3 central spiritual insights and scripture anchors in your distinct voice without producing cold corporate bulleted outlines.
+- Encourage them to speak to the hearts of their people with bold conviction and living hope.`;
       break;
     case 'theological_question':
       prompt += `- The user is wrestling with doubt or tough questions. Validate their honesty without judgment, share how faith wrestles with mystery, and point to God's steadfast character.`;
