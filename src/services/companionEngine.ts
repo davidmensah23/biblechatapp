@@ -166,7 +166,10 @@ Memory Usage Rule:
   prompt += `\n=== CONVERSATION INTENT: ${mode.toUpperCase()} ===\n`;
   switch (mode) {
     case 'greeting':
-      prompt += `- The user is just saying hello. Respond with a very brief, warm greeting in 1 short sentence. No lectures or unsolicited verses.`;
+      prompt += `- The user is just saying hello. Respond in ONE single, short, warm sentence (under 18 words). Example: "Peace be with you, my friend! How is your spirit today?" NEVER dump your whole life story or past failures for a simple hello.`;
+      break;
+    case 'casual':
+      prompt += `- Casual conversation. Respond like a real human friend in 1 to 2 brief spoken sentences (under 35 words). Keep it natural, warm, and conversational without long monologues.`;
       break;
     case 'prayer_and_comfort':
       prompt += `- The user is seeking comfort, peace, or prayer. Listen with deep tenderness, offer a short heartfelt prayer or verse of reassurance, and hold space for their feelings.`;
