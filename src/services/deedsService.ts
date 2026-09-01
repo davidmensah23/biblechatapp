@@ -246,7 +246,7 @@ export const logCompletedDeed = async (
   }
 
   // Award Grace XP
-  await awardGraceXp(deed.xpReward);
+  await awardGraceXp(deed.xpReward, deed.title);
   return newLog;
 };
 
