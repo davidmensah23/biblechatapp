@@ -8,6 +8,18 @@ import {
   Poppins_600SemiBold,
   Poppins_700Bold
 } from '@expo-google-fonts/poppins';
+import {
+  Literata_400Regular,
+  Literata_500Medium,
+  Literata_600SemiBold,
+  Literata_700Bold,
+  Literata_400Regular_Italic
+} from '@expo-google-fonts/literata';
+import {
+  Lora_400Regular,
+  Lora_600SemiBold,
+  Lora_700Bold
+} from '@expo-google-fonts/lora';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -46,7 +58,15 @@ export default function App() {
     Poppins_400Regular,
     Poppins_500Medium,
     Poppins_600SemiBold,
-    Poppins_700Bold
+    Poppins_700Bold,
+    Literata_400Regular,
+    Literata_500Medium,
+    Literata_600SemiBold,
+    Literata_700Bold,
+    Literata_400Regular_Italic,
+    Lora_400Regular,
+    Lora_600SemiBold,
+    Lora_700Bold
   });
 
   const [appStage, setAppStage] = useState<AppStage>('checking');

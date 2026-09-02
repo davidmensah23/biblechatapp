@@ -197,56 +197,44 @@ const AnimatedBibleIcon: React.FC<{ active: boolean }> = ({ active }) => {
 };
 
 // 4. Profile Icon (Minimal User Disc with Head Rise)
-const AnimatedProfileIcon: React.FC<{ active: boolean }> = ({ active }) => {
-  const translateY = useSharedValue(0);
+const AnimatedProfileIcon: React.FC<{ active: boolean; initial?: string }> = ({ active, initial = 'D' }) => {
   const scale = useSharedValue(1);
 
   useEffect(() => {
     if (active) {
-      translateY.value = withSequence(
-        withTiming(2, { duration: 90 }),
-        withSpring(-3, { damping: 10, stiffness: 220 }),
-        withSpring(0, { damping: 12, stiffness: 180 })
-      );
       scale.value = withSequence(
         withTiming(0.88, { duration: 100 }),
         withSpring(1.14, { damping: 10, stiffness: 200 }),
         withSpring(1.0, { damping: 12, stiffness: 180 })
       );
     } else {
-      translateY.value = withTiming(0, { duration: 150 });
       scale.value = withTiming(1.0, { duration: 150 });
     }
   }, [active]);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: translateY.value },
-      { scale: scale.value }
-    ],
+    transform: [{ scale: scale.value }],
   }));
 
   return (
     <Animated.View style={animatedStyle}>
-      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
         {active ? (
-          // Solid Black Active Portrait Badge
+          // Solid Black Ring with Bold Initial
           <>
-            <Circle cx="12" cy="7.5" r="4.25" fill="#000000" />
+            <Circle cx="12" cy="12" r="10" stroke="#000000" strokeWidth={2} fill="#FFFFFF" />
             <Path
-              d="M4.5 19.5C4.5 15.63 7.86 12.5 12 12.5C16.14 12.5 19.5 15.63 19.5 19.5C19.5 20.33 18.83 21 18 21H6C5.17 21 4.5 20.33 4.5 19.5Z"
+              d="M9 7.5H12C14.2 7.5 15.5 8.8 15.5 12C15.5 15.2 14.2 16.5 12 16.5H9V7.5ZM10.8 14.8H12C13.2 14.8 13.8 13.9 13.8 12C13.8 10.1 13.2 9.2 12 9.2H10.8V14.8Z"
               fill="#000000"
             />
           </>
         ) : (
-          // Crisp White Outline User Silhouette
+          // Crisp White Outline Ring with White Initial
           <>
-            <Circle cx="12" cy="7.5" r="4" stroke="#FFFFFF" strokeWidth={2} />
+            <Circle cx="12" cy="12" r="10" stroke="#FFFFFF" strokeWidth={1.8} fill="none" />
             <Path
-              d="M5 20C5 16.5 8.13 13.5 12 13.5C15.87 13.5 19 16.5 19 20"
-              stroke="#FFFFFF"
-              strokeWidth={2}
-              strokeLinecap="round"
+              d="M9 7.5H12C14.2 7.5 15.5 8.8 15.5 12C15.5 15.2 14.2 16.5 12 16.5H9V7.5ZM10.8 14.8H12C13.2 14.8 13.8 13.9 13.8 12C13.8 10.1 13.2 9.2 12 9.2H10.8V14.8Z"
+              fill="#FFFFFF"
             />
           </>
         )}
