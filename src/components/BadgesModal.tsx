@@ -5,18 +5,30 @@ import { Typography } from '../theme/typography';
 import { FaithBadge } from '../services/gamificationService';
 import { MascotBadgeCard } from './MascotBadgeCard';
 
+import { BadgeDetailModal } from './BadgeDetailModal';
+
 interface BadgesModalProps {
   visible: boolean;
   onClose: () => void;
   badges: FaithBadge[];
+  onSelectBadge?: (badge: FaithBadge) => void;
 }
 
 export const BadgesModal: React.FC<BadgesModalProps> = ({
   visible,
   onClose,
-  badges
+  badges,
+  onSelectBadge
 }) => {
   const [selectedBadge, setSelectedBadge] = useState<FaithBadge | null>(null);
+
+  const handlePressBadge = (badge: FaithBadge) => {
+    if (onSelectBadge) {
+      onSelectBadge(badge);
+    } else {
+      setSelectedBadge(badge);
+    }
+  };
 
   return (
     <Modal
@@ -36,40 +48,31 @@ export const BadgesModal: React.FC<BadgesModalProps> = ({
             <Ionicons name="arrow-back" size={24} color="#111111" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Badges</Text>
- <View style={{ width: 24 }} />
- </View>
+          <View style={{ width: 24 }} />
+        </View>
 
- <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
- {/* 3-Column Badges Grid */}
- <View style={styles.grid}>
- {badges.map((badge) => (
- <MascotBadgeCard
- key={badge.id}
- badge={badge}
- onPress={() => setSelectedBadge(badge)}
- />
- ))}
- </View>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {/* 3-Column Badges Grid */}
+          <View style={styles.grid}>
+            {badges.map((badge) => (
+              <MascotBadgeCard
+                key={badge.id}
+                badge={badge}
+                onPress={() => handlePressBadge(badge)}
+              />
+            ))}
+          </View>
+        </ScrollView>
 
- {/* Badge Detail Card */}
- {selectedBadge && (
- <View style={[styles.detailCard, { borderColor: selectedBadge.badgeColor }]}>
- <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
- <Text style={styles.detailTitle}>{selectedBadge.title}</Text>
- <View style={[styles.detailXpPill, { backgroundColor: selectedBadge.badgeColor + '20' }]}>
- <Text style={[styles.detailXpText, { color: selectedBadge.badgeColor }]}>+ {selectedBadge.xpReward} XP</Text>
- </View>
- </View>
- <Text style={styles.detailSubtitle}>{selectedBadge.subtitle}</Text>
- <Text style={styles.detailProgressText}>
- Progress: {selectedBadge.progress} / {selectedBadge.maxProgress}
- </Text>
- </View>
- )}
- </ScrollView>
- </SafeAreaView>
- </Modal>
- );
+        {/* Dedicated Badge Detail Screen Modal */}
+        <BadgeDetailModal
+          visible={Boolean(selectedBadge)}
+          badge={selectedBadge}
+          onClose={() => setSelectedBadge(null)}
+        />
+      </SafeAreaView>
+    </Modal>
+  );
 };
 
 const styles = StyleSheet.create({

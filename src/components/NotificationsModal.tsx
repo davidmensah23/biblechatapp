@@ -7,23 +7,23 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  Switch
+  Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { AppNotification } from '../types';
+import { MascotAssets } from '../services/mascotAssets';
+import { getPersonaById } from '../services/personas';
 import {
   syncRealNotifications,
-  markNotificationAsRead,
-  markAllNotificationsAsRead,
-  deleteNotification
+  markNotificationAsRead
 } from '../services/notificationService';
-import { InteractiveGestureSheet } from './InteractiveGestureSheet';
 
 interface NotificationsModalProps {
   visible: boolean;
   onClose: () => void;
   onOpenApostle?: (apostleId: string) => void;
+  onOpenBadge?: (badgeId: string) => void;
   onOpenScripture?: () => void;
 }
 
@@ -31,10 +31,10 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
   visible,
   onClose,
   onOpenApostle,
+  onOpenBadge,
   onOpenScripture
 }) => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [dailyRemindersEnabled, setDailyRemindersEnabled] = useState(true);
 
   useEffect(() => {
     if (visible) {
@@ -47,283 +47,229 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
     setNotifications(list);
   };
 
-  const handleMarkAllRead = async () => {
-    await markAllNotificationsAsRead();
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-  };
-
   const handleNotificationPress = async (item: AppNotification) => {
     await markNotificationAsRead(item.id);
     setNotifications(prev =>
       prev.map(n => (n.id === item.id ? { ...n, isRead: true } : n))
     );
 
-    if (item.type === 'daily_scripture' && onOpenScripture) {
+    // Origin deep-linking navigation
+    if ((item.badgeId || item.type === 'badge_earned' || item.type === 'badge_level_up') && onOpenBadge) {
+      onClose();
+      onOpenBadge(item.badgeId || 'saved_verse');
+    } else if (item.type === 'daily_scripture' && onOpenScripture) {
       onClose();
       onOpenScripture();
     } else if (item.targetParam && onOpenApostle) {
       onClose();
       onOpenApostle(item.targetParam);
+    } else {
+      onClose();
     }
   };
 
-  const handleDeleteItem = async (id: string, e: any) => {
-    e.stopPropagation();
-    await deleteNotification(id);
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  };
-
-  const formatTimeAgo = (timestamp: number) => {
-    const diffMin = Math.floor((Date.now() - timestamp) / 60000);
-    if (diffMin < 2) return 'Just now';
-    if (diffMin < 60) return `${diffMin}m ago`;
-    const diffHours = Math.floor(diffMin / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${Math.floor(diffHours / 24)}d ago`;
-  };
-
   return (
-    <InteractiveGestureSheet
+    <Modal
       visible={visible}
-      onClose={onClose}
-      initialSnap="mid"
-      midHeightRatio={0.72}
-      fullHeightRatio={0.92}
+      animationType="slide"
+      presentationStyle="fullScreen"
+      onRequestClose={onClose}
     >
-      <View style={styles.container}>
-        {/* Header */}
+      <SafeAreaView style={styles.safeArea}>
+        {/* Top Header Bar matching Reference Image 1 */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.backBtn} activeOpacity={0.7}>
-            <Ionicons name="close" size={22} color="#111111" />
-          </TouchableOpacity>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.headerBtn}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="arrow-back" size={24} color="#111111" />
+            </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>Notifications</Text>
+            <Text style={styles.headerTitle}>Notifications</Text>
+          </View>
 
-          <TouchableOpacity onPress={handleMarkAllRead} style={styles.markReadBtn} activeOpacity={0.7}>
-            <Text style={styles.markReadText}>Mark read</Text>
+          <TouchableOpacity
+            onPress={onClose}
+            style={styles.headerBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="settings-outline" size={22} color="#111111" />
           </TouchableOpacity>
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {/* Daily Reminder Preference Card */}
-          <View style={styles.reminderCard}>
-            <View style={styles.reminderInfo}>
-              <Text style={styles.reminderTitle}>Daily Verse Notifications</Text>
-              <Text style={styles.reminderSubtitle}>Receive today's Scripture every morning at 8:00 AM</Text>
-            </View>
-            <Switch
-              value={dailyRemindersEnabled}
-              onValueChange={setDailyRemindersEnabled}
-              trackColor={{ false: '#D1D5DB', true: '#111111' }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
+          {notifications.map((item) => {
+            const isBadge = Boolean(item.badgeId || item.type === 'badge_earned' || item.type === 'badge_level_up');
+            const isApostle = Boolean(
+              item.targetParam && ['peter', 'john', 'paul', 'thomas', 'andrew'].includes(item.targetParam)
+            );
 
-          {/* Notifications List */}
-          <Text style={styles.sectionHeading}>Recent Updates</Text>
+            const mascotKey = (item.mascotKey as any) || 'rock';
+            const mascotImg = MascotAssets[mascotKey] || MascotAssets.bread;
+            const apostle = isApostle ? getPersonaById(item.targetParam!) : null;
 
-          {notifications.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="notifications-off-outline" size={44} color="#9E9EA7" />
-              <Text style={styles.emptyTitle}>You're all caught up</Text>
-              <Text style={styles.emptySubtitle}>No unread notifications at the moment.</Text>
-            </View>
-          ) : (
-            notifications.map((item) => (
+            return (
               <TouchableOpacity
                 key={item.id}
-                style={[styles.notificationCard, !item.isRead && styles.notificationCardUnread]}
+                style={styles.notificationRow}
                 onPress={() => handleNotificationPress(item)}
                 activeOpacity={0.75}
               >
-                <View style={styles.notificationLeft}>
-                  <View style={styles.iconCircle}>
-                    <Ionicons
-                      name={item.type === 'daily_scripture' ? 'book' : 'chatbubble-ellipses'}
-                      size={18}
-                      color="#111111"
-                    />
-                  </View>
-                  {!item.isRead && <View style={styles.unreadDot} />}
+                {/* Left Emblem Avatar */}
+                <View style={styles.leftEmblemContainer}>
+                  {isBadge ? (
+                    <View style={[styles.badgeEmblemCircle, { borderColor: item.iconColor || '#C27A4E' }]}>
+                      <Image source={mascotImg} style={styles.emblemImage} resizeMode="cover" />
+                    </View>
+                  ) : isApostle && apostle ? (
+                    <View style={styles.apostleAvatarCircle}>
+                      <Image source={apostle.avatar} style={styles.emblemImage} resizeMode="cover" />
+                    </View>
+                  ) : (
+                    <View style={styles.genericAvatarCircle}>
+                      <Text style={styles.genericAvatarText}>
+                        {item.title ? item.title.charAt(0).toUpperCase() : 'E'}
+                      </Text>
+                    </View>
+                  )}
                 </View>
 
-                <View style={styles.notificationContent}>
-                  <Text style={styles.notificationTitle}>{item.title}</Text>
-                  <Text style={styles.notificationBody} numberOfLines={2}>
-                    {item.message}
+                {/* Middle Text Content */}
+                <View style={styles.middleTextContainer}>
+                  <Text style={styles.notifTitleText} numberOfLines={2}>
+                    {item.title}
                   </Text>
-                  <View style={styles.notificationFooter}>
-                    <Text style={styles.timeAgoText}>{formatTimeAgo(item.timestamp)}</Text>
-                    <TouchableOpacity
-                      onPress={(e) => handleDeleteItem(item.id, e)}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      style={styles.deleteBtn}
-                    >
-                      <Ionicons name="trash-outline" size={14} color="#999999" />
-                    </TouchableOpacity>
-                  </View>
+                  {/* Show secondary message for apostle words, comments, etc */}
+                  {!isBadge && item.message ? (
+                    <Text style={styles.notifMessageText} numberOfLines={1}>
+                      {item.message}
+                    </Text>
+                  ) : null}
+                </View>
+
+                {/* Right Relative Timestamp */}
+                <View style={styles.rightTimeContainer}>
+                  <Text style={styles.relativeTimeText}>
+                    {item.relativeTime || 'Recent'}
+                  </Text>
                 </View>
               </TouchableOpacity>
-            ))
-          )}
+            );
+          })}
         </ScrollView>
-      </View>
-    </InteractiveGestureSheet>
+      </SafeAreaView>
+    </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: '#F3F3F5',
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: '#F3F4F6',
   },
-  backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#E6E6EB',
+  headerLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+  },
+  headerBtn: {
+    padding: 6,
   },
   headerTitle: {
-    fontFamily: Typography.fontSerif,
-    fontSize: 26,
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 20,
     color: '#111111',
-  },
-  markReadBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-  },
-  markReadText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 13,
-    color: '#111111',
+    marginLeft: 16,
+    letterSpacing: -0.3,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 18,
     paddingBottom: 40,
   },
-  reminderCard: {
+  notificationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#ECECEC',
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  reminderInfo: {
-    flex: 1,
-    marginRight: 12,
-  },
-  reminderTitle: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 15,
-    color: '#111111',
-    marginBottom: 3,
-  },
-  reminderSubtitle: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 12,
-    color: '#666666',
-    lineHeight: 16,
-  },
-  sectionHeading: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 17,
-    color: '#111111',
-    marginBottom: 12,
-  },
-  notificationCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#ECECEC',
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 12,
-  },
-  notificationCardUnread: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  notificationLeft: {
-    position: 'relative',
+  leftEmblemContainer: {
     marginRight: 14,
   },
-  iconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#F3F4F6',
+  badgeEmblemCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 2,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  unreadDot: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    backgroundColor: '#111111',
+  apostleAvatarCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 1.5,
+    borderColor: '#E5E5EA',
+    overflow: 'hidden',
+    backgroundColor: '#F3F3F5',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  notificationContent: {
+  genericAvatarCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#E2E2E7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  genericAvatarText: {
+    fontFamily: Typography.fontSansBold,
+    fontSize: 16,
+    color: '#111111',
+  },
+  emblemImage: {
+    width: '100%',
+    height: '100%',
+  },
+  middleTextContainer: {
     flex: 1,
-  },
-  notificationTitle: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 14.5,
-    color: '#111111',
-    marginBottom: 3,
-  },
-  notificationBody: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 13,
-    color: '#4B5563',
-    lineHeight: 18,
-  },
-  notificationFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 6,
-  },
-  timeAgoText: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 11,
-    color: '#9CA3AF',
-  },
-  deleteBtn: {
-    padding: 4,
-  },
-  emptyState: {
-    alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 50,
+    paddingRight: 12,
   },
-  emptyTitle: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 15,
-    color: '#111111',
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  emptySubtitle: {
+  notifTitleText: {
     fontFamily: Typography.fontSansRegular,
+    fontSize: 14.5,
+    lineHeight: 20,
+    color: '#111111',
+  },
+  notifMessageText: {
+    fontFamily: Typography.fontSansMedium,
     fontSize: 13,
-    color: '#888888',
-    textAlign: 'center',
+    lineHeight: 18,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  rightTimeContainer: {
+    alignItems: 'flex-end',
+  },
+  relativeTimeText: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 12,
+    color: '#9CA3AF',
   }
 });

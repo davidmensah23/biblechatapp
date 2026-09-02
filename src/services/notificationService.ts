@@ -30,43 +30,134 @@ export const syncRealNotifications = async (): Promise<AppNotification[]> => {
       icon: 'sunny',
       iconColor: '#F59E0B',
       targetParam: todayScripture.id,
+      relativeTime: 'Today',
       isRead: false,
       timestamp: Date.now()
     };
     await insertNotification(scriptureNotif);
   }
 
-  // 2. Ensure Today's Real Apostle Word exists
+  // 2. Ensure Simon Peter's Real Apostle Chat Notification exists
   if (!currentList.some(n => n.id === apostleNotifId)) {
     const apostleNotif: AppNotification = {
       id: apostleNotifId,
-      title: `${todayApostle.apostleName} sent a Word of Grace`,
-      message: `"${todayApostle.quote.slice(0, 100)}..."`,
+      title: `${todayApostle.apostleName} sent you a message`,
+      message: `"${todayApostle.quote.slice(0, 85)}..."`,
       type: 'apostle_word',
       icon: 'chatbubble-ellipses',
       iconColor: '#3B82F6',
       targetParam: todayApostle.apostleId,
+      relativeTime: '2h',
       isRead: false,
       timestamp: Date.now() - 30 * 60 * 1000
     };
     await insertNotification(apostleNotif);
   }
 
-  // 3. Ensure Sunday Sermon Workshop Notification exists on weekends or first load
-  const sermonNotifId = `notif_sermon_${todayDateStr}`;
-  if (!currentList.some(n => n.id === sermonNotifId)) {
-    const sermonNotif: AppNotification = {
-      id: sermonNotifId,
-      title: 'Sunday Sermon Workshop',
-      message: 'Prepare your next message or homily collaboratively with Apostle Paul.',
-      type: 'sermon_workshop',
-      icon: 'book',
-      iconColor: '#8B5CF6',
-      targetParam: 'paul',
+  // 3. Ensure Badge Notifications matching Reference Image 1
+  const badgeNotifSeed: AppNotification[] = [
+    {
+      id: 'notif_badge_saved_verse_level',
+      title: 'You leveled up your Saved Verse Badge',
+      message: 'Keep anchoring in the Word of God.',
+      type: 'badge_level_up',
+      icon: 'bookmark',
+      iconColor: '#C27A4E',
+      badgeId: 'saved_verse',
+      mascotKey: 'rock',
+      badgeLevel: 5,
+      relativeTime: '41w',
       isRead: true,
-      timestamp: Date.now() - 2 * 60 * 60 * 1000
-    };
-    await insertNotification(sermonNotif);
+      timestamp: Date.now() - 41 * 7 * 24 * 3600 * 1000
+    },
+    {
+      id: 'notif_badge_plan_sub',
+      title: 'You earned the Plan Subscription Badge',
+      message: 'Started devotional walk through Scripture.',
+      type: 'badge_earned',
+      icon: 'checkbox',
+      iconColor: '#D35B5B',
+      badgeId: 'plan_subscription',
+      mascotKey: 'blossom',
+      badgeLevel: 1,
+      relativeTime: '4/18/24',
+      isRead: true,
+      timestamp: Date.now() - 60 * 24 * 3600 * 1000
+    },
+    {
+      id: 'notif_badge_highlight_level',
+      title: 'You leveled up your Highlight Badge',
+      message: 'Reached Level 10 illuminating key verses.',
+      type: 'badge_level_up',
+      icon: 'create',
+      iconColor: '#D99B38',
+      badgeId: 'highlight',
+      mascotKey: 'flame',
+      badgeLevel: 10,
+      relativeTime: '4/7/24',
+      isRead: true,
+      timestamp: Date.now() - 70 * 24 * 3600 * 1000
+    },
+    {
+      id: 'notif_badge_saved_verse_earned',
+      title: 'You earned the Saved Verse Badge',
+      message: 'Treasury of promises stored in your heart.',
+      type: 'badge_earned',
+      icon: 'bookmark',
+      iconColor: '#C27A4E',
+      badgeId: 'saved_verse',
+      mascotKey: 'rock',
+      badgeLevel: 1,
+      relativeTime: '3/29/24',
+      isRead: true,
+      timestamp: Date.now() - 80 * 24 * 3600 * 1000
+    },
+    {
+      id: 'notif_badge_highlight_earned',
+      title: 'You earned the Highlight Badge',
+      message: 'Your first verse illuminated.',
+      type: 'badge_earned',
+      icon: 'create',
+      iconColor: '#D99B38',
+      badgeId: 'highlight',
+      mascotKey: 'flame',
+      badgeLevel: 1,
+      relativeTime: '3/29/24',
+      isRead: true,
+      timestamp: Date.now() - 80 * 24 * 3600 * 1000
+    },
+    {
+      id: 'notif_badge_guided_scripture',
+      title: 'You earned the Guided Scripture Badge',
+      message: 'Deep reflection with Apostolic companions.',
+      type: 'badge_earned',
+      icon: 'cloud',
+      iconColor: '#4A8DB7',
+      badgeId: 'guided_scripture',
+      mascotKey: 'cloud',
+      badgeLevel: 1,
+      relativeTime: '3/25/24',
+      isRead: true,
+      timestamp: Date.now() - 85 * 24 * 3600 * 1000
+    },
+    {
+      id: 'notif_friend_comment',
+      title: 'Esther Kim also commented on your note:',
+      message: '"Thank you 🙌"',
+      type: 'friend_activity',
+      icon: 'chatbubble',
+      iconColor: '#10B981',
+      targetParam: 'john',
+      relativeTime: '9w',
+      isRead: true,
+      timestamp: Date.now() - 9 * 7 * 24 * 3600 * 1000
+    }
+  ];
+
+  for (const bNotif of badgeNotifSeed) {
+    if (!currentList.some(n => n.id === bNotif.id)) {
+      await insertNotification(bNotif);
+    }
   }
 
   return await fetchAllNotifications();
@@ -85,10 +176,21 @@ export const fetchAllNotifications = async (): Promise<AppNotification[]> => {
           icon TEXT NOT NULL,
           icon_color TEXT NOT NULL,
           target_param TEXT,
+          badge_id TEXT,
+          mascot_key TEXT,
+          badge_level INTEGER,
+          relative_time TEXT,
           is_read INTEGER DEFAULT 0,
           timestamp INTEGER NOT NULL
         );
       `);
+
+      try {
+        await db.execAsync('ALTER TABLE notifications ADD COLUMN badge_id TEXT;');
+        await db.execAsync('ALTER TABLE notifications ADD COLUMN mascot_key TEXT;');
+        await db.execAsync('ALTER TABLE notifications ADD COLUMN badge_level INTEGER;');
+        await db.execAsync('ALTER TABLE notifications ADD COLUMN relative_time TEXT;');
+      } catch (e) {}
 
       const rows = await db.getAllAsync<{
         id: string;
@@ -98,6 +200,10 @@ export const fetchAllNotifications = async (): Promise<AppNotification[]> => {
         icon: string;
         icon_color: string;
         target_param: string | null;
+        badge_id?: string | null;
+        mascot_key?: string | null;
+        badge_level?: number | null;
+        relative_time?: string | null;
         is_read: number;
         timestamp: number;
       }>('SELECT * FROM notifications ORDER BY timestamp DESC');
@@ -111,6 +217,10 @@ export const fetchAllNotifications = async (): Promise<AppNotification[]> => {
           icon: r.icon,
           iconColor: r.icon_color,
           targetParam: r.target_param || undefined,
+          badgeId: r.badge_id || undefined,
+          mascotKey: r.mascot_key || undefined,
+          badgeLevel: r.badge_level ?? undefined,
+          relativeTime: r.relative_time || undefined,
           isRead: Boolean(r.is_read),
           timestamp: r.timestamp
         }));
@@ -130,8 +240,8 @@ export const insertNotification = async (item: AppNotification): Promise<void> =
   if (db) {
     try {
       await db.runAsync(
-        `INSERT OR REPLACE INTO notifications (id, title, message, type, icon, icon_color, target_param, is_read, timestamp)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO notifications (id, title, message, type, icon, icon_color, target_param, badge_id, mascot_key, badge_level, relative_time, is_read, timestamp)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           item.id,
           item.title,
@@ -140,6 +250,10 @@ export const insertNotification = async (item: AppNotification): Promise<void> =
           item.icon,
           item.iconColor,
           item.targetParam || null,
+          item.badgeId || null,
+          item.mascotKey || null,
+          item.badgeLevel ?? null,
+          item.relativeTime || null,
           item.isRead ? 1 : 0,
           item.timestamp
         ]

@@ -14,9 +14,10 @@ import { NotificationsModal } from '../components/NotificationsModal';
 import { DailyDeedCard } from '../components/DailyDeedCard';
 import { DeedCompletionModal } from '../components/DeedCompletionModal';
 import { getTodayDeedForUser, initDeedsDatabase, KingdomDeed } from '../services/deedsService';
-import { getSpiritualGrowthProfile, SpiritualGrowthProfile } from '../services/gamificationService';
+import { getSpiritualGrowthProfile, SpiritualGrowthProfile, FaithBadge } from '../services/gamificationService';
 import { MascotAssets } from '../services/mascotAssets';
 import { BadgesModal } from '../components/BadgesModal';
+import { BadgeDetailModal } from '../components/BadgeDetailModal';
 import { CardStyles } from '../theme/cardStyles';
 import { SpringConfigs } from '../theme/animations';
 import { useTranslation } from '../services/localizationService';
@@ -32,6 +33,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
   const [selectedVerse, setSelectedVerse] = useState<BibleVerse | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [badgesModalOpen, setBadgesModalOpen] = useState(false);
+  const [selectedBadgeForDetail, setSelectedBadgeForDetail] = useState<FaithBadge | null>(null);
   const [shareBannerDismissed, setShareBannerDismissed] = useState(false);
   const [growthProfile, setGrowthProfile] = useState<SpiritualGrowthProfile | null>(null);
 
@@ -382,7 +384,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
         />
       )}
 
-      {/* Notifications Modal with Live Navigation */}
+      {/* Notifications Modal with Live Origin Deep-Linking Navigation */}
       <NotificationsModal
         visible={notificationsOpen}
         onClose={() => setNotificationsOpen(false)}
@@ -390,7 +392,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
           const found = APOSTLE_PERSONAS.find(a => a.id === apostleId) || APOSTLE_PERSONAS[0];
           onSelectApostle(found);
         }}
+        onOpenBadge={(badgeId) => {
+          const badge = growthProfile?.badges.find(b => b.id === badgeId) ||
+                        growthProfile?.badges[0] || null;
+          if (badge) {
+            setSelectedBadgeForDetail(badge);
+          }
+        }}
         onOpenScripture={handleOpenVerseModal}
+      />
+
+      {/* Dedicated Badge Detail Screen Modal */}
+      <BadgeDetailModal
+        visible={Boolean(selectedBadgeForDetail)}
+        badge={selectedBadgeForDetail}
+        onClose={() => setSelectedBadgeForDetail(null)}
       />
 
       {/* Badges Screen Modal */}
@@ -398,6 +414,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
         visible={badgesModalOpen}
         onClose={() => setBadgesModalOpen(false)}
         badges={growthProfile?.badges || []}
+        onSelectBadge={(badge) => {
+          setBadgesModalOpen(false);
+          setSelectedBadgeForDetail(badge);
+        }}
       />
 
       {/* Daily Deed Completion & Reflection Modal */}

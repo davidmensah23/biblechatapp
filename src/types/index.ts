@@ -70,10 +70,15 @@ export interface AppNotification {
   id: string;
   title: string;
   message: string;
-  type: 'daily_scripture' | 'apostle_word' | 'faith_streak' | 'chat_followup' | 'sermon_workshop';
+  type: 'daily_scripture' | 'apostle_word' | 'faith_streak' | 'chat_followup' | 'sermon_workshop' | 'badge_earned' | 'badge_level_up' | 'friend_activity';
   icon: string;
   iconColor: string;
-  targetParam?: string;
+  targetParam?: string; // apostleId (e.g. 'peter') or badgeId (e.g. 'highlight')
+  badgeId?: string;
+  badgeLevel?: number;
+  mascotKey?: string;
+  relativeTime?: string;
+  avatarUrl?: any;
   isRead: boolean;
   timestamp: number;
 }

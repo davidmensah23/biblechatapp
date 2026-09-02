@@ -16,11 +16,12 @@ import { fetchBookmarks, removeBookmark, fetchUserProfile, saveUserProfile } fro
 import { supabase, fetchRemoteProfile, updateRemoteProfile, getUserAuthProvider, DEFAULT_PROFILE } from '../services/supabase';
 import { SavedBookmark, UserProfile } from '../types';
 import { SettingsScreen } from './SettingsScreen';
-import { getSpiritualGrowthProfile, SpiritualGrowthProfile } from '../services/gamificationService';
+import { getSpiritualGrowthProfile, SpiritualGrowthProfile, FaithBadge } from '../services/gamificationService';
 import { BadgesModal } from '../components/BadgesModal';
 import { MascotBadgeCard } from '../components/MascotBadgeCard';
 import { MascotAssets } from '../services/mascotAssets';
 import { CustomConfirmationModal } from '../components/CustomConfirmationModal';
+import { BadgeDetailModal } from '../components/BadgeDetailModal';
 
 interface ProfileScreenProps {
   onLogout?: () => void;
@@ -40,6 +41,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [authProvider, setAuthProvider] = useState<'google' | 'email' | 'guest'>('guest');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showBadgesModal, setShowBadgesModal] = useState(false);
+  const [selectedBadgeForDetail, setSelectedBadgeForDetail] = useState<FaithBadge | null>(null);
   const [growthProfile, setGrowthProfile] = useState<SpiritualGrowthProfile | null>(null);
   const [activeActivityFilter, setActiveActivityFilter] = useState<'all' | 'highlights' | 'notes' | 'plans' | 'badges'>('all');
   const [likedActivities, setLikedActivities] = useState<Record<string, boolean>>({ act_1: false });
@@ -270,7 +272,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 key={badge.id}
                 badge={badge}
                 size="compact"
-                onPress={() => setShowBadgesModal(true)}
+                onPress={() => setSelectedBadgeForDetail(badge)}
               />
             ))}
           </ScrollView>
@@ -390,7 +392,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </View>
 
           {/* Activity Item 2: Leveled Up Badge Card */}
-          <View style={styles.activityCard}>
+          <TouchableOpacity
+            style={styles.activityCard}
+            onPress={() => {
+              const b = growthProfile?.badges.find(x => x.id === 'saved_verse') || growthProfile?.badges[0];
+              if (b) setSelectedBadgeForDetail(b);
+            }}
+            activeOpacity={0.8}
+          >
             <View style={styles.activityHeader}>
               <View style={styles.activityAvatarSmall}>
                 <Text style={styles.activityAvatarText}>{userInitial}</Text>
@@ -414,15 +423,26 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </View>
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
         </View>
- </ScrollView>
+      </ScrollView>
 
       {/* Badges Screen Modal */}
       <BadgesModal
         visible={showBadgesModal}
         onClose={() => setShowBadgesModal(false)}
         badges={growthProfile?.badges || []}
+        onSelectBadge={(badge) => {
+          setShowBadgesModal(false);
+          setSelectedBadgeForDetail(badge);
+        }}
+      />
+
+      {/* Dedicated Badge Detail Screen Modal */}
+      <BadgeDetailModal
+        visible={Boolean(selectedBadgeForDetail)}
+        badge={selectedBadgeForDetail}
+        onClose={() => setSelectedBadgeForDetail(null)}
       />
 
       {/* Custom Soft Confirmation Modal */}
