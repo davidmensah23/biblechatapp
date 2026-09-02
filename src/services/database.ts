@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { ChatMessage, ConversationThread, SavedBookmark, UserProfile } from '../types';
 import { GroupCouncilThread, GroupCouncilMessage } from '../types/groupChat';
 import { DEFAULT_PROFILE } from './supabase';
+import { recordDailyActivity } from './gamificationService';
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
 let isDbAvailable = true;
@@ -210,6 +211,10 @@ export const saveMessage = async (msg: ChatMessage, personaName: string, persona
         'INSERT OR REPLACE INTO conversations (id, persona_id, persona_name, last_message, last_message_sender, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
         [msg.conversationId, personaId, personaName, preview, msg.sender, msg.timestamp]
       );
+
+      if (msg.sender === 'user') {
+        recordDailyActivity('apostle_chat', 20).catch(console.warn);
+      }
     } catch (e) {
       console.warn('saveMessage SQLite error:', e);
     }

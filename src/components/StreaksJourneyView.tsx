@@ -33,22 +33,24 @@ export const StreaksJourneyView: React.FC<StreaksJourneyViewProps> = ({
       {/* 7-Day Walking Path Stepper */}
       <View style={styles.pathCard}>
         {/* Static Faith Mascot on Journey Path */}
-        <View style={{ alignItems: 'center', marginBottom: 8 }}>
+        <View style={{ alignItems: 'center', marginBottom: 12 }}>
           <Image
             source={MascotAssets.bread}
-            style={{ width: 68, height: 68, borderRadius: 16 }}
+            style={{ width: 64, height: 64, borderRadius: 16 }}
             resizeMode="contain"
           />
         </View>
 
         <View style={styles.pathHeader}>
           <Text style={styles.pathTitle}>7-Day Walk Path</Text>
-          <Text style={styles.pathStreakBadge}>{growthProfile.streakDays} Days Strong</Text>
+          <Text style={styles.pathStreakBadge}>
+            {growthProfile.streakDays} {growthProfile.streakDays === 1 ? 'Day' : 'Days'} Strong 🔥
+          </Text>
         </View>
 
         <View style={styles.daysRow}>
           {WEEK_DAYS.map((day, idx) => {
-            const isCompleted = idx <= (growthProfile.streakDays % 7);
+            const isCompleted = growthProfile.currentWeekActiveDays && growthProfile.currentWeekActiveDays[idx];
             const isToday = idx === currentDayIndex;
 
             return (
@@ -61,9 +63,9 @@ export const StreaksJourneyView: React.FC<StreaksJourneyViewProps> = ({
                   ]}
                 >
                   {isCompleted ? (
-                    <Ionicons name="flame" size={18} color="#F59E0B" />
+                    <Ionicons name="flame" size={18} color="#111111" />
                   ) : (
-                    <Text style={styles.dayCircleText}>{day}</Text>
+                    <Text style={[styles.dayCircleText, isToday && styles.dayCircleTextToday]}>{day}</Text>
                   )}
                 </View>
                 <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>{day}</Text>
@@ -77,69 +79,78 @@ export const StreaksJourneyView: React.FC<StreaksJourneyViewProps> = ({
       <View style={styles.section}>
         <Text style={styles.sectionHeading}>Daily Faith Habits</Text>
 
-        <View style={styles.questCard}>
-          <View style={[styles.questIconWrap, { backgroundColor: '#DEF7EC' }]}>
-            <Ionicons name="sunny-outline" size={20} color="#059669" />
+        {/* 1. Morning Scripture Reflection */}
+        <TouchableOpacity
+          style={styles.questCard}
+          onPress={onOpenBible}
+          activeOpacity={0.75}
+        >
+          <View style={styles.questIconWrap}>
+            <Ionicons
+              name={growthProfile.habitsStatus?.morningScripture ? 'checkmark-circle' : 'book-outline'}
+              size={22}
+              color="#111111"
+            />
           </View>
           <View style={styles.questInfo}>
-            <Text style={styles.questTitle}>Morning Scripture Reflection</Text>
-            <Text style={styles.questSubtitle}>Read today's verse & reflect with Peter</Text>
+            <Text style={styles.questTitle}>Daily Scripture Reflection</Text>
+            <Text style={styles.questSubtitle}>
+              {growthProfile.habitsStatus?.morningScripture ? 'Completed for today' : 'Read today\'s verse & reflect'}
+            </Text>
           </View>
-          <View style={styles.questRewardPill}>
-            <Text style={styles.questRewardText}>+15 XP</Text>
+          <View style={[styles.questRewardPill, growthProfile.habitsStatus?.morningScripture && styles.questRewardPillDone]}>
+            <Text style={[styles.questRewardText, growthProfile.habitsStatus?.morningScripture && styles.questRewardTextDone]}>
+              {growthProfile.habitsStatus?.morningScripture ? 'Done' : '+15 XP'}
+            </Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
-        <View style={styles.questCard}>
-          <View style={[styles.questIconWrap, { backgroundColor: '#EFF6FF' }]}>
-            <Ionicons name="chatbubbles-outline" size={20} color="#2563EB" />
+        {/* 2. Apostolic Fellowship */}
+        <TouchableOpacity
+          style={styles.questCard}
+          onPress={onSelectApostle}
+          activeOpacity={0.75}
+        >
+          <View style={styles.questIconWrap}>
+            <Ionicons
+              name={growthProfile.habitsStatus?.apostleChat ? 'checkmark-circle' : 'chatbubbles-outline'}
+              size={22}
+              color="#111111"
+            />
           </View>
           <View style={styles.questInfo}>
             <Text style={styles.questTitle}>Apostolic Fellowship</Text>
-            <Text style={styles.questSubtitle}>Share a prayer or question in chat</Text>
+            <Text style={styles.questSubtitle}>
+              {growthProfile.habitsStatus?.apostleChat ? 'Completed for today' : 'Share a prayer or question in chat'}
+            </Text>
           </View>
-          <View style={styles.questRewardPill}>
-            <Text style={styles.questRewardText}>+20 XP</Text>
+          <View style={[styles.questRewardPill, growthProfile.habitsStatus?.apostleChat && styles.questRewardPillDone]}>
+            <Text style={[styles.questRewardText, growthProfile.habitsStatus?.apostleChat && styles.questRewardTextDone]}>
+              {growthProfile.habitsStatus?.apostleChat ? 'Done' : '+20 XP'}
+            </Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
+        {/* 3. Kingdom Deed */}
         <View style={styles.questCard}>
-          <View style={[styles.questIconWrap, { backgroundColor: '#F5F3FF' }]}>
-            <Ionicons name="book-outline" size={20} color="#7C3AED" />
+          <View style={styles.questIconWrap}>
+            <Ionicons
+              name={growthProfile.habitsStatus?.kingdomDeed ? 'checkmark-circle' : 'heart-outline'}
+              size={22}
+              color="#111111"
+            />
           </View>
           <View style={styles.questInfo}>
-            <Text style={styles.questTitle}>Bible Chapter Study</Text>
-            <Text style={styles.questSubtitle}>Complete 1 full chapter in the Bible reader</Text>
+            <Text style={styles.questTitle}>Kingdom Deed of Grace</Text>
+            <Text style={styles.questSubtitle}>
+              {growthProfile.habitsStatus?.kingdomDeed ? 'Completed for today' : 'Complete your daily act of service'}
+            </Text>
           </View>
-          <View style={styles.questRewardPill}>
-            <Text style={styles.questRewardText}>+25 XP</Text>
+          <View style={[styles.questRewardPill, growthProfile.habitsStatus?.kingdomDeed && styles.questRewardPillDone]}>
+            <Text style={[styles.questRewardText, growthProfile.habitsStatus?.kingdomDeed && styles.questRewardTextDone]}>
+              {growthProfile.habitsStatus?.kingdomDeed ? 'Done' : '+25 XP'}
+            </Text>
           </View>
-        </View>
-      </View>
-
-      {/* Spiritual Collectibles & Relics Shelf */}
-      <View style={styles.section}>
-        <Text style={styles.sectionHeading}>Faith Artifacts & Relics</Text>
-        <Text style={styles.sectionSub}>Unlock sacred relics through study and devotion</Text>
-
-        <View style={styles.collectiblesGrid}>
-          {COLLECTIBLES.map((c) => (
-            <View key={c.id} style={[styles.collectibleCard, !c.isUnlocked && styles.collectibleCardLocked]}>
-              <View style={[styles.collectibleIconWrap, { backgroundColor: c.isUnlocked ? `${c.color}15` : '#E5E7EB' }]}>
-                <Ionicons
-                  name={c.icon as any}
-                  size={24}
-                  color={c.isUnlocked ? c.color : '#9CA3AF'}
-                />
-              </View>
-              <Text style={[styles.collectibleName, !c.isUnlocked && styles.collectibleNameLocked]} numberOfLines={1}>
-                {c.name}
-              </Text>
-              <Text style={styles.collectibleDesc} numberOfLines={2}>
-                {c.desc}
-              </Text>
-            </View>
-          ))}
         </View>
       </View>
     </View>
@@ -195,18 +206,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayCircleCompleted: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#ECECEC',
     borderWidth: 1.5,
-    borderColor: '#F59E0B',
+    borderColor: '#111111',
   },
   dayCircleToday: {
     borderWidth: 2,
-    borderColor: '#2563EB',
+    borderColor: '#111111',
   },
   dayCircleText: {
     fontFamily: Typography.fontSansMedium,
     fontSize: 13,
     color: '#6B7280',
+  },
+  dayCircleTextToday: {
+    color: '#111111',
+    fontFamily: Typography.fontSansSemiBold,
   },
   dayLabel: {
     fontFamily: Typography.fontSansRegular,
@@ -215,7 +230,7 @@ const styles = StyleSheet.create({
   },
   dayLabelToday: {
     fontFamily: Typography.fontSansSemiBold,
-    color: '#2563EB',
+    color: '#111111',
   },
   section: {
     marginBottom: 8,
@@ -224,21 +239,15 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 16,
     color: '#111827',
-    marginBottom: 4,
-  },
-  sectionSub: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 12.5,
-    color: '#6B7280',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   questCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 8,
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: '#E5E5EA',
   },
@@ -246,77 +255,40 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginRight: 12,
   },
   questInfo: {
     flex: 1,
   },
   questTitle: {
     fontFamily: Typography.fontSansSemiBold,
-    fontSize: 13.5,
+    fontSize: 14,
     color: '#111827',
   },
   questSubtitle: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 11.5,
+    fontSize: 12,
     color: '#6B7280',
-    marginTop: 1,
+    marginTop: 2,
   },
   questRewardPill: {
-    backgroundColor: '#F5F3FF',
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  questRewardPillDone: {
+    backgroundColor: '#111111',
   },
   questRewardText: {
     fontFamily: Typography.fontSansSemiBold,
-    fontSize: 11,
-    color: '#7C3AED',
+    fontSize: 11.5,
+    color: '#111111',
   },
-  collectiblesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  collectibleCard: {
-    width: '48%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    alignItems: 'center',
-    textAlign: 'center',
-  },
-  collectibleCardLocked: {
-    opacity: 0.55,
-    backgroundColor: '#FAFAFA',
-  },
-  collectibleIconWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  collectibleName: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 13,
-    color: '#111827',
-    textAlign: 'center',
-    marginBottom: 3,
-  },
-  collectibleNameLocked: {
-    color: '#6B7280',
-  },
-  collectibleDesc: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 11,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 15,
+  questRewardTextDone: {
+    color: '#FFFFFF',
   }
 });

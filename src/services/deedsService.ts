@@ -1,5 +1,5 @@
 import { getDB } from './database';
-import { awardGraceXp } from './gamificationService';
+import { awardGraceXp, recordDailyActivity } from './gamificationService';
 
 export type DeedTier = 'seed' | 'branch' | 'fruit';
 
@@ -245,8 +245,9 @@ export const logCompletedDeed = async (
     }
   }
 
-  // Award Grace XP
+  // Award Grace XP & Log Daily Streak Activity
   await awardGraceXp(deed.xpReward, deed.title);
+  await recordDailyActivity('deed_completed', deed.xpReward);
   return newLog;
 };
 

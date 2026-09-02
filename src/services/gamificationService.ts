@@ -13,6 +13,12 @@ export interface FaithBadge {
   xpReward: number;
 }
 
+export interface FaithHabitStatus {
+  morningScripture: boolean;
+  apostleChat: boolean;
+  kingdomDeed: boolean;
+}
+
 export interface SpiritualGrowthProfile {
   streakDays: number;
   highestStreak: number;
@@ -23,7 +29,10 @@ export interface SpiritualGrowthProfile {
   nextLevelXp: number;
   chaptersReadCount: number;
   conversationsCount: number;
+  deedsCompletedCount: number;
   sermonsPreparedCount: number;
+  currentWeekActiveDays: boolean[]; // Mon to Sun active flags for current week
+  habitsStatus: FaithHabitStatus;
   badges: FaithBadge[];
 }
 
@@ -36,143 +45,289 @@ const LEVEL_TIERS = [
   { level: 6, title: 'Ambassador of Grace', minXp: 1500, maxXp: 3000 }
 ];
 
-const INITIAL_BADGES: FaithBadge[] = [
-  {
-    id: 'fisher_of_men',
-    title: 'Fisher of Men',
-    subtitle: 'Walked with Simon Peter in candid reflection',
-    category: 'communion',
-    iconName: 'boat-outline',
-    iconColor: '#2563EB',
-    isUnlocked: true,
-    progress: 1,
-    maxProgress: 1,
-    xpReward: 50
-  },
-  {
-    id: 'beloved_disciple',
-    title: 'Heart of the Beloved',
-    subtitle: 'Rest in divine love through deep fellowship with John',
-    category: 'communion',
-    iconName: 'heart-outline',
-    iconColor: '#E11D48',
-    isUnlocked: true,
-    progress: 2,
-    maxProgress: 2,
-    xpReward: 50
-  },
-  {
-    id: 'berean_scholar',
-    title: 'Berean Scholar',
-    subtitle: 'Search the Holy Scriptures daily (3 chapters)',
-    category: 'study',
-    iconName: 'book-outline',
-    iconColor: '#059669',
-    isUnlocked: true,
-    progress: 3,
-    maxProgress: 3,
-    xpReward: 75
-  },
-  {
-    id: 'pulpit_builder',
-    title: 'Pulpit Builder',
-    subtitle: 'Collaborate with Paul in Sunday Sermon Workshop',
-    category: 'sermon',
-    iconName: 'flame-outline',
-    iconColor: '#D97706',
-    isUnlocked: false,
-    progress: 1,
-    maxProgress: 2,
-    xpReward: 100
-  },
-  {
-    id: 'flame_walker',
-    title: 'Pentecost Flame',
-    subtitle: 'Maintain a 5-day continuous walking streak',
-    category: 'walk',
-    iconName: 'sparkles-outline',
-    iconColor: '#7C3AED',
-    isUnlocked: false,
-    progress: 3,
-    maxProgress: 5,
-    xpReward: 120
-  },
-  {
-    id: 'polyglot_scribe',
-    title: 'Polyglot Scribe',
-    subtitle: 'Download and read in 2 different Bible translations',
-    category: 'study',
-    iconName: 'globe-outline',
-    iconColor: '#0284C7',
-    isUnlocked: true,
-    progress: 2,
-    maxProgress: 2,
-    xpReward: 60
-  }
+// Helper to get local date string YYYY-MM-DD
+const getLocalDateString = (d: Date = new Date()): string => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// In-memory fallback for activity logs
+let memoryActivityLog: Array<{ id: string; dateStr: string; activityType: string; xp: number; timestamp: number }> = [
+  { id: 'init_log', dateStr: getLocalDateString(), activityType: 'app_open', xp: 15, timestamp: Date.now() }
 ];
 
-export const getSpiritualGrowthProfile = async (): Promise<SpiritualGrowthProfile> => {
+/**
+ * Record a real user activity (App Open, Reading Bible, Chatting with Apostle, Completing Deed)
+ */
+export const recordDailyActivity = async (
+  activityType: 'app_open' | 'scripture_read' | 'apostle_chat' | 'deed_completed' | 'sermon_prep',
+  xpEarned: number = 10
+): Promise<void> => {
+  const dateStr = getLocalDateString();
+  const logId = `act_${dateStr}_${activityType}`;
+
+  const item = {
+    id: logId,
+    dateStr,
+    activityType,
+    xp: xpEarned,
+    timestamp: Date.now()
+  };
+
+  if (!memoryActivityLog.some(a => a.id === logId)) {
+    memoryActivityLog.push(item);
+  }
+
   const db = await getDB();
-  let totalXp = 290;
-  let streakDays = 4;
-  let highestStreak = 7;
-  let chaptersRead = 5;
-  let conversations = 8;
-  let sermons = 1;
+  if (db) {
+    try {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS daily_activity_log (
+          id TEXT PRIMARY KEY NOT NULL,
+          date_str TEXT NOT NULL,
+          activity_type TEXT NOT NULL,
+          xp_earned INTEGER DEFAULT 0,
+          timestamp INTEGER NOT NULL
+        );
+      `);
+
+      await db.runAsync(
+        `INSERT OR REPLACE INTO daily_activity_log (id, date_str, activity_type, xp_earned, timestamp)
+         VALUES (?, ?, ?, ?, ?)`,
+        [logId, dateStr, activityType, xpEarned, Date.now()]
+      );
+    } catch (e) {
+      console.warn('recordDailyActivity SQLite error:', e);
+    }
+  }
+};
+
+/**
+ * Calculates real streak, real XP, and real weekly activity from SQLite
+ */
+export const getSpiritualGrowthProfile = async (): Promise<SpiritualGrowthProfile> => {
+  // 1. Auto-record today's check-in
+  await recordDailyActivity('app_open', 15);
+
+  const db = await getDB();
+  let distinctDates: string[] = [];
+  let totalActivityXp = 0;
+  let todayActivities: string[] = [];
+  let deedsCompletedCount = 0;
+  let deedsXp = 0;
+  let conversationsCount = 0;
+  let chaptersReadCount = 0;
 
   if (db) {
     try {
       await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS user_gamification (
-          key TEXT PRIMARY KEY NOT NULL,
-          value INTEGER NOT NULL
+        CREATE TABLE IF NOT EXISTS daily_activity_log (
+          id TEXT PRIMARY KEY NOT NULL,
+          date_str TEXT NOT NULL,
+          activity_type TEXT NOT NULL,
+          xp_earned INTEGER DEFAULT 0,
+          timestamp INTEGER NOT NULL
         );
       `);
 
-      const rows = await db.getAllAsync<{ key: string; value: number }>(
-        'SELECT key, value FROM user_gamification'
+      // 1. Fetch unique active dates
+      const dateRows = await db.getAllAsync<{ date_str: string }>(
+        'SELECT DISTINCT date_str FROM daily_activity_log ORDER BY date_str ASC'
       );
+      distinctDates = dateRows.map(r => r.date_str);
 
-      rows.forEach(r => {
-        if (r.key === 'total_xp') totalXp = r.value;
-        if (r.key === 'streak_days') streakDays = r.value;
-        if (r.key === 'highest_streak') highestStreak = r.value;
-        if (r.key === 'chapters_read') chaptersRead = r.value;
-        if (r.key === 'conversations_count') conversations = r.value;
-        if (r.key === 'sermons_count') sermons = r.value;
-      });
+      // 2. Fetch total activity XP
+      const xpRow = await db.getFirstAsync<{ total: number }>(
+        'SELECT SUM(xp_earned) as total FROM daily_activity_log'
+      );
+      if (xpRow && xpRow.total) totalActivityXp = xpRow.total;
+
+      // 3. Fetch today's activities
+      const todayStr = getLocalDateString();
+      const todayRows = await db.getAllAsync<{ activity_type: string }>(
+        'SELECT activity_type FROM daily_activity_log WHERE date_str = ?',
+        [todayStr]
+      );
+      todayActivities = todayRows.map(r => r.activity_type);
+
+      // 4. Fetch real deeds completed
+      try {
+        const deedsRows = await db.getAllAsync<{ xp_reward: number }>(
+          'SELECT xp_reward FROM deeds_history'
+        );
+        if (deedsRows) {
+          deedsCompletedCount = deedsRows.length;
+          deedsXp = deedsRows.reduce((sum, d) => sum + (d.xp_reward || 0), 0);
+        }
+      } catch (e) {}
+
+      // 5. Fetch real conversations count
+      try {
+        const convRows = await db.getAllAsync<{ id: string }>(
+          'SELECT id FROM conversations'
+        );
+        if (convRows) conversationsCount = convRows.length;
+      } catch (e) {}
+
+      // 6. Fetch real chapters read
+      try {
+        const chapterRows = await db.getAllAsync<{ id: string }>(
+          'SELECT id FROM offline_bible_chapters'
+        );
+        if (chapterRows) chaptersReadCount = chapterRows.length;
+      } catch (e) {}
+
     } catch (e) {
-      console.warn('Gamification DB lookup note:', e);
+      console.warn('Error reading growth metrics from DB:', e);
     }
   }
 
-  // Calculate Level Tier
+  // Fallback to memory activity log if SQLite was empty
+  if (distinctDates.length === 0) {
+    distinctDates = Array.from(new Set(memoryActivityLog.map(m => m.dateStr))).sort();
+    totalActivityXp = memoryActivityLog.reduce((s, m) => s + m.xp, 0);
+    todayActivities = memoryActivityLog.filter(m => m.dateStr === getLocalDateString()).map(m => m.activityType);
+  }
+
+  // =========================================================================
+  // REAL STREAK CALCULATION ENGINE
+  // =========================================================================
+  const dateSet = new Set(distinctDates);
+  const now = new Date();
+  const todayStr = getLocalDateString(now);
+
+  const yesterdayDate = new Date(now);
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterdayStr = getLocalDateString(yesterdayDate);
+
+  let currentStreak = 0;
+  let cursorDate = new Date(now);
+
+  if (dateSet.has(todayStr)) {
+    // Streak includes today, count backwards
+    while (dateSet.has(getLocalDateString(cursorDate))) {
+      currentStreak++;
+      cursorDate.setDate(cursorDate.getDate() - 1);
+    }
+  } else if (dateSet.has(yesterdayStr)) {
+    // User hasn't logged today yet, but streak from yesterday is still valid
+    cursorDate = new Date(yesterdayDate);
+    while (dateSet.has(getLocalDateString(cursorDate))) {
+      currentStreak++;
+      cursorDate.setDate(cursorDate.getDate() - 1);
+    }
+  }
+
+  // Calculate highest historical streak
+  let highestStreak = currentStreak;
+  if (distinctDates.length > 0) {
+    let tempStreak = 0;
+    let prevDate: Date | null = null;
+
+    for (const dStr of distinctDates) {
+      const parts = dStr.split('-').map(Number);
+      const curr = new Date(parts[0], parts[1] - 1, parts[2]);
+
+      if (prevDate) {
+        const diffDays = Math.round((curr.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays === 1) {
+          tempStreak++;
+        } else if (diffDays > 1) {
+          tempStreak = 1;
+        }
+      } else {
+        tempStreak = 1;
+      }
+      prevDate = curr;
+      if (tempStreak > highestStreak) highestStreak = tempStreak;
+    }
+  }
+
+  // =========================================================================
+  // REAL CURRENT WEEK ACTIVE MATRIX (Monday to Sunday)
+  // =========================================================================
+  const currentDayOfWeek = (now.getDay() + 6) % 7; // Monday = 0, Sunday = 6
+  const mondayDate = new Date(now);
+  mondayDate.setDate(now.getDate() - currentDayOfWeek);
+
+  const currentWeekActiveDays: boolean[] = [];
+  for (let i = 0; i < 7; i++) {
+    const dayDate = new Date(mondayDate);
+    dayDate.setDate(mondayDate.getDate() + i);
+    const dayStr = getLocalDateString(dayDate);
+    currentWeekActiveDays.push(dateSet.has(dayStr));
+  }
+
+  // Total Real XP
+  const totalXp = totalActivityXp + deedsXp + (chaptersReadCount * 10) + (conversationsCount * 5);
+
+  // Level Tier
   const tier = LEVEL_TIERS.find(t => totalXp >= t.minXp && totalXp < t.maxXp) || LEVEL_TIERS[LEVEL_TIERS.length - 1];
 
+  const habitsStatus: FaithHabitStatus = {
+    morningScripture: todayActivities.includes('scripture_read') || todayActivities.includes('app_open'),
+    apostleChat: todayActivities.includes('apostle_chat'),
+    kingdomDeed: todayActivities.includes('deed_completed')
+  };
+
   return {
-    streakDays,
-    highestStreak,
+    streakDays: Math.max(1, currentStreak),
+    highestStreak: Math.max(1, highestStreak),
     totalXp,
     currentLevel: tier.level,
     levelTitle: tier.title,
     currentLevelXp: totalXp - tier.minXp,
     nextLevelXp: tier.maxXp - tier.minXp,
-    chaptersReadCount: chaptersRead,
-    conversationsCount: conversations,
-    sermonsPreparedCount: sermons,
-    badges: INITIAL_BADGES
+    chaptersReadCount,
+    conversationsCount,
+    deedsCompletedCount,
+    sermonsPreparedCount: 0,
+    currentWeekActiveDays,
+    habitsStatus,
+    badges: [
+      {
+        id: 'fisher_of_men',
+        title: 'Fisher of Men',
+        subtitle: 'Walked with Simon Peter in candid reflection',
+        category: 'communion',
+        iconName: 'boat-outline',
+        iconColor: '#111111',
+        isUnlocked: conversationsCount >= 1,
+        progress: Math.min(conversationsCount, 1),
+        maxProgress: 1,
+        xpReward: 50
+      },
+      {
+        id: 'berean_scholar',
+        title: 'Berean Scholar',
+        subtitle: 'Search the Holy Scriptures daily (3 chapters)',
+        category: 'study',
+        iconName: 'book-outline',
+        iconColor: '#111111',
+        isUnlocked: chaptersReadCount >= 3,
+        progress: Math.min(chaptersReadCount, 3),
+        maxProgress: 3,
+        xpReward: 75
+      },
+      {
+        id: 'flame_walker',
+        title: 'Pentecost Flame',
+        subtitle: 'Maintain a 5-day continuous walking streak',
+        category: 'walk',
+        iconName: 'flame-outline',
+        iconColor: '#111111',
+        isUnlocked: currentStreak >= 5,
+        progress: Math.min(currentStreak, 5),
+        maxProgress: 5,
+        xpReward: 120
+      }
+    ]
   };
 };
 
 export const awardGraceXp = async (points: number, reason: string): Promise<number> => {
-  const db = await getDB();
-  if (db) {
-    try {
-      await db.runAsync(`
-        INSERT INTO user_gamification (key, value) VALUES ('total_xp', ?)
-        ON CONFLICT(key) DO UPDATE SET value = value + ?;
-      `, [points, points]);
-    } catch (e) {}
-  }
+  await recordDailyActivity('app_open', points);
   return points;
 };
