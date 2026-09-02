@@ -174,21 +174,24 @@ export const buildGroupCouncilPrompt = (
   isInvitingUser: boolean = false
 ): string => {
   const otherNames = otherMembers.map(m => m.name).join(', ');
-  const userDisplayName = userProfile?.fullName || 'the Pilgrim';
+  const userFirstName = userProfile?.fullName
+    ? userProfile.fullName.trim().split(' ')[0]
+    : 'our friend';
   const addressTitle = userProfile?.gender === 'brother'
-    ? 'brother in Christ'
+    ? `brother ${userFirstName}`
     : userProfile?.gender === 'sister'
-    ? 'sister in Christ'
-    : 'fellow pilgrim';
+    ? `sister ${userFirstName}`
+    : userFirstName;
 
   return `=== COUNCIL OF FAITH: MULTI-DISCIPLE FELLOWSHIP ===
 You are ${speaker.name} (${speaker.title}), speaking in a live fellowship gathering alongside your fellow brothers: ${otherNames}.
-The user, ${userDisplayName} (${addressTitle}), is sitting in fellowship with all of you.
+The user, ${userFirstName} (${addressTitle}), is sitting in fellowship with all of you.
 The topic of this gathering is: "${topic}".
 
 1. REAL FELLOWSHIP DYNAMICS & BROTHERHOOD:
 - Speak naturally as ${speaker.name} in the first person ("I", "my").
-- You are in active conversation with both your fellow apostles and ${userDisplayName}.
+- You are in active conversation with both your fellow apostles and ${userFirstName}.
+- Address the user ONLY by their first name ("${userFirstName}") or spiritual title ("${addressTitle}"). NEVER say their full legal name.
 - You can refer to other apostles warmly as brother (e.g., "Brother Peter speaks of the shore...", "As brother Paul rightly noted in his epistle...", "Brother Thomas raises an honest truth...").
 - Do NOT repeat what the previous apostle said. Build upon it, add your unique experience with Jesus, or gently offer your distinct perspective.
 
@@ -198,7 +201,7 @@ The topic of this gathering is: "${topic}".
 - Speak with genuine warmth, humility, and biblical depth.
 
 ${isInvitingUser ? `3. USER INCLUSION DIRECTIVE (CRITICAL):
-- At the end of your response, warmly turn your attention directly to ${userDisplayName} and ask for their reflection, experience, or input on this subject (e.g., "What are your thoughts on this, ${userProfile?.gender === 'brother' ? 'brother' : userProfile?.gender === 'sister' ? 'sister' : userDisplayName}?", "How has this walked out in your own life?").` : ''}
+- At the end of your response, warmly turn your attention directly to ${userFirstName} and ask for their reflection, experience, or input on this subject (e.g., "What are your thoughts on this, ${addressTitle}?", "How has this walked out in your own life, ${userFirstName}?").` : ''}
 
 4. ACTIVE APOSTLE DOSSIER: ${speaker.name.toUpperCase()}
 ${speaker.systemPrompt}
@@ -218,6 +221,9 @@ export const generateGroupApostleReply = async (
   isInvitingUser: boolean = false
 ): Promise<string> => {
   try {
+    const userFirstName = userProfile?.fullName
+      ? userProfile.fullName.trim().split(' ')[0]
+      : 'User';
     const otherMembers = allMembers.filter(m => m.id !== speaker.id);
     const systemPrompt = buildGroupCouncilPrompt(speaker, otherMembers, topic, userProfile, isInvitingUser);
 
@@ -231,7 +237,7 @@ export const generateGroupApostleReply = async (
       if (msg.senderType === 'user') {
         messagesPayload.push({
           role: 'user',
-          content: `${userProfile?.fullName || 'User'}: ${msg.content}`
+          content: `${userFirstName}: ${msg.content}`
         });
       } else {
         messagesPayload.push({
@@ -244,7 +250,7 @@ export const generateGroupApostleReply = async (
     if (userPrompt.trim()) {
       messagesPayload.push({
         role: 'user',
-        content: `${userProfile?.fullName || 'User'}: ${userPrompt}`
+        content: `${userFirstName}: ${userPrompt}`
       });
     }
 
