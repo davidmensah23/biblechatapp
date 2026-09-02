@@ -84,7 +84,7 @@ export const CreateGroupCouncilModal: React.FC<CreateGroupCouncilModalProps> = (
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true}>
+    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <SafeAreaView style={styles.sheetContainer}>
           {/* Top Grab Handle */}

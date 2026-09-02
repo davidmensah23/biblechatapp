@@ -21,7 +21,7 @@ export const ScriptureDetailModal: React.FC<ScriptureDetailModalProps> = ({
   if (!verse) return null;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.modalCard}>
           {/* Header */}

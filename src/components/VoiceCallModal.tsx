@@ -134,7 +134,7 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
   ).current;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={false}>
+    <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onEndCall}>
       <View style={styles.container}>
         {/* Top Header Section */}
         <View style={styles.topHeader}>

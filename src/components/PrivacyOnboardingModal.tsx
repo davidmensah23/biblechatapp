@@ -21,12 +21,12 @@ export const PrivacyOnboardingModal: React.FC<PrivacyOnboardingModalProps> = ({
   onDismiss
 }) => {
   return (
-    <Modal visible={visible} animationType="fade" transparent={true}>
+    <Modal visible={visible} animationType="fade" transparent={true} onRequestClose={onDismiss}>
       <View style={styles.overlay}>
         <SafeAreaView style={styles.dialogCard}>
           {/* Sacred Lock Crest */}
           <View style={styles.crestWrap}>
-            <Ionicons name="shield-checkmark" size={32} color="#2563EB" />
+            <Ionicons name="shield-checkmark" size={32} color="#111111" />
           </View>
 
           <Text style={styles.eyebrow}>YOUR SACRED PRIVACY</Text>
@@ -35,39 +35,39 @@ export const PrivacyOnboardingModal: React.FC<PrivacyOnboardingModalProps> = ({
           <ScrollView style={styles.scrollBody} showsVerticalScrollIndicator={false}>
             {/* Feature 1: Local-First Protection */}
             <View style={styles.featureRow}>
-              <View style={[styles.iconCircle, { backgroundColor: '#EFF6FF' }]}>
-                <Ionicons name="lock-closed" size={18} color="#2563EB" />
+              <View style={[styles.iconCircle, { backgroundColor: '#ECECEC' }]}>
+                <Ionicons name="lock-closed" size={18} color="#111111" />
               </View>
               <View style={styles.featureTextWrap}>
                 <Text style={styles.featureTitle}>On-Device Private Storage</Text>
                 <Text style={styles.featureBody}>
-                  Your personal prayers, confessions, and conversations with the Apostles are stored inside your device’s private memory sandbox. We never harvest or sell your faith data.
+                  Your personal prayers, reflections, and conversations with the Apostles are stored inside your device’s private memory sandbox. We never harvest or sell your faith data.
                 </Text>
               </View>
             </View>
 
             {/* Feature 2: Immune to Cleaner Apps */}
             <View style={styles.featureRow}>
-              <View style={[styles.iconCircle, { backgroundColor: '#ECFDF5' }]}>
-                <Ionicons name="shield" size={18} color="#059669" />
+              <View style={[styles.iconCircle, { backgroundColor: '#ECECEC' }]}>
+                <Ionicons name="shield" size={18} color="#111111" />
               </View>
               <View style={styles.featureTextWrap}>
                 <Text style={styles.featureTitle}>Immune to Phone Cleaners</Text>
                 <Text style={styles.featureBody}>
-                  Your database is kept in secure internal storage. Android cleaner apps (like CCleaner or Samsung Care) only wipe temporary caches and cannot touch your faith database.
+                  Your database is kept in secure internal storage. Cleaner apps only wipe temporary caches and cannot touch your faith database.
                 </Text>
               </View>
             </View>
 
             {/* Feature 3: Cloud Safeguard & Zero Residual */}
             <View style={styles.featureRow}>
-              <View style={[styles.iconCircle, { backgroundColor: '#F5F3FF' }]}>
-                <Ionicons name="cloud-done" size={18} color="#7C3AED" />
+              <View style={[styles.iconCircle, { backgroundColor: '#ECECEC' }]}>
+                <Ionicons name="cloud-done" size={18} color="#111111" />
               </View>
               <View style={styles.featureTextWrap}>
                 <Text style={styles.featureTitle}>Cloud Sync & Total Control</Text>
                 <Text style={styles.featureBody}>
-                  Your Spiritual Level, equipped Armor of God, and bookmarks are synced to your account. If you ever delete your account, all cloud and local records are permanently wiped.
+                  Your Spiritual Journey, Streaks, and bookmarks are securely synced to your account. If you ever delete your account, all cloud and local records are permanently wiped.
                 </Text>
               </View>
             </View>

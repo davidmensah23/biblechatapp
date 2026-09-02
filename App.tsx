@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, StatusBar, Dimensions } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, StatusBar, Dimensions, BackHandler, ToastAndroid, Platform, Modal } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import {
@@ -24,7 +24,6 @@ import { getDB, saveUserProfile, migrateGuestDataToUser } from './src/services/d
 import { supabase, fetchRemoteProfile, signOutUser, handleAuthDeepLink } from './src/services/supabase';
 import { initializePushNotifications } from './src/services/pushNotificationService';
 import * as Linking from 'expo-linking';
-import { Modal } from 'react-native';
 import { PrivacyOnboardingModal } from './src/components/PrivacyOnboardingModal';
 import { initReferralsTable, extractReferralFromUrl, claimReferralCode } from './src/services/referralsService';
 
@@ -115,6 +114,62 @@ export default function App() {
       clearTimeout(timer);
     };
   }, []);
+
+  const lastBackPressRef = useRef<number>(0);
+
+  // Comprehensive Android Hardware Back Button & State Navigation Manager
+  useEffect(() => {
+    const onBackPress = () => {
+      // 1. If Privacy Notice modal is open -> Close it
+      if (showPrivacyNotice) {
+        setShowPrivacyNotice(false);
+        return true;
+      }
+
+      // 2. If Auth modal is open -> Close it
+      if (showAuthModal) {
+        setShowAuthModal(false);
+        return true;
+      }
+
+      // 3. If in 1-on-1 Chat or Group Council -> Return to previous screen
+      if (currentView === 'chat' || currentView === 'groupChat') {
+        setCurrentView('main');
+        return true;
+      }
+
+      // 4. If on another tab (chats, bible, profile) -> Return to Home tab
+      if (appStage === 'main' && activeNavTab !== 'home') {
+        setActiveNavTab('home');
+        return true;
+      }
+
+      // 5. If on Auth screen -> Return to Onboarding
+      if (appStage === 'auth') {
+        setAppStage('onboarding');
+        return true;
+      }
+
+      // 6. If on Home root screen -> Press twice to exit gracefully
+      if (appStage === 'main' && activeNavTab === 'home' && currentView === 'main') {
+        const now = Date.now();
+        if (now - lastBackPressRef.current < 2000) {
+          BackHandler.exitApp();
+          return true;
+        }
+        lastBackPressRef.current = now;
+        if (Platform.OS === 'android') {
+          ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
+        }
+        return true;
+      }
+
+      return false;
+    };
+
+    const backHandlerSubscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => backHandlerSubscription.remove();
+  }, [showPrivacyNotice, showAuthModal, currentView, activeNavTab, appStage]);
 
   const handleStartTransition = (originX?: number, originY?: number) => {
     if (originX && originY) {
@@ -240,7 +295,12 @@ export default function App() {
           />
 
           {/* Auth Modal for Guests upgrading from Profile */}
-          <Modal visible={showAuthModal} animationType="slide" transparent={false}>
+          <Modal
+            visible={showAuthModal}
+            animationType="slide"
+            transparent={false}
+            onRequestClose={() => setShowAuthModal(false)}
+          >
             <View style={styles.flexOne}>
               <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
               <AuthScreen

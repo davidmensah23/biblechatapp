@@ -37,7 +37,7 @@ export const LanguagePickerModal: React.FC<LanguagePickerModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true}>
+    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <View style={styles.overlay}>
         <SafeAreaView style={styles.sheetContainer}>
           <View style={styles.grabBar} />

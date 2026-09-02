@@ -93,7 +93,7 @@ export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
   );
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={false}>
+    <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
       <SafeAreaView style={styles.container}>
         {/* Header Bar */}
         <View style={styles.header}>

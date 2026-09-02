@@ -35,12 +35,12 @@ export const CircularRevealTransition: React.FC<CircularRevealTransitionProps> =
   const ringOpacity = useSharedValue(0.85);
 
   useEffect(() => {
-    // 1. Primary White Expanding Eclipse Portal (950ms cinematic curve)
+    // 1. Primary White Expanding Eclipse Portal (1000ms calm organic curve)
     scale.value = withTiming(
       1,
       {
-        duration: 950,
-        easing: Easing.bezier(0.16, 1, 0.3, 1) // Smooth organic exponential acceleration & decelerated settle
+        duration: 1000,
+        easing: Easing.bezier(0.22, 1, 0.36, 1) // 1 full second calm, smooth acceleration & deceleration
       },
       (finished) => {
         if (finished) {
@@ -49,14 +49,14 @@ export const CircularRevealTransition: React.FC<CircularRevealTransitionProps> =
       }
     );
 
-    // 2. Radiant Luminous Blue-Cyan Shockwave Ring preceding the portal
-    ringScale.value = withTiming(1.08, {
-      duration: 950,
-      easing: Easing.bezier(0.16, 1, 0.3, 1)
+    // 2. Subtle Radiant Outer Shockwave Ring preceding the portal
+    ringScale.value = withTiming(1.06, {
+      duration: 1000,
+      easing: Easing.bezier(0.22, 1, 0.36, 1)
     });
 
     ringOpacity.value = withTiming(0, {
-      duration: 950,
+      duration: 1000,
       easing: Easing.bezier(0.4, 0, 0.2, 1)
     });
   }, []);
@@ -71,11 +71,6 @@ export const CircularRevealTransition: React.FC<CircularRevealTransitionProps> =
       height: size,
       borderRadius: size / 2,
       backgroundColor: '#FFFFFF',
-      shadowColor: '#2563EB',
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.5,
-      shadowRadius: 25,
-      elevation: 20
     };
   });
 
@@ -88,8 +83,8 @@ export const CircularRevealTransition: React.FC<CircularRevealTransitionProps> =
       width: ringSize,
       height: ringSize,
       borderRadius: ringSize / 2,
-      borderWidth: 4,
-      borderColor: '#38BDF8',
+      borderWidth: 2,
+      borderColor: '#E2E2E2',
       opacity: ringOpacity.value
     };
   });

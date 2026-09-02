@@ -39,7 +39,7 @@ export const CustomActionModal: React.FC<CustomActionModalProps> = ({
   if (!visible) return null;
 
   return (
-    <Modal visible={visible} animationType="fade" transparent={true}>
+    <Modal visible={visible} animationType="fade" transparent={true} onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.modalCard}>
           {type === 'armor_lesson' && armorPiece ? (

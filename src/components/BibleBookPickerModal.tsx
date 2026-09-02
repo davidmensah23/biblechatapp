@@ -58,7 +58,7 @@ export const BibleBookPickerModal: React.FC<BibleBookPickerModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={false}>
+    <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
       <SafeAreaView style={styles.container}>
         {/* Header */}
         <View style={styles.header}>

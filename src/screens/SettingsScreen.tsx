@@ -264,7 +264,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true}>
+    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <SafeAreaView style={styles.sheetModal}>
           {/* Top Grab Handle */}
@@ -433,7 +433,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       </View>
 
       {/* Privacy & Data Storage Sub-Modal */}
-      <Modal visible={activeSubModal === 'Privacy'} animationType="slide" transparent={false}>
+      <Modal
+        visible={activeSubModal === 'Privacy'}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setActiveSubModal(null)}
+      >
         <SafeAreaView style={styles.subModalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setActiveSubModal(null)} style={styles.modalBackBtn}>
@@ -447,7 +452,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             {/* Privacy Card 1: Local-First Storage */}
             <View style={styles.privacyCard}>
               <View style={styles.privacyIconWrap}>
-                <Ionicons name="lock-closed" size={22} color="#2563EB" />
+                <Ionicons name="lock-closed" size={22} color="#111111" />
               </View>
               <Text style={styles.privacyCardTitle}>On-Device Private Storage</Text>
               <Text style={styles.privacyCardBody}>
@@ -458,11 +463,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             {/* Privacy Card 2: Cleaner App Protection */}
             <View style={styles.privacyCard}>
               <View style={styles.privacyIconWrap}>
-                <Ionicons name="shield-checkmark" size={22} color="#059669" />
+                <Ionicons name="shield-checkmark" size={22} color="#111111" />
               </View>
               <Text style={styles.privacyCardTitle}>Protection from Cleaner Apps</Text>
               <Text style={styles.privacyCardBody}>
-                Your database is stored in secure internal app memory. Android system cleaner apps (such as CCleaner, Samsung Device Care, or Xiaomi Cleaner) only wipe temporary caches and cannot delete your conversation database.
+                Your database is stored in secure internal app memory. Cleaner apps only wipe temporary caches and cannot delete your conversation database.
               </Text>
             </View>
 
@@ -470,10 +475,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             <View style={styles.backupBox}>
               <Text style={styles.backupBoxTitle}>Cloud Backup & Sync</Text>
               <Text style={styles.backupBoxBody}>
-                Back up your Spiritual Level, equipped Armor of God, and bookmarks to your secure Supabase account so you can restore them on any device.
+                Back up your Spiritual Journey, Streaks, and bookmarks to your secure Supabase account so you can restore them on any device.
               </Text>
               <TouchableOpacity
-                style={[styles.savePasswordBtn, { marginTop: 12, backgroundColor: '#2563EB' }]}
+                style={[styles.savePasswordBtn, { marginTop: 12, backgroundColor: '#111111' }]}
                 onPress={handleCloudBackup}
                 disabled={isBackingUp}
                 activeOpacity={0.85}
@@ -496,7 +501,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       </Modal>
 
       {/* Sub-Modals (Account, Appearance, Audio, Language, etc.) */}
-      <Modal visible={activeSubModal === 'Account'} animationType="slide" transparent={false}>
+      <Modal
+        visible={activeSubModal === 'Account'}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setActiveSubModal(null)}
+      >
         <SafeAreaView style={styles.subModalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setActiveSubModal(null)} style={styles.modalBackBtn}>
@@ -610,7 +620,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       </Modal>
 
       {/* Change Password Sub-Modal */}
-      <Modal visible={activeSubModal === 'ChangePassword'} animationType="slide" transparent={false}>
+      <Modal
+        visible={activeSubModal === 'ChangePassword'}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setActiveSubModal('Account')}
+      >
         <SafeAreaView style={styles.subModalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setActiveSubModal('Account')} style={styles.modalBackBtn}>
@@ -669,7 +684,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       </Modal>
 
       {/* Appearance Sub-Modal */}
-      <Modal visible={activeSubModal === 'Appearance'} animationType="slide" transparent={false}>
+      <Modal
+        visible={activeSubModal === 'Appearance'}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setActiveSubModal(null)}
+      >
         <SafeAreaView style={styles.subModalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setActiveSubModal(null)} style={styles.modalBackBtn}>
@@ -693,7 +713,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                     {scale}
                   </Text>
                   {fontSizeScale === scale && (
-                    <Ionicons name="checkmark-circle" size={20} color="#2563EB" />
+                    <Ionicons name="checkmark-circle" size={20} color="#111111" />
                   )}
                 </TouchableOpacity>
               ))}
@@ -703,7 +723,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       </Modal>
 
       {/* Language Sub-Modal */}
-      <Modal visible={activeSubModal === 'Language'} animationType="slide" transparent={false}>
+      <Modal
+        visible={activeSubModal === 'Language'}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setActiveSubModal(null)}
+      >
         <SafeAreaView style={styles.subModalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setActiveSubModal(null)} style={styles.modalBackBtn}>
@@ -729,7 +754,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                     {lang}
                   </Text>
                   {selectedLanguage === lang && (
-                    <Ionicons name="checkmark-circle" size={20} color="#2563EB" />
+                    <Ionicons name="checkmark-circle" size={20} color="#111111" />
                   )}
                 </TouchableOpacity>
               ))}
@@ -739,7 +764,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       </Modal>
 
       {/* Documentation Sub-Modal */}
-      <Modal visible={activeSubModal === 'Documentation'} animationType="slide" transparent={false}>
+      <Modal
+        visible={activeSubModal === 'Documentation'}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setActiveSubModal(null)}
+      >
         <SafeAreaView style={styles.subModalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setActiveSubModal(null)} style={styles.modalBackBtn}>
