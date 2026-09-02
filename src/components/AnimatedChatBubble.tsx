@@ -1,37 +1,50 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import { StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
-  withTiming
+  withTiming,
+  Easing
 } from 'react-native-reanimated';
-import { SpringConfigs } from '../theme/animations';
 
 interface AnimatedChatBubbleProps {
   isUser: boolean;
+  animate?: boolean;
   style?: StyleProp<ViewStyle>;
   children: React.ReactNode;
 }
 
+/**
+ * Subtle, serene chat bubble presentation.
+ * Preloaded history renders instantly with zero popping.
+ * New incoming/outgoing messages fade & glide gently in.
+ */
 export const AnimatedChatBubble: React.FC<AnimatedChatBubbleProps> = ({
   isUser,
+  animate = false,
   style,
   children
 }) => {
-  const scale = useSharedValue(0.4);
-  const opacity = useSharedValue(0);
-  const translateY = useSharedValue(isUser ? 6 : 8);
+  const opacity = useSharedValue(animate ? 0 : 1);
+  const translateY = useSharedValue(animate ? 4 : 0);
+  const scale = useSharedValue(animate ? 0.98 : 1);
 
   useEffect(() => {
-    scale.value = withSpring(1.0, {
-      damping: 13,
-      stiffness: 220,
-      mass: 0.8
-    });
-    opacity.value = withTiming(1.0, { duration: 160 });
-    translateY.value = withSpring(0, SpringConfigs.bouncy);
-  }, []);
+    if (animate) {
+      opacity.value = withTiming(1.0, {
+        duration: 260,
+        easing: Easing.bezier(0.25, 0.1, 0.25, 1)
+      });
+      translateY.value = withTiming(0, {
+        duration: 280,
+        easing: Easing.bezier(0.16, 1, 0.3, 1)
+      });
+      scale.value = withTiming(1.0, {
+        duration: 260,
+        easing: Easing.bezier(0.16, 1, 0.3, 1)
+      });
+    }
+  }, [animate]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [

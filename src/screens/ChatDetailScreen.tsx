@@ -103,6 +103,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
   
   const flatListRef = useRef<FlatList>(null);
   const activeDispatchIdRef = useRef<number>(0);
+  const initialLoadedIdsRef = useRef<Set<string>>(new Set());
 
   const conversationId = `conv_${apostle.id}`;
 
@@ -135,6 +136,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
         timestamp: Date.now()
       };
       await saveMessage(greeting, apostle.title, apostle.id);
+      initialLoadedIdsRef.current.add(greeting.id);
       setMessages([greeting]);
     } else {
       const followUp = checkProactiveFollowUp(apostle, history, userProfile?.fullName);
@@ -152,6 +154,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
           history.push(followUpMsg);
         }
       }
+      history.forEach(m => initialLoadedIdsRef.current.add(m.id));
       setMessages(history);
     }
   };
@@ -320,10 +323,11 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
           renderItem={({ item }) => {
             const isUser = item.sender === 'user';
             const isSpeaking = speakingMessageId === item.id;
+            const isPreloaded = initialLoadedIdsRef.current.has(item.id);
 
             return (
               <View style={[styles.messageRow, isUser ? styles.userRow : styles.assistantRow]}>
-                <AnimatedChatBubble isUser={isUser}>
+                <AnimatedChatBubble isUser={isUser} animate={!isPreloaded}>
                   <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.assistantBubble]}>
                     <FormattedMessageText
                       content={item.content}
@@ -342,7 +346,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
                           <Ionicons
                             name={isSpeaking ? "volume-high" : "volume-medium-outline"}
                             size={16}
-                            color={isSpeaking ? "#2563EB" : Colors.textMuted}
+                            color={isSpeaking ? "#111111" : Colors.textMuted}
                           />
                         </TouchableOpacity>
 

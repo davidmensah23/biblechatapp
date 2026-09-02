@@ -244,7 +244,7 @@ export const GroupChatDetailScreen: React.FC<GroupChatDetailScreenProps> = ({ th
 
       {/* Focus Topic Banner */}
       <View style={styles.topicBanner}>
-        <Ionicons name="book-outline" size={13} color="#D97706" style={{ marginRight: 6 }} />
+        <Ionicons name="book-outline" size={13} color="#111111" style={{ marginRight: 6 }} />
         <Text style={styles.topicBannerText} numberOfLines={1}>
           Focus: {thread.topic}
         </Text>
@@ -260,7 +260,7 @@ export const GroupChatDetailScreen: React.FC<GroupChatDetailScreenProps> = ({ th
         renderItem={({ item }) => {
           const isUser = item.senderType === 'user';
           const apostle = memberApostles.find(a => a.id === item.apostleId);
-          const accentColor = apostle?.accentColor || '#6366F1';
+          const accentColor = '#111111';
 
           return (
             <View style={[styles.messageRow, isUser ? styles.messageRowUser : styles.messageRowApostle]}>
