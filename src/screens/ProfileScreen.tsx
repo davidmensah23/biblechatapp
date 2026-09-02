@@ -7,7 +7,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  TextInput
+  Share,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
@@ -15,11 +16,10 @@ import { fetchBookmarks, removeBookmark, fetchUserProfile, saveUserProfile } fro
 import { supabase, fetchRemoteProfile, updateRemoteProfile, getUserAuthProvider, DEFAULT_PROFILE } from '../services/supabase';
 import { SavedBookmark, UserProfile } from '../types';
 import { SettingsScreen } from './SettingsScreen';
-import { getUserAvatarUrl, AvatarStyle, AVATAR_STYLE_OPTIONS } from '../services/avatarService';
 import { getSpiritualGrowthProfile, SpiritualGrowthProfile } from '../services/gamificationService';
-import { StreaksJourneyView } from '../components/StreaksJourneyView';
-import { CustomActionModal } from '../components/CustomActionModal';
-import { CardStyles } from '../theme/cardStyles';
+import { BadgesModal } from '../components/BadgesModal';
+import { MascotBadgeCard } from '../components/MascotBadgeCard';
+import { MascotAssets } from '../services/mascotAssets';
 
 interface ProfileScreenProps {
   onLogout?: () => void;
@@ -34,15 +34,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onSelectApostle,
   onOpenBible
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'streaks' | 'bookmarks' | 'edit'>('streaks');
   const [bookmarks, setBookmarks] = useState<SavedBookmark[]>([]);
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [authProvider, setAuthProvider] = useState<'google' | 'email' | 'guest'>('guest');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [avatarStyle, setAvatarStyle] = useState<AvatarStyle>('notionists');
-  const [avatarSeedOffset, setAvatarSeedOffset] = useState<number>(0);
+  const [showBadgesModal, setShowBadgesModal] = useState(false);
   const [growthProfile, setGrowthProfile] = useState<SpiritualGrowthProfile | null>(null);
-  const [showSavedModal, setShowSavedModal] = useState(false);
+  const [activeActivityFilter, setActiveActivityFilter] = useState<'all' | 'highlights' | 'notes' | 'plans' | 'badges'>('all');
+  const [likedActivities, setLikedActivities] = useState<Record<string, boolean>>({ act_1: false });
 
   useEffect(() => {
     loadData();
@@ -74,681 +73,715 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     if (p) setProfile(p);
   };
 
-  const handleSaveProfile = async () => {
-    await saveUserProfile(profile);
+  const handleShareProfile = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await updateRemoteProfile(user.id, profile);
-      }
+      await Share.share({
+        message: `Connect with ${profile.fullName || 'me'} on Bible Chat App! Let us walk together in faith and daily Scripture.`,
+      });
     } catch (e) {}
-    setShowSavedModal(true);
   };
 
-  const handleRemoveBookmark = async (id: string) => {
-    await removeBookmark(id);
-    setBookmarks(bookmarks.filter(b => b.id !== id));
+  const toggleLike = (id: string) => {
+    setLikedActivities(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const handleCycleAvatarStyle = () => {
-    const currentIndex = AVATAR_STYLE_OPTIONS.findIndex(s => s.id === avatarStyle);
-    const nextIndex = (currentIndex + 1) % AVATAR_STYLE_OPTIONS.length;
-    setAvatarStyle(AVATAR_STYLE_OPTIONS[nextIndex].id);
-  };
-
-  const handleShuffleAvatarSeed = () => {
-    setAvatarSeedOffset(prev => prev + 1);
-  };
-
-  const currentSeed = `${profile.fullName || profile.email || 'Disciple'}${avatarSeedOffset > 0 ? `_${avatarSeedOffset}` : ''}`;
-  const avatarUrl = getUserAvatarUrl(currentSeed, avatarStyle);
+  const userInitial = (profile.fullName || 'D').trim().charAt(0).toUpperCase();
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top Header */}
+      {/* Top Header Actions (QR Share Profile, Settings Gear, Menu) */}
       <View style={styles.header}>
-        <View style={styles.titleContainer}>
-          <View style={styles.topRedIndicator} />
-          <Text style={styles.title}>Profile</Text>
-        </View>
-
         <TouchableOpacity
-          style={styles.settingsBtn}
-          onPress={() => setShowSettingsModal(true)}
-          activeOpacity={0.75}
+          style={styles.shareProfileBtn}
+          onPress={handleShareProfile}
+          activeOpacity={0.8}
         >
-          <Ionicons name="options-outline" size={24} color="#111111" />
+          <Ionicons name="qr-code-outline" size={16} color="#111111" style={{ marginRight: 6 }} />
+          <Text style={styles.shareProfileText}>Share Profile</Text>
         </TouchableOpacity>
+
+        <View style={styles.headerRightButtons}>
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            onPress={() => setShowSettingsModal(true)}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="settings-outline" size={22} color="#111111" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            onPress={() => setShowSettingsModal(true)}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="menu-outline" size={24} color="#111111" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Guest Mode Upgrade Banner */}
-        {authProvider === 'guest' && (
-          <View style={styles.guestBannerCard}>
-            <View style={styles.guestBannerLeft}>
-              <View style={styles.guestBannerIcon}>
-                <Ionicons name="cloud-upload-outline" size={20} color="#2563EB" />
+        {/* User Identity Header Block */}
+        <View style={styles.profileHeaderBlock}>
+          <View style={styles.profileMetaLeft}>
+            <Text style={styles.profileFullName}>{profile.fullName || 'David Mensah'}</Text>
+            <View style={styles.chipsRow}>
+              <View style={styles.chipPill}>
+                <Text style={styles.chipText}>Friends 2</Text>
               </View>
-              <View style={styles.guestBannerTextWrap}>
-                <Text style={styles.guestBannerTitle}>Guest Account</Text>
-                <Text style={styles.guestBannerSub}>
-                  Sign in to back up and sync your faith journey.
-                </Text>
+              <View style={styles.chipPill}>
+                <Text style={styles.chipText}>Following 1</Text>
               </View>
             </View>
-
-            <TouchableOpacity
-              style={styles.guestSignInBtn}
-              onPress={onOpenAuthModal}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.guestSignInBtnText}>Sign In</Text>
-            </TouchableOpacity>
           </View>
-        )}
 
-        {/* User Card with Illustrated Avatar */}
-        <View style={styles.userCard}>
+          {/* Large Avatar with Initial & Camera Badge */}
           <View style={styles.avatarWrapper}>
-            <Image
-              source={{ uri: avatarUrl }}
-              style={styles.userAvatar}
-            />
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarInitial}>{userInitial}</Text>
+            </View>
             <TouchableOpacity
-              style={styles.shuffleAvatarBtn}
-              onPress={handleShuffleAvatarSeed}
+              style={styles.cameraBadge}
+              onPress={() => Alert.alert('Update Avatar', 'Personalize your profile picture and faith companion avatar.')}
               activeOpacity={0.8}
             >
-              <Ionicons name="dice-outline" size={14} color="#FFFFFF" />
+              <Ionicons name="camera-outline" size={14} color="#111111" />
             </TouchableOpacity>
           </View>
+        </View>
 
-          <View style={styles.userInfo}>
-            <View style={styles.userNameRow}>
-              <Text style={styles.userName}>{profile.fullName || 'Beloved Disciple'}</Text>
-              {authProvider !== 'guest' && (
-                <Ionicons name="checkmark-circle" size={17} color="#2563EB" style={{ marginLeft: 6 }} />
-              )}
-            </View>
-            <Text style={styles.userBio} numberOfLines={2}>{profile.bio}</Text>
+        {/* Action Button: Find Your Church */}
+        <TouchableOpacity
+          style={styles.findChurchBtn}
+          onPress={() => Alert.alert('Find Your Church', 'Locate fellow biblical community and fellowship nearby.')}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="home-outline" size={17} color="#111111" style={{ marginRight: 8 }} />
+          <Text style={styles.findChurchText}>Find Your Church</Text>
+        </TouchableOpacity>
 
-            <View style={styles.avatarStyleRow}>
-              <TouchableOpacity
-                style={styles.avatarStylePill}
-                onPress={handleCycleAvatarStyle}
-                activeOpacity={0.75}
-              >
-                <Ionicons name="color-palette-outline" size={12} color="#2563EB" style={{ marginRight: 4 }} />
-                <Text style={styles.avatarStylePillText}>
-                  Style: {AVATAR_STYLE_OPTIONS.find(s => s.id === avatarStyle)?.label}
+        {/* 3 Soft Action Cards: Saved, Prayer, Giving */}
+        <View style={styles.actionCardsRow}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={onOpenBible}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="bookmark-outline" size={22} color="#111111" style={{ marginBottom: 6 }} />
+            <Text style={styles.actionCardLabel}>Saved</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={onSelectApostle}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="hand-left-outline" size={22} color="#111111" style={{ marginBottom: 6 }} />
+            <Text style={styles.actionCardLabel}>Prayer</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => Alert.alert('Kingdom Giving', 'Support local ministry and kingdom service.')}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="heart-outline" size={22} color="#111111" style={{ marginBottom: 6 }} />
+            <Text style={styles.actionCardLabel}>Giving</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Metric Card 1: App Streak */}
+        <View style={styles.metricCard}>
+          <View>
+            <Text style={styles.metricValue}>{growthProfile?.streakDays || 1}</Text>
+            <Text style={styles.metricLabel}>App Streak</Text>
+          </View>
+          <Ionicons name="flash-outline" size={24} color="#111111" />
+        </View>
+
+        {/* Metric Card 2: Encouragements Sent */}
+        <View style={styles.metricCard}>
+          <View>
+            <Text style={styles.metricValue}>{growthProfile?.conversationsCount || 0}</Text>
+            <Text style={styles.metricLabel}>Encouragements Sent</Text>
+          </View>
+          <Ionicons name="paper-plane-outline" size={22} color="#111111" />
+        </View>
+
+        {/* Metric Card 3: Badges Showcase Card */}
+        <TouchableOpacity
+          style={styles.badgesSectionCard}
+          onPress={() => setShowBadgesModal(true)}
+          activeOpacity={0.85}
+        >
+          <View style={styles.badgesCardHeader}>
+            <Text style={styles.badgesCardTitle}>{growthProfile?.badges?.length || 8} Badges</Text>
+            <Ionicons name="ribbon-outline" size={24} color="#111111" />
+          </View>
+
+          {/* Horizontal Preview Row of 4 Prominent Badges */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.badgesPreviewRow}
+          >
+            {(growthProfile?.badges || []).slice(0, 4).map((badge) => (
+              <MascotBadgeCard
+                key={badge.id}
+                badge={badge}
+                size="compact"
+                onPress={() => setShowBadgesModal(true)}
+              />
+            ))}
+          </ScrollView>
+        </TouchableOpacity>
+
+ {/* ========================================================================= */}
+ {/* ACTIVITY FEED SECTION (YouVersion Alignment) */}
+        {/* ========================================================================= */}
+        {/* ACTIVITY FEED SECTION (YouVersion Alignment) */}
+        {/* ========================================================================= */}
+        <View style={styles.activitySection}>
+          <Text style={styles.activityHeading}>Activity</Text>
+
+          {/* Filter Chips */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChipsRow}>
+            {[
+              { id: 'all', label: 'All', icon: undefined },
+              { id: 'highlights', label: 'Highlights', icon: 'create-outline' },
+              { id: 'notes', label: 'Notes', icon: 'document-text-outline' },
+              { id: 'plans', label: 'Plans', icon: 'checkbox-outline' },
+              { id: 'badges', label: 'Badges', icon: 'ribbon-outline' },
+            ].map((f) => {
+              const isActive = activeActivityFilter === f.id;
+              return (
+                <TouchableOpacity
+                  key={f.id}
+                  style={[styles.filterChip, isActive && styles.filterChipActive]}
+                  onPress={() => {
+                    setActiveActivityFilter(f.id as any);
+                    if (f.id === 'badges') setShowBadgesModal(true);
+                  }}
+                  activeOpacity={0.75}
+                >
+                  {f.icon && (
+                    <Ionicons
+                      name={f.icon as any}
+                      size={14}
+                      color={isActive ? '#FFFFFF' : '#111111'}
+                      style={{ marginRight: 5 }}
+                    />
+                  )}
+                  <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                    {f.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {/* Activity Item 1: Saved Scripture Card */}
+          <View style={styles.activityCard}>
+            <View style={styles.activityHeader}>
+              <View style={styles.activityAvatarSmall}>
+                <Text style={styles.activityAvatarText}>{userInitial}</Text>
+              </View>
+              <View style={styles.activityMeta}>
+                <Text style={styles.activityTitleText}>
+                  You saved <Text style={{ fontFamily: Typography.fontSansBold }}>James 1:27 NIV</Text>
                 </Text>
+                <View style={styles.tagRow}>
+                  <Ionicons name="pricetag-outline" size={11} color="#6B7280" style={{ marginRight: 4 }} />
+                  <Text style={styles.activityTagText}>encouragement</Text>
+                </View>
+              </View>
+              <Text style={styles.activityTimeText}>41w</Text>
+            </View>
+
+            {/* Scripture Quote with Black Accent Line */}
+            <View style={styles.quoteBlock}>
+              <View style={styles.quoteAccentLine} />
+              <View style={styles.quoteContent}>
+                <Text style={styles.quoteVerseNum}>27</Text>
+                <Text style={styles.quoteText}>
+                  Religion that God our Father accepts as pure and faultless is this: to look after orphans and widows in their distress...
+                </Text>
+                <Text style={styles.quoteRef}>James 1:27 NIV</Text>
+              </View>
+            </View>
+
+            {/* Activity Action Row */}
+            <View style={styles.activityActionsRow}>
+              <View style={styles.activityActionIcons}>
+                <TouchableOpacity
+                  onPress={() => toggleLike('act_1')}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={{ marginRight: 16 }}
+                >
+                  <Ionicons
+                    name={likedActivities['act_1'] ? 'heart' : 'heart-outline'}
+                    size={22}
+                    color={likedActivities['act_1'] ? '#EF4444' : '#111111'}
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="chatbubble-outline" size={20} color="#111111" />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="ellipsis-vertical" size={18} color="#6B7280" />
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
 
-        {/* Spiritual Maturity Level & Grace XP Card */}
-        {growthProfile && (
-          <View style={styles.levelCard}>
-            <View style={styles.levelHeaderRow}>
-              <View>
-                <Text style={styles.levelBadgeText}>LEVEL {growthProfile.currentLevel}</Text>
-                <Text style={styles.levelTitleText}>{growthProfile.levelTitle}</Text>
+            {/* Social Likes */}
+            <View style={styles.likesRow}>
+              <View style={styles.likeAvatarSmall}>
+                <Text style={styles.likeAvatarText}>P</Text>
               </View>
-              <View style={styles.xpPill}>
-                <Ionicons name="sparkles" size={12} color="#7C3AED" style={{ marginRight: 4 }} />
-                <Text style={styles.xpPillText}>{growthProfile.totalXp} Grace XP</Text>
+              <View style={[styles.likeAvatarSmall, { marginLeft: -6, backgroundColor: '#E5E7EB' }]}>
+                <Text style={styles.likeAvatarText}>J</Text>
               </View>
-            </View>
-
-            {/* XP Progress Bar */}
-            <View style={styles.progressBarTrack}>
-              <View
-                style={[
-                  styles.progressBarFill,
-                  {
-                    width: `${Math.min(100, Math.round((growthProfile.currentLevelXp / growthProfile.nextLevelXp) * 100))}%`
-                  }
-                ]}
-              />
-            </View>
-
-            <Text style={styles.progressDetailText}>
-              {growthProfile.currentLevelXp} / {growthProfile.nextLevelXp} XP to next level
-            </Text>
-
-            {/* Key Growth Stats Row */}
-            <View style={styles.statsRow}>
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>{growthProfile.streakDays}</Text>
-                <Text style={styles.statLabel}>Day Streak</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>{growthProfile.conversationsCount}</Text>
-                <Text style={styles.statLabel}>Conversations</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>{growthProfile.chaptersReadCount || 0}</Text>
-                <Text style={styles.statLabel}>Chapters Read</Text>
-              </View>
+              <Text style={styles.likesCountText}>2 likes</Text>
             </View>
           </View>
-        )}
 
-        {/* 3 Clean Navigation Sub-Tabs */}
-        <View style={styles.subTabsRow}>
-          <TouchableOpacity
-            style={[styles.subTabButton, activeSubTab === 'streaks' && styles.subTabButtonActive]}
-            onPress={() => setActiveSubTab('streaks')}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name={activeSubTab === 'streaks' ? 'flame' : 'flame-outline'}
-              size={16}
-              color={activeSubTab === 'streaks' ? '#111111' : '#777777'}
-            />
-            <Text style={[styles.subTabLabel, activeSubTab === 'streaks' && styles.subTabLabelActive]}>
-              Streaks
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.subTabButton, activeSubTab === 'bookmarks' && styles.subTabButtonActive]}
-            onPress={() => setActiveSubTab('bookmarks')}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name={activeSubTab === 'bookmarks' ? 'bookmark' : 'bookmark-outline'}
-              size={16}
-              color={activeSubTab === 'bookmarks' ? '#111111' : '#777777'}
-            />
-            <Text style={[styles.subTabLabel, activeSubTab === 'bookmarks' && styles.subTabLabelActive]}>
-              Saved
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.subTabButton, activeSubTab === 'edit' && styles.subTabButtonActive]}
-            onPress={() => setActiveSubTab('edit')}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name={activeSubTab === 'edit' ? 'person' : 'person-outline'}
-              size={16}
-              color={activeSubTab === 'edit' ? '#111111' : '#777777'}
-            />
-            <Text style={[styles.subTabLabel, activeSubTab === 'edit' && styles.subTabLabelActive]}>
-              Profile
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Tab 1: Streaks & Journey */}
-        {activeSubTab === 'streaks' && growthProfile ? (
-          <StreaksJourneyView
-            growthProfile={growthProfile}
-            onSelectApostle={onSelectApostle}
-            onOpenBible={onOpenBible}
-          />
-        ) : activeSubTab === 'bookmarks' ? (
-          /* Tab 2: Saved Bookmarks */
-          <View style={styles.bookmarksContainer}>
-            {bookmarks.length === 0 ? (
-              <View style={styles.emptyBookmarks}>
-                <Ionicons name="bookmark-outline" size={36} color="#A0A0A5" />
-                <Text style={styles.emptyText}>No bookmarks yet. Tap the bookmark icon in Scripture reader to save verses!</Text>
+          {/* Activity Item 2: Leveled Up Badge Card */}
+          <View style={styles.activityCard}>
+            <View style={styles.activityHeader}>
+              <View style={styles.activityAvatarSmall}>
+                <Text style={styles.activityAvatarText}>{userInitial}</Text>
               </View>
-            ) : (
-              bookmarks.map((bm) => (
-                <View key={bm.id} style={styles.bookmarkCard}>
-                  <View style={styles.bmHeader}>
-                    <View style={styles.bmContent}>
-                      <Text style={styles.bmText} numberOfLines={3}>{bm.content}</Text>
-                      <Text style={styles.bmReference}>{bm.type === 'verse' ? 'Read in Bible' : 'Saved Reflection'}</Text>
-                    </View>
-                    <TouchableOpacity onPress={() => handleRemoveBookmark(bm.id)}>
-                      <Ionicons name="trash-outline" size={18} color="#9CA3AF" />
-                    </TouchableOpacity>
-                  </View>
+              <View style={styles.activityMeta}>
+                <Text style={styles.activityTitleText}>
+                  You leveled up your <Text style={{ fontFamily: Typography.fontSansBold }}>Saved Verse</Text> Badge
+                </Text>
+              </View>
+              <Text style={styles.activityTimeText}>41w</Text>
+            </View>
+
+            {/* Badge Preview Showcase */}
+            <View style={styles.badgeLevelUpPreview}>
+              <View style={styles.badgeLevelUpCard}>
+                <View style={styles.badgeLevelUpCircle}>
+                  <Image source={MascotAssets.rock} style={styles.badgeLevelUpImg} />
                 </View>
-              ))
-            )}
+                <View style={styles.badgeLevelUpPill}>
+                  <Text style={styles.badgeLevelUpPillText}>5</Text>
+                </View>
+              </View>
+            </View>
           </View>
-        ) : (
-          /* Tab 5: Edit Profile */
-          <View style={styles.formContainer}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Full Name</Text>
-              <TextInput
-                style={styles.inputField}
-                value={profile.fullName}
-                onChangeText={(t) => setProfile({ ...profile, fullName: t })}
-                placeholder="Your Name"
-              />
-            </View>
+        </View>
+ </ScrollView>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Email Address</Text>
-              <TextInput
-                style={styles.inputField}
-                value={profile.email}
-                onChangeText={(t) => setProfile({ ...profile, email: t })}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
+ {/* Badges Screen Modal */}
+ <BadgesModal
+ visible={showBadgesModal}
+ onClose={() => setShowBadgesModal(false)}
+ badges={growthProfile?.badges || []}
+ />
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Faith Bio & Reflection</Text>
-              <TextInput
-                style={[styles.inputField, styles.textArea]}
-                value={profile.bio}
-                onChangeText={(t) => setProfile({ ...profile, bio: t })}
-                multiline
-                numberOfLines={3}
-              />
-            </View>
-
-            <TouchableOpacity
-              style={styles.saveButton}
-              onPress={handleSaveProfile}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.saveButtonText}>Save Changes</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </ScrollView>
-
-
-
-      {/* In-App Saved Confirmation Modal */}
-      <CustomActionModal
-        visible={showSavedModal}
-        type="confirm"
-        title="Changes Saved"
-        message="Your profile updates and faith bio have been saved successfully."
-        confirmText="Done"
-        cancelText="Close"
-        onConfirm={() => setShowSavedModal(false)}
-        onClose={() => setShowSavedModal(false)}
-      />
-
-      {/* Settings Modal */}
-      {showSettingsModal && (
-        <SettingsScreen
-          visible={showSettingsModal}
-          onClose={() => setShowSettingsModal(false)}
-          onLogout={onLogout}
-          userProfile={profile}
-          onUpdateProfile={(updated) => {
-            setProfile(updated);
-            saveUserProfile(updated);
-          }}
-        />
-      )}
-    </SafeAreaView>
-  );
+ {/* Settings Modal */}
+ {showSettingsModal && (
+ <SettingsScreen
+ visible={showSettingsModal}
+ onClose={() => setShowSettingsModal(false)}
+ onLogout={onLogout}
+ userProfile={profile}
+ onUpdateProfile={(updated) => {
+ setProfile(updated);
+ saveUserProfile(updated);
+ }}
+ />
+ )}
+ </SafeAreaView>
+ );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F3F3F5',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 22,
-    paddingTop: 14,
-    paddingBottom: 10,
-  },
-  titleContainer: {
-    alignItems: 'flex-start',
-  },
-  topRedIndicator: {
-    width: 24,
-    height: 3,
-    backgroundColor: '#DC2626',
-    borderRadius: 2,
-    marginBottom: 4,
-  },
-  title: {
-    fontFamily: Typography.fontSerif,
-    fontSize: 28,
-    color: '#111111',
-  },
-  settingsBtn: {
-    padding: 6,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
-  },
-  guestBannerCard: {
-    backgroundColor: '#EEF2FF',
-    borderRadius: 18,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  guestBannerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 10,
-  },
-  guestBannerIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#DBEAFE',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  guestBannerTextWrap: {
-    flex: 1,
-  },
-  guestBannerTitle: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 14,
-    color: '#1E40AF',
-  },
-  guestBannerSub: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 12,
-    color: '#3B82F6',
-    lineHeight: 16,
-  },
-  guestSignInBtn: {
-    backgroundColor: '#2563EB',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  guestSignInBtnText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 13,
-    color: '#FFFFFF',
-  },
-  userCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 14,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  avatarWrapper: {
-    position: 'relative',
-    marginRight: 14,
-  },
-  userAvatar: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: '#E0E7FF',
-  },
-  shuffleAvatarBtn: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#2563EB',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  userInfo: {
-    flex: 1,
-  },
-  userNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
-  userName: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 18,
-    color: '#111827',
-  },
-  userBio: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 13,
-    color: '#6B7280',
-    lineHeight: 18,
-    marginBottom: 6,
-  },
-  avatarStyleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatarStylePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  avatarStylePillText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 11,
-    color: '#2563EB',
-  },
-  levelCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  levelHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  levelBadgeText: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 11,
-    color: '#7C3AED',
-    letterSpacing: 0.5,
-  },
-  levelTitleText: {
-    fontFamily: Typography.fontSerif,
-    fontSize: 20,
-    color: '#111827',
-  },
-  xpPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F3FF',
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  xpPillText: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 12,
-    color: '#7C3AED',
-  },
-  progressBarTrack: {
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#F3F4F6',
-    overflow: 'hidden',
-    marginBottom: 6,
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#7C3AED',
-    borderRadius: 4,
-  },
-  progressDetailText: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 11.5,
-    color: '#9CA3AF',
-    marginBottom: 14,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-    paddingTop: 12,
-  },
-  statBox: {
-    alignItems: 'center',
-  },
-  statValue: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 17,
-    color: '#111827',
-  },
-  statLabel: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 11,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  statDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: '#E5E7EB',
-  },
-  subTabsRow: {
-    flexDirection: 'row',
-    backgroundColor: '#E5E5EA',
-    borderRadius: 16,
-    padding: 3,
-    marginBottom: 16,
-  },
-  subTabButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 9,
-    borderRadius: 13,
-    gap: 3,
-  },
-  subTabButtonActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  subTabLabel: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 11.5,
-    color: '#6B7280',
-  },
-  subTabLabelActive: {
-    color: '#111827',
-  },
-  bookmarksContainer: {
-    gap: 10,
-  },
-  emptyBookmarks: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-  },
-  emptyText: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 13,
-    color: '#888888',
-    textAlign: 'center',
-    marginTop: 10,
-    paddingHorizontal: 20,
-    lineHeight: 18,
-  },
-  bookmarkCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-  },
-  bmHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  bmContent: {
-    flex: 1,
-    paddingRight: 10,
-  },
-  bmText: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 13.5,
-    color: '#1F2937',
-    lineHeight: 19,
-    marginBottom: 4,
-  },
-  bmReference: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 11.5,
-    color: '#2563EB',
-  },
-  formContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 18,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 13,
-    color: '#374151',
-    marginBottom: 6,
-  },
-  inputField: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 14,
-    color: '#111827',
-  },
-  textArea: {
-    height: 70,
-    textAlignVertical: 'top',
-  },
-  saveButton: {
-    backgroundColor: '#2563EB',
-    borderRadius: 14,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  saveButtonText: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 14,
-    color: '#FFFFFF',
-  }
+ container: {
+ flex: 1,
+ backgroundColor: '#FAFAFA',
+ },
+ header: {
+ flexDirection: 'row',
+ alignItems: 'center',
+ justifyContent: 'space-between',
+ paddingHorizontal: 20,
+ paddingTop: 12,
+ paddingBottom: 8,
+ },
+ shareProfileBtn: {
+ flexDirection: 'row',
+ alignItems: 'center',
+ backgroundColor: '#FFFFFF',
+ borderWidth: 1,
+ borderColor: '#E5E5EA',
+ borderRadius: 20,
+ paddingHorizontal: 14,
+ paddingVertical: 7,
+ },
+ shareProfileText: {
+ fontFamily: Typography.fontSansSemiBold,
+ fontSize: 13,
+ color: '#111111',
+ },
+ headerRightButtons: {
+ flexDirection: 'row',
+ alignItems: 'center',
+ gap: 12,
+ },
+ headerIconBtn: {
+ padding: 6,
+ },
+ scrollContent: {
+ paddingHorizontal: 20,
+ paddingTop: 8,
+ paddingBottom: 110,
+ },
+ profileHeaderBlock: {
+ flexDirection: 'row',
+ alignItems: 'center',
+ justifyContent: 'space-between',
+ marginVertical: 14,
+ },
+ profileMetaLeft: {
+ flex: 1,
+ },
+ profileFullName: {
+ fontFamily: Typography.fontSansBold,
+ fontSize: 26,
+ color: '#111111',
+ letterSpacing: -0.5,
+ marginBottom: 8,
+ },
+ chipsRow: {
+ flexDirection: 'row',
+ alignItems: 'center',
+ gap: 8,
+ },
+ chipPill: {
+ backgroundColor: '#FFFFFF',
+ borderWidth: 1,
+ borderColor: '#E5E5EA',
+ borderRadius: 16,
+ paddingHorizontal: 12,
+ paddingVertical: 4,
+ },
+ chipText: {
+ fontFamily: Typography.fontSansMedium,
+ fontSize: 12,
+ color: '#111111',
+ },
+ avatarWrapper: {
+ position: 'relative',
+ marginLeft: 14,
+ },
+ avatarCircle: {
+ width: 78,
+ height: 78,
+ borderRadius: 39,
+ borderWidth: 2.5,
+ borderColor: '#111111',
+ backgroundColor: '#FFFFFF',
+ alignItems: 'center',
+ justifyContent: 'center',
+ },
+ avatarInitial: {
+ fontFamily: Typography.fontSansBold,
+ fontSize: 34,
+ color: '#111111',
+ },
+ cameraBadge: {
+ position: 'absolute',
+ bottom: -2,
+ right: -2,
+ width: 26,
+ height: 26,
+ borderRadius: 13,
+ backgroundColor: '#F3F4F6',
+ borderWidth: 1.5,
+ borderColor: '#FFFFFF',
+ alignItems: 'center',
+ justifyContent: 'center',
+ },
+ findChurchBtn: {
+ flexDirection: 'row',
+ alignItems: 'center',
+ justifyContent: 'center',
+ backgroundColor: '#FFFFFF',
+ borderWidth: 1,
+ borderColor: '#E5E5EA',
+ borderRadius: 22,
+ paddingVertical: 12,
+ marginBottom: 16,
+ },
+ findChurchText: {
+ fontFamily: Typography.fontSansSemiBold,
+ fontSize: 14,
+ color: '#111111',
+ },
+ actionCardsRow: {
+ flexDirection: 'row',
+ justifyContent: 'space-between',
+ marginBottom: 16,
+ },
+ actionCard: {
+ width: '31%',
+ backgroundColor: '#F3F3F5',
+ borderRadius: 18,
+ paddingVertical: 16,
+ alignItems: 'center',
+ justifyContent: 'center',
+ },
+ actionCardLabel: {
+ fontFamily: Typography.fontSansSemiBold,
+ fontSize: 13.5,
+ color: '#111111',
+ },
+ metricCard: {
+ backgroundColor: '#FFFFFF',
+ borderRadius: 20,
+ padding: 18,
+ flexDirection: 'row',
+ alignItems: 'center',
+ justifyContent: 'space-between',
+ borderWidth: 1,
+ borderColor: '#E5E5EA',
+ marginBottom: 12,
+ },
+ metricValue: {
+ fontFamily: Typography.fontSansBold,
+ fontSize: 18,
+ color: '#111111',
+ },
+ metricLabel: {
+ fontFamily: Typography.fontSansRegular,
+ fontSize: 12,
+ color: '#6B7280',
+ marginTop: 2,
+ },
+ badgesSectionCard: {
+ backgroundColor: '#FFFFFF',
+ borderRadius: 20,
+ padding: 18,
+ borderWidth: 1,
+ borderColor: '#E5E5EA',
+ marginBottom: 20,
+ },
+ badgesCardHeader: {
+ flexDirection: 'row',
+ alignItems: 'center',
+ justifyContent: 'space-between',
+ marginBottom: 12,
+ },
+ badgesCardTitle: {
+ fontFamily: Typography.fontSansBold,
+ fontSize: 16,
+ color: '#111111',
+ },
+ badgesPreviewRow: {
+ paddingTop: 4,
+ },
+ activitySection: {
+ marginTop: 6,
+ },
+ activityHeading: {
+ fontFamily: Typography.fontSansBold,
+ fontSize: 18,
+ color: '#111111',
+ marginBottom: 12,
+ },
+ filterChipsRow: {
+ flexDirection: 'row',
+ alignItems: 'center',
+ gap: 8,
+ marginBottom: 16,
+ },
+ filterChip: {
+ flexDirection: 'row',
+ alignItems: 'center',
+ backgroundColor: '#FFFFFF',
+ borderWidth: 1,
+ borderColor: '#E5E5EA',
+ borderRadius: 18,
+ paddingHorizontal: 14,
+ paddingVertical: 7,
+ },
+ filterChipActive: {
+ backgroundColor: '#111111',
+ borderColor: '#111111',
+ },
+ filterChipText: {
+ fontFamily: Typography.fontSansSemiBold,
+ fontSize: 12.5,
+ color: '#111111',
+ },
+ filterChipTextActive: {
+ color: '#FFFFFF',
+ },
+ activityCard: {
+ backgroundColor: '#FFFFFF',
+ borderRadius: 22,
+ padding: 16,
+ borderWidth: 1,
+ borderColor: '#E5E5EA',
+ marginBottom: 16,
+ },
+ activityHeader: {
+ flexDirection: 'row',
+ alignItems: 'center',
+ marginBottom: 12,
+ },
+ activityAvatarSmall: {
+ width: 38,
+ height: 38,
+ borderRadius: 19,
+ borderWidth: 2,
+ borderColor: '#111111',
+ alignItems: 'center',
+ justifyContent: 'center',
+ marginRight: 10,
+ },
+ activityAvatarText: {
+ fontFamily: Typography.fontSansBold,
+ fontSize: 16,
+ color: '#111111',
+ },
+ activityMeta: {
+ flex: 1,
+ },
+ activityTitleText: {
+ fontFamily: Typography.fontSansRegular,
+ fontSize: 14,
+ color: '#111111',
+ },
+ tagRow: {
+ flexDirection: 'row',
+ alignItems: 'center',
+ marginTop: 2,
+ },
+ activityTagText: {
+ fontFamily: Typography.fontSansRegular,
+ fontSize: 11.5,
+ color: '#6B7280',
+ },
+ activityTimeText: {
+ fontFamily: Typography.fontSansRegular,
+ fontSize: 12,
+ color: '#9CA3AF',
+ },
+ quoteBlock: {
+ flexDirection: 'row',
+ marginVertical: 10,
+ paddingLeft: 4,
+ },
+ quoteAccentLine: {
+ width: 3,
+ backgroundColor: '#111111',
+ borderRadius: 1.5,
+ marginRight: 12,
+ },
+ quoteContent: {
+ flex: 1,
+ position: 'relative',
+ },
+ quoteVerseNum: {
+ fontFamily: Typography.fontSansRegular,
+ fontSize: 10,
+ color: '#6B7280',
+ marginBottom: 2,
+ },
+ quoteText: {
+ fontFamily: Typography.fontSerif,
+ fontSize: 15.5,
+ lineHeight: 22,
+ color: '#111111',
+ marginBottom: 6,
+ },
+ quoteRef: {
+ fontFamily: Typography.fontSansBold,
+ fontSize: 12,
+ color: '#111111',
+ },
+ activityActionsRow: {
+ flexDirection: 'row',
+ alignItems: 'center',
+ justifyContent: 'space-between',
+ paddingTop: 8,
+ borderTopWidth: 1,
+ borderTopColor: '#F3F4F6',
+ marginTop: 6,
+ },
+ activityActionIcons: {
+ flexDirection: 'row',
+ alignItems: 'center',
+ },
+ likesRow: {
+ flexDirection: 'row',
+ alignItems: 'center',
+ marginTop: 10,
+ },
+ likeAvatarSmall: {
+ width: 22,
+ height: 22,
+ borderRadius: 11,
+ borderWidth: 1.5,
+ borderColor: '#FFFFFF',
+ backgroundColor: '#D1D5DB',
+ alignItems: 'center',
+ justifyContent: 'center',
+ },
+ likeAvatarText: {
+ fontFamily: Typography.fontSansBold,
+ fontSize: 10,
+ color: '#111111',
+ },
+ likesCountText: {
+ fontFamily: Typography.fontSansRegular,
+ fontSize: 12,
+ color: '#6B7280',
+ marginLeft: 8,
+ },
+ badgeLevelUpPreview: {
+ alignItems: 'center',
+ paddingVertical: 12,
+ },
+ badgeLevelUpCard: {
+ width: 100,
+ height: 110,
+ backgroundColor: '#F3F3F5',
+ borderRadius: 22,
+ alignItems: 'center',
+ justifyContent: 'center',
+ position: 'relative',
+ },
+ badgeLevelUpCircle: {
+ width: 58,
+ height: 58,
+ borderRadius: 29,
+ borderWidth: 2,
+ borderColor: '#C27A4E',
+ overflow: 'hidden',
+ backgroundColor: '#FFFFFF',
+ marginBottom: 4,
+ },
+ badgeLevelUpImg: {
+ width: '100%',
+ height: '100%',
+ },
+ badgeLevelUpPill: {
+ backgroundColor: '#6B7280',
+ paddingHorizontal: 8,
+ paddingVertical: 2,
+ borderRadius: 10,
+ },
+ badgeLevelUpPillText: {
+ fontFamily: Typography.fontSansSemiBold,
+ fontSize: 10,
+ color: '#FFFFFF',
+ }
 });

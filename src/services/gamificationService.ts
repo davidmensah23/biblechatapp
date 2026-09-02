@@ -4,10 +4,11 @@ export interface FaithBadge {
   id: string;
   title: string;
   subtitle: string;
-  category: 'walk' | 'study' | 'communion' | 'sermon';
-  iconName: string;
-  iconColor: string;
+  category: 'walk' | 'study' | 'communion' | 'sermon' | 'plan';
+  mascotKey: 'bread' | 'rock' | 'blossom' | 'flame' | 'cloud' | 'dewdrop' | 'cedar' | 'group';
+  badgeColor: string;
   isUnlocked: boolean;
+  level: number;
   progress: number;
   maxProgress: number;
   xpReward: number;
@@ -179,6 +180,15 @@ export const getSpiritualGrowthProfile = async (): Promise<SpiritualGrowthProfil
         if (chapterRows) chaptersReadCount = chapterRows.length;
       } catch (e) {}
 
+      // 7. Fetch real bookmarks count
+      let bookmarksCount = 0;
+      try {
+        const bmRows = await db.getAllAsync<{ id: string }>(
+          'SELECT id FROM bookmarks'
+        );
+        if (bmRows) bookmarksCount = bmRows.length;
+      } catch (e) {}
+
     } catch (e) {
       console.warn('Error reading growth metrics from DB:', e);
     }
@@ -206,13 +216,11 @@ export const getSpiritualGrowthProfile = async (): Promise<SpiritualGrowthProfil
   let cursorDate = new Date(now);
 
   if (dateSet.has(todayStr)) {
-    // Streak includes today, count backwards
     while (dateSet.has(getLocalDateString(cursorDate))) {
       currentStreak++;
       cursorDate.setDate(cursorDate.getDate() - 1);
     }
   } else if (dateSet.has(yesterdayStr)) {
-    // User hasn't logged today yet, but streak from yesterday is still valid
     cursorDate = new Date(yesterdayDate);
     while (dateSet.has(getLocalDateString(cursorDate))) {
       currentStreak++;
@@ -272,6 +280,16 @@ export const getSpiritualGrowthProfile = async (): Promise<SpiritualGrowthProfil
     kingdomDeed: todayActivities.includes('deed_completed')
   };
 
+  const bookmarksCount = (await (async () => {
+    try {
+      if (db) {
+        const rows = await db.getAllAsync<{ id: string }>('SELECT id FROM bookmarks');
+        return rows ? rows.length : 0;
+      }
+    } catch (e) {}
+    return 0;
+  })());
+
   return {
     streakDays: Math.max(1, currentStreak),
     highestStreak: Math.max(1, highestStreak),
@@ -288,43 +306,112 @@ export const getSpiritualGrowthProfile = async (): Promise<SpiritualGrowthProfil
     habitsStatus,
     badges: [
       {
-        id: 'fisher_of_men',
-        title: 'Fisher of Men',
-        subtitle: 'Walked with Simon Peter in candid reflection',
-        category: 'communion',
-        iconName: 'boat-outline',
-        iconColor: '#111111',
-        isUnlocked: conversationsCount >= 1,
-        progress: Math.min(conversationsCount, 1),
-        maxProgress: 1,
+        id: 'saved_verse',
+        title: 'Saved Verse',
+        subtitle: 'Save verses into your spiritual memory treasury',
+        category: 'study',
+        mascotKey: 'rock',
+        badgeColor: '#C27A4E',
+        isUnlocked: bookmarksCount > 0,
+        level: bookmarksCount,
+        progress: bookmarksCount,
+        maxProgress: 10,
         xpReward: 50
       },
       {
-        id: 'berean_scholar',
-        title: 'Berean Scholar',
-        subtitle: 'Search the Holy Scriptures daily (3 chapters)',
+        id: 'plan_subscription',
+        title: 'Plan Subscription',
+        subtitle: 'Subscribe to daily spiritual reading plans',
+        category: 'plan',
+        mascotKey: 'blossom',
+        badgeColor: '#D35B5B',
+        isUnlocked: true,
+        level: 1,
+        progress: 1,
+        maxProgress: 5,
+        xpReward: 40
+      },
+      {
+        id: 'highlight',
+        title: 'Highlight',
+        subtitle: 'Illuminate sacred scripture passages with notes',
         category: 'study',
-        iconName: 'book-outline',
-        iconColor: '#111111',
-        isUnlocked: chaptersReadCount >= 3,
-        progress: Math.min(chaptersReadCount, 3),
-        maxProgress: 3,
+        mascotKey: 'flame',
+        badgeColor: '#D99B38',
+        isUnlocked: true,
+        level: 10,
+        progress: 10,
+        maxProgress: 20,
         xpReward: 75
       },
       {
-        id: 'flame_walker',
-        title: 'Pentecost Flame',
-        subtitle: 'Maintain a 5-day continuous walking streak',
-        category: 'walk',
-        iconName: 'flame-outline',
-        iconColor: '#111111',
-        isUnlocked: currentStreak >= 5,
-        progress: Math.min(currentStreak, 5),
+        id: 'guided_scripture',
+        title: 'Guided Scripture',
+        subtitle: 'Walk through guided meditations and devotions',
+        category: 'communion',
+        mascotKey: 'cloud',
+        badgeColor: '#4A8DB7',
+        isUnlocked: chaptersReadCount > 0 || conversationsCount > 0,
+        level: Math.max(1, chaptersReadCount),
+        progress: Math.max(1, chaptersReadCount),
         maxProgress: 5,
+        xpReward: 60
+      },
+      {
+        id: 'note',
+        title: 'Note',
+        subtitle: 'Record personal spiritual insights and reflections',
+        category: 'study',
+        mascotKey: 'dewdrop',
+        badgeColor: '#71717A',
+        isUnlocked: deedsCompletedCount > 0,
+        level: deedsCompletedCount,
+        progress: deedsCompletedCount,
+        maxProgress: 5,
+        xpReward: 50
+      },
+      {
+        id: 'whole_bible',
+        title: 'Whole Bible',
+        subtitle: 'Journey through books of the Old and New Testaments',
+        category: 'study',
+        mascotKey: 'cedar',
+        badgeColor: '#52796F',
+        isUnlocked: chaptersReadCount >= 5,
+        level: Math.floor(chaptersReadCount / 5),
+        progress: chaptersReadCount % 5,
+        maxProgress: 5,
+        xpReward: 150
+      },
+      {
+        id: 'plan_completion',
+        title: 'Plan Completion',
+        subtitle: 'Finish complete 5-day and 7-day reading paths',
+        category: 'plan',
+        mascotKey: 'group',
+        badgeColor: '#8B5CF6',
+        isUnlocked: false,
+        level: 0,
+        progress: 0,
+        maxProgress: 3,
         xpReward: 120
+      },
+      {
+        id: 'sower',
+        title: 'Sower',
+        subtitle: 'Plant seeds of faith daily through consistent check-ins',
+        category: 'walk',
+        mascotKey: 'bread',
+        badgeColor: '#3A7D63',
+        isUnlocked: currentStreak >= 1,
+        level: Math.max(0, Math.floor(currentStreak / 3)),
+        progress: currentStreak % 3,
+        maxProgress: 3,
+        xpReward: 80
       }
     ]
   };
+};
 };
 
 export const awardGraceXp = async (points: number, reason: string): Promise<number> => {

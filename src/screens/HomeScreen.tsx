@@ -14,20 +14,26 @@ import { NotificationsModal } from '../components/NotificationsModal';
 import { DailyDeedCard } from '../components/DailyDeedCard';
 import { DeedCompletionModal } from '../components/DeedCompletionModal';
 import { getTodayDeedForUser, initDeedsDatabase, KingdomDeed } from '../services/deedsService';
+import { getSpiritualGrowthProfile, SpiritualGrowthProfile } from '../services/gamificationService';
 import { MascotAssets } from '../services/mascotAssets';
+import { BadgesModal } from '../components/BadgesModal';
 import { CardStyles } from '../theme/cardStyles';
 import { SpringConfigs } from '../theme/animations';
 import { useTranslation } from '../services/localizationService';
 
 interface HomeScreenProps {
   onSelectApostle: (apostle: ApostlePersona) => void;
+  onOpenBible?: () => void;
 }
 
-export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
+export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenBible }) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'forYou' | 'disciples'>('forYou');
   const [selectedVerse, setSelectedVerse] = useState<BibleVerse | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [badgesModalOpen, setBadgesModalOpen] = useState(false);
+  const [shareBannerDismissed, setShareBannerDismissed] = useState(false);
+  const [growthProfile, setGrowthProfile] = useState<SpiritualGrowthProfile | null>(null);
 
   // Daily Kingdom Deed Challenge State
   const [todayDeed, setTodayDeed] = useState<KingdomDeed>(getTodayDeedForUser());
@@ -43,6 +49,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
   useEffect(() => {
     initDeedsDatabase().catch(console.error);
     setTodayDeed(getTodayDeedForUser());
+    getSpiritualGrowthProfile().then(setGrowthProfile).catch(console.warn);
   }, []);
 
   useEffect(() => {
@@ -75,38 +82,45 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
         <View style={styles.tabsContainer}>
           <Animated.View style={[styles.topRedIndicator, animatedIndicatorStyle]} />
 
-          {/* For You Tab */}
+          {/* For You / Today Tab */}
           <TouchableOpacity
             style={styles.tabButton}
             onPress={() => setActiveTab('forYou')}
             activeOpacity={0.7}
           >
             <Text style={[styles.tabText, activeTab === 'forYou' ? styles.tabTextActive : styles.tabTextInactive]}>
-              {t('tab_for_you', 'For You')}
+              {t('tab_today', 'Today')}
             </Text>
           </TouchableOpacity>
 
-          {/* Disciples Tab */}
+          {/* Community / Disciples Tab */}
           <TouchableOpacity
             style={styles.tabButton}
             onPress={() => setActiveTab('disciples')}
             activeOpacity={0.7}
           >
             <Text style={[styles.tabText, activeTab === 'disciples' ? styles.tabTextActive : styles.tabTextInactive]}>
-              {t('tab_disciples', 'Disciples')}
+              {t('tab_community', 'Community')}
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Working Notification Bell on Top Right Corner */}
-        <TouchableOpacity
-          style={styles.notificationBtn}
-          onPress={() => setNotificationsOpen(true)}
-          activeOpacity={0.75}
-        >
-          <Ionicons name="notifications-outline" size={23} color="#111111" />
-          <View style={styles.notificationBadgeDot} />
-        </TouchableOpacity>
+        {/* Right Header Actions: Streak Pill & Notification Bell */}
+        <View style={styles.headerRightActions}>
+          <View style={styles.streakPill}>
+            <Ionicons name="flash" size={14} color="#111111" />
+            <Text style={styles.streakPillText}>{growthProfile?.streakDays || 1}</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.notificationBtn}
+            onPress={() => setNotificationsOpen(true)}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="notifications-outline" size={21} color="#111111" />
+            <View style={styles.notificationBadgeDot} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Main Tab Content */}
@@ -124,6 +138,94 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
             imageUrl={todayScripture.imageUrl}
             onReadMore={handleOpenVerseModal}
           />
+
+          {/* ========================================================================= */}
+          {/* MORE FOR YOU SECTION (YouVersion Alignment) */}
+          {/* ========================================================================= */}
+          <Text style={styles.moreForYouHeading}>More for you</Text>
+
+          {/* 1. Daily Reading Plan Card */}
+          <TouchableOpacity
+            style={styles.planCard}
+            onPress={onOpenBible}
+            activeOpacity={0.85}
+          >
+            <View style={styles.planCardContent}>
+              <View style={styles.planDayBadge}>
+                <Ionicons name="checkbox-outline" size={15} color="#111111" />
+                <Text style={styles.planDayText}>Day 5</Text>
+              </View>
+              <Text style={styles.planTitle}>The Ruthless Elimination Of Hurry</Text>
+              <Text style={styles.planSubtitle}>A 5-Day Reading Plan from John Mark Comer</Text>
+            </View>
+
+            <View style={styles.planThumbnailWrap}>
+              <Image source={MascotAssets.bread} style={styles.planThumbnailImage} />
+              <View style={styles.planThumbnailOverlay}>
+                <Text style={styles.planThumbTitle}>The Ruthless Elimination</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+
+          {/* 2. Share the Bible App Banner Card */}
+          {!shareBannerDismissed && (
+            <View style={styles.shareBannerCard}>
+              <View style={styles.shareBannerImageWrap}>
+                <Image
+                  source={{ uri: 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=800&q=80' }}
+                  style={styles.shareBannerImage}
+                />
+              </View>
+              <View style={styles.shareBannerBody}>
+                <Text style={styles.shareBannerTitle}>Share the Bible App</Text>
+                <Text style={styles.shareBannerSub}>
+                  Invite your friends to connect with you here, in Biblical community.
+                </Text>
+                <View style={styles.shareBannerActions}>
+                  <TouchableOpacity
+                    style={styles.shareNowBtn}
+                    onPress={() => alert('Sharing Bible Chat App with friends')}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={styles.shareNowText}>Share Now</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dismissBtn}
+                    onPress={() => setShareBannerDismissed(true)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={styles.dismissText}>Dismiss</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* 3. Badges Spotlight Card */}
+          <View style={styles.badgesSpotlightCard}>
+            <Text style={styles.badgesSpotlightHeading}>Badges</Text>
+            <View style={styles.badgesSpotlightContent}>
+              <View style={styles.badgeEmblemSeal}>
+                <Image source={MascotAssets.bread} style={styles.badgeSealImg} />
+                <View style={styles.badgeCountBadge}>
+                  <Text style={styles.badgeCountText}>{growthProfile?.badges?.find(b => b.id === 'sower')?.level || 0}</Text>
+                </View>
+              </View>
+              <Text style={styles.badgeSpotlightTitle}>Sower</Text>
+              <TouchableOpacity onPress={() => setBadgesModalOpen(true)} activeOpacity={0.7}>
+                <Text style={styles.badgeSpotlightLearnMore}>Learn More</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.viewAllBadgesBtn}
+              onPress={() => setBadgesModalOpen(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.viewAllBadgesText}>View All</Text>
+            </TouchableOpacity>
+          </View>
 
           {/* Daily Kingdom Deed Challenge Card (Continuous G2 Squircle Luxury UI) */}
           <DailyDeedCard
@@ -283,6 +385,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
         onOpenScripture={handleOpenVerseModal}
       />
 
+      {/* Badges Screen Modal */}
+      <BadgesModal
+        visible={badgesModalOpen}
+        onClose={() => setBadgesModalOpen(false)}
+        badges={growthProfile?.badges || []}
+      />
+
       {/* Daily Deed Completion & Reflection Modal */}
       <DeedCompletionModal
         visible={deedModalVisible}
@@ -322,7 +431,7 @@ const styles = StyleSheet.create({
     left: 0,
     width: 54,
     height: 3,
-    backgroundColor: '#111111',
+    backgroundColor: '#DC2626',
     borderRadius: 2,
   },
   tabButton: {
@@ -330,29 +439,52 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   tabText: {
-    fontFamily: Typography.fontSerifBold,
-    fontSize: 22,
-    letterSpacing: -0.5,
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 20,
+    letterSpacing: -0.3,
   },
   tabTextActive: {
     color: '#111111',
   },
   tabTextInactive: {
-    color: '#9E9EA7',
+    color: '#6B7280',
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  streakPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    gap: 4,
+  },
+  streakPillText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 13,
+    color: '#111111',
   },
   notificationBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#E6E6EB',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   notificationBadgeDot: {
     position: 'absolute',
-    top: 8,
-    right: 8,
+    top: 6,
+    right: 6,
     width: 8,
     height: 8,
     borderRadius: 4,
@@ -367,6 +499,201 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 110,
+  },
+  moreForYouHeading: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 18,
+    color: '#111111',
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  planCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    marginBottom: 16,
+  },
+  planCardContent: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  planDayBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  planDayText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 13,
+    color: '#111111',
+  },
+  planTitle: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 15,
+    color: '#111111',
+    marginBottom: 4,
+  },
+  planSubtitle: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  planThumbnailWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 14,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#C53030',
+  },
+  planThumbnailImage: {
+    width: '100%',
+    height: '100%',
+    opacity: 0.85,
+  },
+  planThumbnailOverlay: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
+    right: 4,
+  },
+  planThumbTitle: {
+    fontFamily: Typography.fontSansBold,
+    fontSize: 8.5,
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  shareBannerCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    marginBottom: 16,
+  },
+  shareBannerImageWrap: {
+    width: '100%',
+    height: 125,
+    backgroundColor: '#E5E5EA',
+  },
+  shareBannerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  shareBannerBody: {
+    padding: 16,
+  },
+  shareBannerTitle: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 15.5,
+    color: '#111111',
+    marginBottom: 4,
+  },
+  shareBannerSub: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 13,
+    color: '#4B5563',
+    lineHeight: 18,
+    marginBottom: 14,
+  },
+  shareBannerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  shareNowBtn: {
+    paddingVertical: 4,
+  },
+  shareNowText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 13,
+    color: '#111111',
+  },
+  dismissBtn: {
+    paddingVertical: 4,
+  },
+  dismissText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  badgesSpotlightCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    marginBottom: 16,
+  },
+  badgesSpotlightHeading: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 16,
+    color: '#111111',
+    marginBottom: 12,
+  },
+  badgesSpotlightContent: {
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  badgeEmblemSeal: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 3,
+    borderColor: '#3A7D63',
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    marginBottom: 8,
+  },
+  badgeSealImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 40,
+  },
+  badgeCountBadge: {
+    position: 'absolute',
+    bottom: -2,
+    backgroundColor: '#111111',
+    paddingHorizontal: 8,
+    paddingVertical: 1,
+    borderRadius: 10,
+  },
+  badgeCountText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 11,
+    color: '#FFFFFF',
+  },
+  badgeSpotlightTitle: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 14,
+    color: '#111111',
+    marginBottom: 3,
+  },
+  badgeSpotlightLearnMore: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 14,
+  },
+  viewAllBadgesBtn: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 16,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewAllBadgesText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 13,
+    color: '#111111',
   },
   apostleQuoteCard: {
     ...CardStyles.smoothCard,
