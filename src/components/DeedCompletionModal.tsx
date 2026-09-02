@@ -89,7 +89,7 @@ export const DeedCompletionModal: React.FC<DeedCompletionModalProps> = ({
               /* Scripture Guide View */
               <View style={styles.guideWrap}>
                 <View style={styles.guideIconWrap}>
-                  <Ionicons name="book" size={28} color="#2563EB" />
+                  <Ionicons name="book" size={28} color="#111111" />
                 </View>
                 <Text style={styles.guideEyebrow}>SCRIPTURAL FOUNDATION</Text>
                 <Text style={styles.guideTitle}>{deed.title}</Text>
@@ -108,23 +108,21 @@ export const DeedCompletionModal: React.FC<DeedCompletionModalProps> = ({
             ) : (
               /* Reflection & Completion Input Form */
               <View style={styles.formWrap}>
-                <Text style={styles.formEyebrow}>DAILY KINGDOM DEED</Text>
-                <Text style={styles.formTitle}>Record Your Act of Grace</Text>
-                <Text style={styles.formSubtitle}>
-                  Share a brief reflection of how you brought God's love into someone's life today.
-                </Text>
+                <Text style={styles.formEyebrow}>DAILY CHALLENGE</Text>
+                <Text style={styles.formTitle}>{deed.title}</Text>
+                <Text style={styles.formSubtitle}>{deed.description}</Text>
 
-                {/* Reflection Input */}
+                {/* Reflection Notes */}
                 <View style={styles.inputBlock}>
-                  <Text style={styles.inputLabel}>What good deed did you share?</Text>
+                  <Text style={styles.inputLabel}>Your Reflection or Action Notes</Text>
                   <TextInput
                     style={styles.textArea}
-                    placeholder="e.g., I bought lunch for a vendor and prayed for his family..."
+                    placeholder="How did you walk out this deed today? What did you experience?"
                     placeholderTextColor="#9CA3AF"
-                    value={reflection}
-                    onChangeText={setReflection}
                     multiline
                     numberOfLines={3}
+                    value={reflection}
+                    onChangeText={setReflection}
                   />
                 </View>
 
@@ -132,7 +130,7 @@ export const DeedCompletionModal: React.FC<DeedCompletionModalProps> = ({
                 <View style={styles.inputBlock}>
                   <Text style={styles.inputLabel}>City or Neighborhood (for Faith Route)</Text>
                   <View style={styles.locationInputRow}>
-                    <Ionicons name="location-outline" size={18} color="#2563EB" style={{ marginRight: 8 }} />
+                    <Ionicons name="location-outline" size={18} color="#111111" style={{ marginRight: 8 }} />
                     <TextInput
                       style={styles.locationInput}
                       placeholder="e.g., East Legon, Accra"
@@ -183,7 +181,7 @@ const styles = StyleSheet.create({
   formEyebrow: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 11,
-    color: '#2563EB',
+    color: '#6B7280',
     letterSpacing: 1,
     marginBottom: 4,
   },

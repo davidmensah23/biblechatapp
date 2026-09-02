@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
   markReadText: {
     fontFamily: Typography.fontSansMedium,
     fontSize: 13,
-    color: '#2563EB',
+    color: '#111111',
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#DCDCE1',
+    backgroundColor: '#ECECEC',
     borderRadius: 20,
     padding: 18,
     marginBottom: 24,
