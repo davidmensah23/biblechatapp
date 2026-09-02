@@ -22,6 +22,9 @@ import { CardStyles } from '../theme/cardStyles';
 import { SpringConfigs } from '../theme/animations';
 import { useTranslation } from '../services/localizationService';
 import { HomeSkeleton } from '../components/SoftSkeleton';
+import { DailyLiturgyCard } from '../components/DailyLiturgyCard';
+import { DailyLiturgyModal } from '../components/DailyLiturgyModal';
+import { getTodayLiturgy, isLiturgyCompletedForToday, DailyLiturgy } from '../services/liturgyService';
 
 interface HomeScreenProps {
   onSelectApostle: (apostle: ApostlePersona) => void;
@@ -39,6 +42,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
   const [growthProfile, setGrowthProfile] = useState<SpiritualGrowthProfile | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
 
+  // Daily Liturgy Guided Prayer State
+  const [todayLiturgy, setTodayLiturgy] = useState<DailyLiturgy>(getTodayLiturgy());
+  const [isLiturgyDone, setIsLiturgyDone] = useState(false);
+  const [showLiturgyModal, setShowLiturgyModal] = useState(false);
+
   // Daily Kingdom Deed Challenge State
   const [todayDeed, setTodayDeed] = useState<KingdomDeed>(getTodayDeedForUser());
   const [deedCompleted, setDeedCompleted] = useState(false);
@@ -54,9 +62,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
   useEffect(() => {
     Promise.all([
       initDeedsDatabase().catch(console.error),
-      getSpiritualGrowthProfile().then(setGrowthProfile).catch(console.warn)
+      getSpiritualGrowthProfile().then(setGrowthProfile).catch(console.warn),
+      isLiturgyCompletedForToday().then(setIsLiturgyDone).catch(console.warn)
     ]).finally(() => {
       setTodayDeed(getTodayDeedForUser());
+      setTodayLiturgy(getTodayLiturgy());
       setTimeout(() => setIsInitializing(false), 200);
     });
   }, []);
@@ -162,7 +172,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
           {/* ========================================================================= */}
           <Text style={styles.moreForYouHeading}>More for you</Text>
 
-          {/* 1. Daily Reading Plan Card */}
+          {/* 1. Daily Guided Audio Liturgy (Morning / Evening) */}
+          <DailyLiturgyCard
+            liturgy={todayLiturgy}
+            isCompleted={isLiturgyDone}
+            onPress={() => setShowLiturgyModal(true)}
+          />
+
+          {/* 2. Daily Reading Plan Card */}
           <TouchableOpacity
             style={styles.planCard}
             onPress={onOpenBible}
@@ -436,6 +453,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
         onClose={() => setDeedModalVisible(false)}
         onSuccess={() => {
           setDeedCompleted(true);
+        }}
+      />
+
+      {/* Daily Guided Audio Liturgy Overlay Modal */}
+      <DailyLiturgyModal
+        visible={showLiturgyModal}
+        onClose={() => setShowLiturgyModal(false)}
+        liturgy={todayLiturgy}
+        isAlreadyCompleted={isLiturgyDone}
+        onCompleted={() => {
+          setIsLiturgyDone(true);
+          getSpiritualGrowthProfile().then(setGrowthProfile).catch(console.warn);
         }}
       />
     </SafeAreaView>
