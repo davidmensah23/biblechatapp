@@ -487,11 +487,12 @@ const styles = StyleSheet.create({
   superscriptVerseNumber: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 11,
-    color: '#999999',
+    color: '#9CA3AF',
   },
   verseContentText: {
-    fontFamily: Typography.fontSansRegular,
-    color: '#222222',
+    fontFamily: Typography.fontSerifRegular,
+    color: '#1F2937',
+    letterSpacing: 0.15,
   },
   verseContentTextSelected: {
     color: '#111111',
