@@ -243,6 +243,17 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
     }
   };
 
+  const handleInterruptApostle = async () => {
+    if (callState === 'speaking') {
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch (e) {}
+      await stopDeepgramSpeech();
+      setCallState('listening');
+      setCaptionText('I am listening... speak your heart.');
+    }
+  };
+
   const handleQuickPrompt = async (prompt: string) => {
     if (callState === 'speaking') {
       await stopDeepgramSpeech();
@@ -311,7 +322,11 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
         </View>
 
         {/* Centerpiece: Apostle Avatar & Identity */}
-        <View style={styles.centerSection}>
+        <TouchableOpacity
+          style={styles.centerSection}
+          onPress={handleInterruptApostle}
+          activeOpacity={callState === 'speaking' ? 0.8 : 1}
+        >
           <View style={styles.avatarWrapper}>
             {/* Subtle soft breathing halo */}
             <Animated.View
@@ -329,10 +344,14 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
 
           <Text style={styles.apostleName}>{apostle.name}</Text>
           <Text style={styles.apostleTitle}>{apostle.title}</Text>
-        </View>
+        </TouchableOpacity>
 
         {/* Transcribing Texts / Live Captions in Literata Serif */}
-        <View style={styles.captionsArea}>
+        <TouchableOpacity
+          style={styles.captionsArea}
+          onPress={handleInterruptApostle}
+          activeOpacity={callState === 'speaking' ? 0.8 : 1}
+        >
           <ScrollView
             contentContainerStyle={styles.captionsScroll}
             showsVerticalScrollIndicator={false}
@@ -341,7 +360,7 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
               “{captionText}”
             </Text>
           </ScrollView>
-        </View>
+        </TouchableOpacity>
 
         {/* Quick Topic Prompts */}
         {!showTextInput && (
