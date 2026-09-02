@@ -31,7 +31,8 @@ export const TRANSLATIONS: Record<AppLanguage, Record<string, string>> = {
 
     // Home
     tab_for_you: 'For You',
-    tab_disciples: 'Disciples',
+    tab_companionship: 'Companionship',
+    tab_disciples: 'Companionship',
     today_scripture: "Today's Scripture",
     read_more: 'Read more',
     begin_deed: 'Begin Deed',

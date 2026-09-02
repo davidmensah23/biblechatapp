@@ -45,6 +45,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
   const todayApostleQuote = getTodayApostleQuotation();
 
   const tabIndicatorOffset = useSharedValue(0);
+  const tabIndicatorWidth = useSharedValue(68);
 
   useEffect(() => {
     initDeedsDatabase().catch(console.error);
@@ -53,11 +54,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
   }, []);
 
   useEffect(() => {
-    tabIndicatorOffset.value = withSpring(activeTab === 'forYou' ? 0 : 88, SpringConfigs.bouncy);
+    if (activeTab === 'forYou') {
+      tabIndicatorOffset.value = withSpring(0, SpringConfigs.bouncy);
+      tabIndicatorWidth.value = withSpring(68, SpringConfigs.bouncy);
+    } else {
+      tabIndicatorOffset.value = withSpring(92, SpringConfigs.bouncy);
+      tabIndicatorWidth.value = withSpring(132, SpringConfigs.bouncy);
+    }
   }, [activeTab]);
 
   const animatedIndicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: tabIndicatorOffset.value }],
+    width: tabIndicatorWidth.value,
   }));
 
   const handleOpenVerseModal = () => {
@@ -82,25 +90,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
         <View style={styles.tabsContainer}>
           <Animated.View style={[styles.topRedIndicator, animatedIndicatorStyle]} />
 
-          {/* For You / Today Tab */}
+          {/* For You Tab */}
           <TouchableOpacity
             style={styles.tabButton}
             onPress={() => setActiveTab('forYou')}
             activeOpacity={0.7}
           >
             <Text style={[styles.tabText, activeTab === 'forYou' ? styles.tabTextActive : styles.tabTextInactive]}>
-              {t('tab_today', 'Today')}
+              {t('tab_for_you', 'For You')}
             </Text>
           </TouchableOpacity>
 
-          {/* Community / Disciples Tab */}
+          {/* Companionship Tab */}
           <TouchableOpacity
             style={styles.tabButton}
             onPress={() => setActiveTab('disciples')}
             activeOpacity={0.7}
           >
             <Text style={[styles.tabText, activeTab === 'disciples' ? styles.tabTextActive : styles.tabTextInactive]}>
-              {t('tab_community', 'Community')}
+              {t('tab_companionship', 'Companionship')}
             </Text>
           </TouchableOpacity>
         </View>
