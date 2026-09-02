@@ -11,6 +11,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { FaithBadge } from '../services/gamificationService';
+import { MascotAssets } from '../services/mascotAssets';
+import { Image } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -28,6 +30,8 @@ export const ShareMilestoneModal: React.FC<ShareMilestoneModalProps> = ({
   onClose
 }) => {
   if (!badge) return null;
+
+  const mascotImg = MascotAssets[badge.mascotKey] || MascotAssets.bread;
 
   const handleShare = async () => {
     try {
@@ -50,8 +54,8 @@ export const ShareMilestoneModal: React.FC<ShareMilestoneModalProps> = ({
           </TouchableOpacity>
 
           {/* Celebration Header */}
-          <View style={[styles.badgeIconLarge, { backgroundColor: `${badge.iconColor}15` }]}>
-            <Ionicons name={badge.iconName as any} size={42} color={badge.iconColor} />
+          <View style={[styles.badgeIconLarge, { borderColor: badge.badgeColor || '#111111' }]}>
+            <Image source={mascotImg} style={styles.badgeSealImage} resizeMode="cover" />
           </View>
 
           <Text style={styles.congratsHeading}>Milestone Accomplished!</Text>
@@ -118,10 +122,17 @@ const styles = StyleSheet.create({
     width: 84,
     height: 84,
     borderRadius: 42,
+    borderWidth: 3,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
     marginTop: 6,
+    backgroundColor: '#FFFFFF',
+  },
+  badgeSealImage: {
+    width: '100%',
+    height: '100%',
   },
   congratsHeading: {
     fontFamily: Typography.fontSansSemiBold,
