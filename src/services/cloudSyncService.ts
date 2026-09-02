@@ -51,9 +51,9 @@ export const syncAllToCloud = async (): Promise<boolean> => {
     if (localBookmarks.length > 0) {
       const rows = localBookmarks.map(b => ({
         user_id: user.id,
-        reference: b.verseCitation,
-        verse_text: b.verseText,
-        version: b.translation || 'NIV'
+        reference: b.reference || b.title,
+        verse_text: b.content,
+        version: 'NIV'
       }));
       await supabase.from('user_bookmarks').upsert(rows, {
         onConflict: 'user_id,reference'
@@ -121,10 +121,11 @@ export const pullCloudToLocal = async (): Promise<boolean> => {
       for (const b of remoteBms) {
         await saveBookmark({
           id: `bm_${b.reference.replace(/[^a-zA-Z0-9]/g, '_')}`,
-          verseCitation: b.reference,
-          verseText: b.verse_text,
-          translation: b.version,
-          createdAt: new Date(b.created_at).getTime()
+          type: 'verse',
+          title: b.reference,
+          content: b.verse_text,
+          reference: b.reference,
+          timestamp: new Date(b.created_at).getTime()
         });
       }
     }
