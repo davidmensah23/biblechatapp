@@ -207,14 +207,25 @@ export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
               <Text style={styles.sectionHeading}>Available for Offline Download ({availableList.length})</Text>
               {availableList.map((item) => {
                 const isDownloading = downloadingCode === item.code;
+                const isSelected = currentVersion.toUpperCase() === item.code.toUpperCase();
                 return (
-                  <View key={item.id} style={styles.versionRow}>
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[styles.versionRow, isSelected && styles.versionRowSelected]}
+                    onPress={() => handleSelect(item.code)}
+                    activeOpacity={0.7}
+                  >
                     <View style={styles.versionInfo}>
                       <View style={styles.codeRow}>
-                        <Text style={styles.versionCode}>{item.code}</Text>
+                        <Text style={[styles.versionCode, isSelected && styles.versionCodeSelected]}>{item.code}</Text>
                         {item.hasAudio && (
                           <View style={styles.audioBadge}>
                             <Ionicons name="volume-medium" size={13} color="#666666" />
+                          </View>
+                        )}
+                        {isSelected && (
+                          <View style={styles.activePill}>
+                            <Text style={styles.activePillText}>Active</Text>
                           </View>
                         )}
                       </View>
@@ -235,10 +246,10 @@ export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
                         activeOpacity={0.7}
                       >
                         <Ionicons name="cloud-download-outline" size={16} color="#2563EB" style={{ marginRight: 4 }} />
-                        <Text style={styles.downloadBtnText}>Download</Text>
+                        <Text style={styles.downloadBtnText}>Save</Text>
                       </TouchableOpacity>
                     )}
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </View>
