@@ -988,7 +988,8 @@ const styles = StyleSheet.create({
   toggleAction: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 14,
-    color: '#16A34A',
+    color: '#111111',
+    textDecorationLine: 'underline',
   },
   footerDisclaimer: {
     alignItems: 'center',
@@ -998,11 +999,11 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontSansRegular,
     fontSize: 12.5,
     lineHeight: 18,
-    color: '#9CA3AF',
+    color: '#999999',
     textAlign: 'center',
   },
   disclaimerLink: {
-    color: '#16A34A',
+    color: '#111111',
     textDecorationLine: 'underline',
   },
   genderRowWrap: {
@@ -1012,7 +1013,7 @@ const styles = StyleSheet.create({
   genderLabel: {
     fontFamily: Typography.fontSansRegular,
     fontSize: 12.5,
-    color: '#6B7280',
+    color: '#777777',
     marginBottom: 8,
   },
   genderPillsRow: {
@@ -1023,24 +1024,24 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F6F6F6',
     borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
+    borderWidth: 1,
+    borderColor: '#E2E2E2',
     alignItems: 'center',
     justifyContent: 'center',
   },
   genderPillActive: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#16A34A',
+    backgroundColor: '#ECECEC',
+    borderColor: '#111111',
   },
   genderPillText: {
     fontFamily: Typography.fontSansMedium,
     fontSize: 13.5,
-    color: '#4B5563',
+    color: '#777777',
   },
   genderPillTextActive: {
     fontFamily: Typography.fontSansSemiBold,
-    color: '#16A34A',
+    color: '#111111',
   },
 });

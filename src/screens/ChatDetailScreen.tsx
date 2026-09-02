@@ -525,11 +525,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   userBubble: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#111111',
     borderBottomRightRadius: 4,
   },
   assistantBubble: {
-    backgroundColor: '#DCDCE1',
+    backgroundColor: '#ECECEC',
     borderBottomLeftRadius: 4,
   },
   bubbleActionRow: {
@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   typingBubble: {
-    backgroundColor: '#DCDCE1',
+    backgroundColor: '#ECECEC',
     borderRadius: 18,
     borderBottomLeftRadius: 4,
     paddingHorizontal: 14,
@@ -583,7 +583,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   quickPromptChip: {
-    backgroundColor: '#DCDCE1',
+    backgroundColor: '#ECECEC',
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -605,7 +605,7 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    backgroundColor: '#DCDCE1',
+    backgroundColor: '#ECECEC',
     borderRadius: 22,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -618,7 +618,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#DCDCE1',
+    backgroundColor: '#ECECEC',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -626,11 +626,11 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#111111',
     alignItems: 'center',
     justifyContent: 'center',
   },
   sendBtnDisabled: {
-    opacity: 0.5,
+    opacity: 0.4,
   }
 });

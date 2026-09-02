@@ -285,14 +285,14 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   headerTitle: {
-    fontFamily: Typography.fontSerifBold,
-    fontSize: 22,
+    fontFamily: Typography.fontSerif,
+    fontSize: 26,
     color: Colors.textPrimary,
   },
   newCouncilHeaderBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111827',
+    backgroundColor: '#111111',
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 20,
@@ -312,10 +312,10 @@ const styles = StyleSheet.create({
   },
   segmentedRow: {
     flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#ECECEC',
     borderRadius: 14,
     marginHorizontal: 20,
-    padding: 4,
+    padding: 3,
     marginBottom: 12,
   },
   segmentBtn: {
@@ -326,20 +326,15 @@ const styles = StyleSheet.create({
   },
   segmentBtnActive: {
     backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
   },
   segmentText: {
     fontFamily: Typography.fontSansMedium,
     fontSize: 12.5,
-    color: '#6B7280',
+    color: '#777777',
   },
   segmentTextActive: {
     fontFamily: Typography.fontSansSemiBold,
-    color: '#111827',
+    color: '#111111',
   },
   searchBarContainer: {
     flexDirection: 'row',
@@ -348,7 +343,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingHorizontal: 12,
     height: 40,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#ECECEC',
     borderRadius: 12,
   },
   searchIcon: {
@@ -372,16 +367,16 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 14,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E2E2E2',
   },
   avatarContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
     overflow: 'hidden',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#ECECEC',
   },
   avatar: {
     width: '100%',
@@ -417,7 +412,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E2E2E2',
   },
   councilCardTop: {
     flexDirection: 'row',
@@ -438,7 +433,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#ECECEC',
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
     alignItems: 'center',
@@ -447,7 +442,7 @@ const styles = StyleSheet.create({
   councilStackAvatarMoreText: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 10,
-    color: '#4B5563',
+    color: '#777777',
   },
   councilInfo: {
     flex: 1,
