@@ -89,7 +89,6 @@ const initTables = async (db: SQLite.SQLiteDatabase) => {
         date_of_birth TEXT NOT NULL,
         gender TEXT DEFAULT 'neutral'
       );
-    `);
 
       CREATE TABLE IF NOT EXISTS group_conversations (
         id TEXT PRIMARY KEY NOT NULL,
