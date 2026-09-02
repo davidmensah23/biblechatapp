@@ -132,7 +132,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   };
 
   const handleBadgePress = (badge: FaithBadge) => {
-    if (badge.unlocked) {
+    if (badge.isUnlocked) {
       setCelebratingBadge(badge);
     }
   };
@@ -382,26 +382,26 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               return (
                 <TouchableOpacity
                   key={badge.id}
-                  style={[styles.faithBadgeCard, !badge.unlocked && styles.faithBadgeLocked]}
+                  style={[styles.faithBadgeCard, !badge.isUnlocked && styles.faithBadgeLocked]}
                   onPress={() => handleBadgePress(badge)}
-                  activeOpacity={badge.unlocked ? 0.8 : 1}
+                  activeOpacity={badge.isUnlocked ? 0.8 : 1}
                 >
                   <View style={styles.badgeMascotWrap}>
                     <Image
                       source={mascotImg}
-                      style={[styles.badgeMascotImg, !badge.unlocked && { opacity: 0.35 }]}
+                      style={[styles.badgeMascotImg, !badge.isUnlocked && { opacity: 0.35 }]}
                     />
                   </View>
                   <View style={{ flex: 1, marginLeft: 14 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <Text style={styles.badgeCardTitle}>{badge.name}</Text>
+                      <Text style={styles.badgeCardTitle}>{badge.title}</Text>
                       <View style={styles.badgeXpPill}>
-                        <Text style={styles.badgeXpText}>+{badge.graceXpReward || 50} XP</Text>
+                        <Text style={styles.badgeXpText}>+{badge.xpReward || 50} XP</Text>
                       </View>
                     </View>
-                    <Text style={styles.badgeCardDesc}>{badge.description}</Text>
-                    <Text style={[styles.badgeCardStatus, badge.unlocked ? styles.badgeStatusUnlocked : styles.badgeStatusLocked]}>
-                      {badge.unlocked ? '✨ Unlocked & Crowned' : '🔒 In Progress'}
+                    <Text style={styles.badgeCardDesc}>{badge.subtitle}</Text>
+                    <Text style={[styles.badgeCardStatus, badge.isUnlocked ? styles.badgeStatusUnlocked : styles.badgeStatusLocked]}>
+                      {badge.isUnlocked ? '✨ Unlocked & Crowned' : '🔒 In Progress'}
                     </Text>
                   </View>
                 </TouchableOpacity>
