@@ -1,11 +1,9 @@
 import React from 'react';
 import {
-  Modal,
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +14,7 @@ import {
   getAppLanguage,
   setAppLanguage
 } from '../services/localizationService';
+import { InteractiveGestureSheet } from './InteractiveGestureSheet';
 
 interface LanguagePickerModalProps {
   visible: boolean;
@@ -37,77 +36,62 @@ export const LanguagePickerModal: React.FC<LanguagePickerModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <SafeAreaView style={styles.sheetContainer}>
-          <View style={styles.grabBar} />
-
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.title}>Select Language</Text>
-              <Text style={styles.subtitle}>Choose your preferred tongue for devotions & AI</Text>
-            </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={22} color="#6B7280" />
-            </TouchableOpacity>
+    <InteractiveGestureSheet
+      visible={visible}
+      onClose={onClose}
+      initialSnap="mid"
+      midHeightRatio={0.62}
+      fullHeightRatio={0.92}
+    >
+      <View style={styles.sheetContainer}>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.title}>Select Language</Text>
+            <Text style={styles.subtitle}>Choose your preferred tongue for devotions & AI</Text>
           </View>
+          <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <Ionicons name="close" size={22} color="#6B7280" />
+          </TouchableOpacity>
+        </View>
 
-          <ScrollView contentContainerStyle={styles.list}>
-            {SUPPORTED_LANGUAGES.map((lang) => {
-              const isSelected = currentLang === lang.code;
+        <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+          {SUPPORTED_LANGUAGES.map((lang) => {
+            const isSelected = currentLang === lang.code;
 
-              return (
-                <TouchableOpacity
-                  key={lang.code}
-                  style={[styles.langRow, isSelected && styles.langRowSelected]}
-                  onPress={() => handleSelect(lang.code)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.langLeft}>
-                    <Text style={styles.flagEmoji}>{lang.flag}</Text>
-                    <View>
-                      <Text style={[styles.nativeName, isSelected && styles.nativeNameSelected]}>
-                        {lang.nativeName}
-                      </Text>
-                      <Text style={styles.englishName}>{lang.name}</Text>
-                    </View>
+            return (
+              <TouchableOpacity
+                key={lang.code}
+                style={[styles.langRow, isSelected && styles.langRowSelected]}
+                onPress={() => handleSelect(lang.code)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.langLeft}>
+                  <Text style={styles.flagEmoji}>{lang.flag}</Text>
+                  <View>
+                    <Text style={[styles.nativeName, isSelected && styles.nativeNameSelected]}>
+                      {lang.nativeName}
+                    </Text>
+                    <Text style={styles.englishName}>{lang.name}</Text>
                   </View>
+                </View>
 
-                  {isSelected && (
-                    <Ionicons name="checkmark-circle" size={22} color="#2563EB" />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </SafeAreaView>
+                {isSelected && (
+                  <Ionicons name="checkmark-circle" size={22} color="#111111" />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
-    </Modal>
+    </InteractiveGestureSheet>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    justifyContent: 'flex-end',
-  },
   sheetContainer: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 12,
     paddingBottom: 24,
-    maxHeight: '75%',
-  },
-  grabBar: {
-    width: 44,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#E5E7EB',
-    alignSelf: 'center',
-    marginBottom: 12,
   },
   header: {
     flexDirection: 'row',

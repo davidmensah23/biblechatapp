@@ -18,6 +18,7 @@ import {
   markAllNotificationsAsRead,
   deleteNotification
 } from '../services/notificationService';
+import { InteractiveGestureSheet } from './InteractiveGestureSheet';
 
 interface NotificationsModalProps {
   visible: boolean;
@@ -82,12 +83,18 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
-      <SafeAreaView style={styles.container}>
+    <InteractiveGestureSheet
+      visible={visible}
+      onClose={onClose}
+      initialSnap="mid"
+      midHeightRatio={0.72}
+      fullHeightRatio={0.92}
+    >
+      <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.backBtn} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={22} color="#111111" />
+            <Ionicons name="close" size={22} color="#111111" />
           </TouchableOpacity>
 
           <Text style={styles.headerTitle}>Notifications</Text>
@@ -107,18 +114,19 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
             <Switch
               value={dailyRemindersEnabled}
               onValueChange={setDailyRemindersEnabled}
-              trackColor={{ false: '#D1D5DB', true: '#2563EB' }}
+              trackColor={{ false: '#D1D5DB', true: '#111111' }}
               thumbColor="#FFFFFF"
             />
           </View>
 
           {/* Notifications List */}
-          <Text style={styles.sectionHeading}>Today's Updates</Text>
+          <Text style={styles.sectionHeading}>Recent Updates</Text>
 
           {notifications.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="notifications-off-outline" size={36} color="#999999" />
-              <Text style={styles.emptyText}>No notifications right now</Text>
+              <Ionicons name="notifications-off-outline" size={44} color="#9E9EA7" />
+              <Text style={styles.emptyTitle}>You're all caught up</Text>
+              <Text style={styles.emptySubtitle}>No unread notifications at the moment.</Text>
             </View>
           ) : (
             notifications.map((item) => (
@@ -128,24 +136,24 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                 onPress={() => handleNotificationPress(item)}
                 activeOpacity={0.75}
               >
-                <View style={[styles.iconContainer, { backgroundColor: `${item.iconColor}15` }]}>
-                  <Ionicons name={item.icon as any} size={20} color={item.iconColor} />
+                <View style={styles.notificationLeft}>
+                  <View style={styles.iconCircle}>
+                    <Ionicons
+                      name={item.type === 'daily_scripture' ? 'book' : 'chatbubble-ellipses'}
+                      size={18}
+                      color="#111111"
+                    />
+                  </View>
+                  {!item.isRead && <View style={styles.unreadDot} />}
                 </View>
 
-                <View style={styles.textContainer}>
-                  <View style={styles.titleRow}>
-                    <Text style={styles.notifTitle}>{item.title}</Text>
+                <View style={styles.notificationContent}>
+                  <Text style={styles.notificationTitle}>{item.title}</Text>
+                  <Text style={styles.notificationBody} numberOfLines={2}>
+                    {item.message}
+                  </Text>
+                  <View style={styles.notificationFooter}>
                     <Text style={styles.timeAgoText}>{formatTimeAgo(item.timestamp)}</Text>
-                  </View>
-                  <Text style={styles.notifMessage}>{item.message}</Text>
-                  <View style={styles.footerRow}>
-                    <Text style={styles.tapToChatText}>
-                      {item.type === 'daily_scripture'
-                        ? 'Tap to open scripture $\rightarrow$'
-                        : item.targetParam
-                        ? 'Tap to reply in chat $\rightarrow$'
-                        : 'Tap to view $\rightarrow$'}
-                    </Text>
                     <TouchableOpacity
                       onPress={(e) => handleDeleteItem(item.id, e)}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -159,8 +167,8 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
             ))
           )}
         </ScrollView>
-      </SafeAreaView>
-    </Modal>
+      </View>
+    </InteractiveGestureSheet>
   );
 };
 

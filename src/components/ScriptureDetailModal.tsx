@@ -1,9 +1,10 @@
 import React from 'react';
-import { Modal, View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
 import { BibleVerse } from '../types';
+import { InteractiveGestureSheet } from './InteractiveGestureSheet';
 
 interface ScriptureDetailModalProps {
   visible: boolean;
@@ -21,66 +22,63 @@ export const ScriptureDetailModal: React.FC<ScriptureDetailModalProps> = ({
   if (!verse) return null;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.modalCard}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.reference}>
-                {verse.book} {verse.chapter}:{verse.verse}
-              </Text>
-              <Text style={styles.translation}>{verse.translation} Translation</Text>
-            </View>
-
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={20} color={Colors.textPrimary} />
-            </TouchableOpacity>
+    <InteractiveGestureSheet
+      visible={visible}
+      onClose={onClose}
+      initialSnap="mid"
+      midHeightRatio={0.65}
+      fullHeightRatio={0.92}
+    >
+      <View style={styles.modalCard}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.reference}>
+              {verse.book} {verse.chapter}:{verse.verse}
+            </Text>
+            <Text style={styles.translation}>{verse.translation} Translation</Text>
           </View>
 
-          {/* Scripture Body */}
-          <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
-            <Text style={styles.scriptureText}>"{verse.text}"</Text>
-          </ScrollView>
+          <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <Ionicons name="close" size={20} color={Colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
 
-          {/* Actions */}
-          <View style={styles.actionsRow}>
-            {onBookmark && (
-              <TouchableOpacity
-                style={styles.actionBtn}
-                onPress={() => onBookmark(verse)}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="bookmark-outline" size={18} color={Colors.textPrimary} />
-                <Text style={styles.actionBtnText}>Save Verse</Text>
-              </TouchableOpacity>
-            )}
+        {/* Scripture Body */}
+        <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
+          <Text style={styles.scriptureText}>"{verse.text}"</Text>
+        </ScrollView>
+
+        {/* Actions */}
+        <View style={styles.actionsRow}>
+          {onBookmark && (
             <TouchableOpacity
-              style={[styles.actionBtn, styles.primaryActionBtn]}
-              onPress={onClose}
+              style={styles.actionBtn}
+              onPress={() => onBookmark(verse)}
               activeOpacity={0.8}
             >
-              <Text style={styles.primaryActionBtnText}>Done</Text>
+              <Ionicons name="bookmark-outline" size={18} color={Colors.textPrimary} />
+              <Text style={styles.actionBtnText}>Save Verse</Text>
             </TouchableOpacity>
-          </View>
+          )}
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.primaryActionBtn]}
+            onPress={onClose}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.primaryActionBtnText}>Done</Text>
+          </TouchableOpacity>
         </View>
       </View>
-    </Modal>
+    </InteractiveGestureSheet>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    justifyContent: 'flex-end',
-  },
   modalCard: {
-    backgroundColor: Colors.card,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 24,
-    maxHeight: '80%',
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingBottom: 28,
   },
   header: {
     flexDirection: 'row',
@@ -89,7 +87,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.divider,
+    borderBottomColor: '#F0F0F0',
   },
   reference: {
     fontFamily: Typography.fontSerif,
@@ -98,7 +96,7 @@ const styles = StyleSheet.create({
   },
   translation: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 12,
+    fontSize: 12.5,
     color: Colors.textMuted,
     marginTop: 2,
   },
@@ -106,17 +104,18 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.cardSecondary,
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
   body: {
+    flex: 1,
     marginVertical: 12,
   },
   scriptureText: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 16,
-    lineHeight: 26,
+    fontFamily: Typography.fontSerif,
+    fontSize: 18,
+    lineHeight: 28,
     color: Colors.textPrimary,
   },
   actionsRow: {
@@ -131,7 +130,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 20,
-    backgroundColor: Colors.cardSecondary,
+    backgroundColor: '#F3F4F6',
     gap: 6,
   },
   actionBtnText: {
@@ -140,7 +139,7 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   primaryActionBtn: {
-    backgroundColor: Colors.textPrimary,
+    backgroundColor: '#111111',
   },
   primaryActionBtnText: {
     fontFamily: Typography.fontSansMedium,

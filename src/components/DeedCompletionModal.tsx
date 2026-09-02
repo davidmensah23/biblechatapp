@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import {
-  Modal,
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   TextInput,
   ScrollView
 } from 'react-native';
@@ -13,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { CardStyles } from '../theme/cardStyles';
 import { KingdomDeed, logCompletedDeed, CompletedDeedLog } from '../services/deedsService';
+import { InteractiveGestureSheet } from './InteractiveGestureSheet';
 
 interface DeedCompletionModalProps {
   visible: boolean;
@@ -57,16 +56,18 @@ export const DeedCompletionModal: React.FC<DeedCompletionModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <SafeAreaView style={styles.sheetContainer}>
-          {/* Top Grab Bar */}
-          <View style={styles.grabBar} />
-
-          {/* Close Button */}
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-            <Ionicons name="close" size={22} color="#6B7280" />
-          </TouchableOpacity>
+    <InteractiveGestureSheet
+      visible={visible}
+      onClose={onClose}
+      initialSnap="mid"
+      midHeightRatio={0.70}
+      fullHeightRatio={0.92}
+    >
+      <View style={styles.sheetContainer}>
+        {/* Close Button */}
+        <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+          <Ionicons name="close" size={22} color="#6B7280" />
+        </TouchableOpacity>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
             {showBlessing ? (
@@ -157,35 +158,16 @@ export const DeedCompletionModal: React.FC<DeedCompletionModalProps> = ({
               </View>
             )}
           </ScrollView>
-        </SafeAreaView>
       </View>
-    </Modal>
+    </InteractiveGestureSheet>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    justifyContent: 'flex-end',
-  },
   sheetContainer: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 36,
-    borderTopRightRadius: 36,
-    borderCurve: 'continuous',
+    flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 12,
     paddingBottom: 32,
-    maxHeight: '85%',
-  },
-  grabBar: {
-    width: 44,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#E5E7EB',
-    alignSelf: 'center',
-    marginBottom: 12,
   },
   closeBtn: {
     alignSelf: 'flex-end',
