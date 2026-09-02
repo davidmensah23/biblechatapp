@@ -108,7 +108,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
               item.targetParam && ['peter', 'john', 'paul', 'thomas', 'andrew'].includes(item.targetParam)
             );
 
-            const mascotKey = (item.mascotKey as any) || 'rock';
+            const mascotKey = (item.mascotKey as keyof typeof MascotAssets) || 'rock';
             const mascotImg = MascotAssets[mascotKey] || MascotAssets.bread;
             const apostle = isApostle ? getPersonaById(item.targetParam!) : null;
 
