@@ -15,6 +15,7 @@ import {
   StatusBar
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
 import { GroupCouncilThread, GroupCouncilMessage, GroupReplyContext } from '../types/groupChat';
 import { ApostlePersona, UserProfile } from '../types';
