@@ -17,12 +17,14 @@ import { getTodayDeedForUser, initDeedsDatabase, KingdomDeed } from '../services
 import { MascotAssets } from '../services/mascotAssets';
 import { CardStyles } from '../theme/cardStyles';
 import { SpringConfigs } from '../theme/animations';
+import { useTranslation } from '../services/localizationService';
 
 interface HomeScreenProps {
   onSelectApostle: (apostle: ApostlePersona) => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'forYou' | 'disciples'>('forYou');
   const [selectedVerse, setSelectedVerse] = useState<BibleVerse | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -80,7 +82,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
             activeOpacity={0.7}
           >
             <Text style={[styles.tabText, activeTab === 'forYou' ? styles.tabTextActive : styles.tabTextInactive]}>
-              For You
+              {t('tab_for_you', 'For You')}
             </Text>
           </TouchableOpacity>
 
@@ -91,7 +93,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
             activeOpacity={0.7}
           >
             <Text style={[styles.tabText, activeTab === 'disciples' ? styles.tabTextActive : styles.tabTextInactive]}>
-              Disciples
+              {t('tab_disciples', 'Disciples')}
             </Text>
           </TouchableOpacity>
         </View>

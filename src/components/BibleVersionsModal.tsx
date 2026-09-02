@@ -19,6 +19,8 @@ import {
   getBibleVersionsList,
   downloadBibleVersion
 } from '../services/bibleEngine';
+import { useTranslation, SUPPORTED_LANGUAGES, AppLanguage } from '../services/localizationService';
+import { LanguagePickerModal } from './LanguagePickerModal';
 
 interface BibleVersionsModalProps {
   visible: boolean;
@@ -33,16 +35,18 @@ export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
   onSelectVersion,
   onClose
 }) => {
+  const { t, currentLanguage, setLanguage } = useTranslation();
   const [versions, setVersions] = useState<BibleVersionInfo[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [downloadingCode, setDownloadingCode] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
 
   useEffect(() => {
     if (visible) {
       loadVersions();
     }
-  }, [visible]);
+  }, [visible, currentLanguage]);
 
   const loadVersions = async () => {
     const list = await getBibleVersionsList();
@@ -110,15 +114,23 @@ export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {/* Language Selector Card */}
-          <View style={styles.languagePill}>
+          <TouchableOpacity
+            style={styles.languagePill}
+            onPress={() => setShowLanguagePicker(true)}
+            activeOpacity={0.8}
+          >
             <View style={styles.languageLeft}>
               <Ionicons name="globe-outline" size={20} color={Colors.textPrimary} style={{ marginRight: 10 }} />
-              <Text style={styles.languageLabel}>Language</Text>
+              <Text style={styles.languageLabel}>{t('language_label', 'Language')}</Text>
             </View>
             <View style={styles.languageRight}>
-              <Text style={styles.languageValue}>English</Text>
+              <Text style={styles.languageValue}>
+                {SUPPORTED_LANGUAGES.find(l => l.code === currentLanguage)?.flag}{' '}
+                {SUPPORTED_LANGUAGES.find(l => l.code === currentLanguage)?.name || 'English (US)'}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={Colors.textPrimary} style={{ marginLeft: 6 }} />
             </View>
-          </View>
+          </TouchableOpacity>
 
           {/* Search Input */}
           <View style={styles.searchContainer}>
@@ -233,6 +245,15 @@ export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
           )}
         </ScrollView>
       </SafeAreaView>
+
+      <LanguagePickerModal
+        visible={showLanguagePicker}
+        onClose={() => setShowLanguagePicker(false)}
+        onLanguageSelected={(lang) => {
+          setLanguage(lang);
+          setShowLanguagePicker(false);
+        }}
+      />
     </Modal>
   );
 };

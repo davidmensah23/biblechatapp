@@ -18,6 +18,7 @@ export interface BibleVersionInfo {
   id: string;
   code: string;
   name: string;
+  language?: string;
   hasAudio: boolean;
   isDownloaded: boolean;
   downloadProgress?: number;
@@ -98,15 +99,32 @@ export const ALL_BIBLE_BOOKS: BibleBook[] = [
 ];
 
 export const INITIAL_BIBLE_VERSIONS: BibleVersionInfo[] = [
-  { id: '1', code: 'NIV', name: 'New International Version', hasAudio: true, isDownloaded: true, apiTranslationKey: 'web' },
-  { id: '2', code: 'KJV', name: 'King James Version (1611)', hasAudio: true, isDownloaded: true, apiTranslationKey: 'kjv' },
-  { id: '3', code: 'WEB', name: 'World English Bible', hasAudio: true, isDownloaded: true, apiTranslationKey: 'web' },
-  { id: '4', code: 'ASV', name: 'American Standard Version (1901)', hasAudio: false, isDownloaded: false, apiTranslationKey: 'asv' },
-  { id: '5', code: 'BBE', name: 'Bible in Basic English', hasAudio: false, isDownloaded: false, apiTranslationKey: 'bbe' },
-  { id: '6', code: 'GNV', name: 'Geneva Bible (1599)', hasAudio: false, isDownloaded: false, apiTranslationKey: 'cherokee' },
-  { id: '7', code: 'ESV', name: 'English Standard Version', hasAudio: true, isDownloaded: false, apiTranslationKey: 'web' },
-  { id: '8', code: 'NLT', name: 'New Living Translation', hasAudio: true, isDownloaded: false, apiTranslationKey: 'web' },
-  { id: '9', code: 'AMP', name: 'Amplified Bible', hasAudio: false, isDownloaded: false, apiTranslationKey: 'web' }
+  // English
+  { id: '1', code: 'NIV', name: 'New International Version', language: 'en', hasAudio: true, isDownloaded: true, apiTranslationKey: 'web' },
+  { id: '2', code: 'KJV', name: 'King James Version (1611)', language: 'en', hasAudio: true, isDownloaded: true, apiTranslationKey: 'kjv' },
+  { id: '3', code: 'WEB', name: 'World English Bible', language: 'en', hasAudio: true, isDownloaded: true, apiTranslationKey: 'web' },
+  { id: '4', code: 'ESV', name: 'English Standard Version', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'web' },
+  { id: '5', code: 'NLT', name: 'New Living Translation', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'web' },
+  { id: '6', code: 'BBE', name: 'Bible in Basic English', language: 'en', hasAudio: false, isDownloaded: false, apiTranslationKey: 'bbe' },
+  { id: '7', code: 'ASV', name: 'American Standard Version', language: 'en', hasAudio: false, isDownloaded: false, apiTranslationKey: 'asv' },
+
+  // Spanish (Español)
+  { id: '10', code: 'RVR', name: 'Reina-Valera 1960', language: 'es', hasAudio: true, isDownloaded: true, apiTranslationKey: 'rvr' },
+  { id: '11', code: 'NVI-ES', name: 'Nueva Versión Internacional', language: 'es', hasAudio: true, isDownloaded: false, apiTranslationKey: 'rvr' },
+
+  // French (Français)
+  { id: '20', code: 'LSG', name: 'Louis Segond 1910', language: 'fr', hasAudio: true, isDownloaded: true, apiTranslationKey: 'lsg' },
+  { id: '21', code: 'BDS', name: 'La Bible du Semeur', language: 'fr', hasAudio: false, isDownloaded: false, apiTranslationKey: 'lsg' },
+
+  // Portuguese (Português)
+  { id: '30', code: 'ARC', name: 'Almeida Revista e Corrigida', language: 'pt', hasAudio: true, isDownloaded: true, apiTranslationKey: 'almeida' },
+  { id: '31', code: 'NVI-PT', name: 'Nova Versão Internacional', language: 'pt', hasAudio: false, isDownloaded: false, apiTranslationKey: 'almeida' },
+
+  // Twi (Akan)
+  { id: '40', code: 'TWI', name: 'Akuapem Twi Twerɛ Kronkron', language: 'tw', hasAudio: false, isDownloaded: true, apiTranslationKey: 'web' },
+
+  // Swahili (Kiswahili)
+  { id: '50', code: 'SUV', name: 'Swahili Union Version (Biblia)', language: 'sw', hasAudio: true, isDownloaded: true, apiTranslationKey: 'web' }
 ];
 
 // Rich Offline Bundled Chapters (Readily offline out-of-the-box!)

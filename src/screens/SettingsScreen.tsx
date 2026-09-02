@@ -18,6 +18,7 @@ import { UserProfile } from '../types';
 import { CustomActionModal } from '../components/CustomActionModal';
 import { InviteFriendsBanner } from '../components/InviteFriendsBanner';
 import { CardStyles } from '../theme/cardStyles';
+import { SUPPORTED_LANGUAGES, useTranslation, AppLanguage } from '../services/localizationService';
 
 interface SettingsScreenProps {
   visible: boolean;
@@ -60,9 +61,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
 
+  const { t, currentLanguage, setLanguage } = useTranslation();
+
   // Settings states
   const [fontSizeScale, setFontSizeScale] = useState<'Small' | 'Normal' | 'Large' | 'Extra Large'>('Normal');
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('English (US)');
   const [dailyReminders, setDailyReminders] = useState(true);
   const [hapticFeedback, setHapticFeedback] = useState(true);
   const [audioSpeed, setAudioSpeed] = useState<'0.75x' | '1.0x' | '1.25x' | '1.5x'>('1.0x');
@@ -346,7 +348,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 activeOpacity={0.7}
               >
                 <Text style={styles.pillText}>Language</Text>
-                <Text style={styles.subValueText}>{selectedLanguage}</Text>
+                <Text style={styles.subValueText}>
+                  {SUPPORTED_LANGUAGES.find(l => l.code === currentLanguage)?.name || 'English (US)'}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -740,24 +744,35 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
           <ScrollView contentContainerStyle={styles.modalContent}>
             <View style={styles.group}>
-              {['English (US)', 'Spanish (Español)', 'French (Français)', 'Portuguese (Português)', 'Twi (Akan)', 'Swahili (Kiswahili)'].map((lang) => (
-                <TouchableOpacity
-                  key={lang}
-                  style={[styles.pillRow, selectedLanguage === lang && styles.pillRowSelected]}
-                  onPress={() => {
-                    setSelectedLanguage(lang);
-                    setActiveSubModal(null);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.pillText, selectedLanguage === lang && styles.pillTextSelected]}>
-                    {lang}
-                  </Text>
-                  {selectedLanguage === lang && (
-                    <Ionicons name="checkmark-circle" size={20} color="#111111" />
-                  )}
-                </TouchableOpacity>
-              ))}
+              {SUPPORTED_LANGUAGES.map((lang) => {
+                const isSelected = currentLanguage === lang.code;
+                return (
+                  <TouchableOpacity
+                    key={lang.code}
+                    style={[styles.pillRow, isSelected && styles.pillRowSelected]}
+                    onPress={async () => {
+                      await setLanguage(lang.code);
+                      setActiveSubModal(null);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <Text style={{ fontSize: 20 }}>{lang.flag}</Text>
+                      <View>
+                        <Text style={[styles.pillText, isSelected && styles.pillTextSelected]}>
+                          {lang.nativeName}
+                        </Text>
+                        <Text style={{ fontFamily: Typography.fontSansRegular, fontSize: 12, color: '#777777' }}>
+                          {lang.name}
+                        </Text>
+                      </View>
+                    </View>
+                    {isSelected && (
+                      <Ionicons name="checkmark-circle" size={20} color="#111111" />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </ScrollView>
         </SafeAreaView>
