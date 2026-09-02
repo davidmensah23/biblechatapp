@@ -14,6 +14,7 @@ import { NotificationsModal } from '../components/NotificationsModal';
 import { DailyDeedCard } from '../components/DailyDeedCard';
 import { DeedCompletionModal } from '../components/DeedCompletionModal';
 import { getTodayDeedForUser, initDeedsDatabase, KingdomDeed } from '../services/deedsService';
+import { MascotAssets } from '../services/mascotAssets';
 import { CardStyles } from '../theme/cardStyles';
 import { SpringConfigs } from '../theme/animations';
 
@@ -186,9 +187,37 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
             </Text>
             <View style={styles.sermonActionRow}>
               <Text style={styles.sermonActionText}>Start Sermon Prep with Paul</Text>
-              <Ionicons name="arrow-forward" size={15} color="#2563EB" />
+              <Ionicons name="arrow-forward" size={15} color="#111111" />
             </View>
           </TouchableOpacity>
+
+          {/* Faith Companions & Fruits of the Spirit Showcase */}
+          <View style={styles.faithCompanionsSection}>
+            <View style={styles.sectionHeadingRow}>
+              <Text style={styles.sectionHeading}>Faith Companions</Text>
+              <Text style={styles.sectionSubheading}>Fruits of the Spirit</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mascotsScroll}>
+              {[
+                { id: 'cloud', name: 'Cotton Cloud', fruit: 'Peace', img: MascotAssets.cloud },
+                { id: 'bread', name: 'Daily Manna', fruit: 'Truth', img: MascotAssets.bread },
+                { id: 'flame', name: 'Holy Flame', fruit: 'Zeal', img: MascotAssets.flame },
+                { id: 'dewdrop', name: 'Living Dew', fruit: 'Grace', img: MascotAssets.dewdrop },
+                { id: 'rock', name: 'Cornerstone', fruit: 'Faith', img: MascotAssets.rock },
+                { id: 'cedar', name: 'Cedar', fruit: 'Strength', img: MascotAssets.cedar },
+                { id: 'blossom', name: 'Lily', fruit: 'Joy', img: MascotAssets.blossom },
+                { id: 'group', name: 'Fellowship', fruit: 'Love', img: MascotAssets.group },
+              ].map((m) => (
+                <View key={m.id} style={styles.mascotCompanionCard}>
+                  <View style={styles.mascotImgWrapper}>
+                    <Image source={m.img} style={styles.mascotImg} />
+                  </View>
+                  <Text style={styles.mascotName}>{m.name}</Text>
+                  <Text style={styles.mascotFruit}>{m.fruit}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
 
           {/* Meet Your Heroes Section Heading */}
           <Text style={styles.sectionHeading}>Meet your heroes</Text>
@@ -430,7 +459,7 @@ const styles = StyleSheet.create({
   sermonPrepBadgeText: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 13.5,
-    color: '#2563EB',
+    color: '#111111',
   },
   sermonPrepTitle: {
     fontFamily: Typography.fontSerifBold,
@@ -459,15 +488,67 @@ const styles = StyleSheet.create({
   sermonActionText: {
     fontFamily: Typography.fontSansMedium,
     fontSize: 12.5,
-    color: '#2563EB',
+    color: '#111111',
+  },
+  faithCompanionsSection: {
+    marginBottom: 20,
+    marginTop: 6,
+  },
+  sectionHeadingRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    marginBottom: 12,
   },
   sectionHeading: {
     fontFamily: Typography.fontSerif,
-    fontSize: 28,
+    fontSize: 26,
     color: '#111111',
-    marginTop: 10,
-    marginBottom: 16,
+  },
+  sectionSubheading: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 12,
+    color: '#777777',
+  },
+  mascotsScroll: {
+    gap: 12,
     paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+  mascotCompanionCard: {
+    alignItems: 'center',
+    width: 82,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E2E2E2',
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+  },
+  mascotImgWrapper: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    overflow: 'hidden',
+    backgroundColor: '#ECECEC',
+    marginBottom: 6,
+  },
+  mascotImg: {
+    width: '100%',
+    height: '100%',
+  },
+  mascotName: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 11,
+    color: '#111111',
+    textAlign: 'center',
+  },
+  mascotFruit: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 10,
+    color: '#777777',
+    marginTop: 1,
   },
   gridRow: {
     flexDirection: 'row',

@@ -17,7 +17,7 @@ import { SavedBookmark, UserProfile } from '../types';
 import { SettingsScreen } from './SettingsScreen';
 import { getUserAvatarUrl, AvatarStyle, AVATAR_STYLE_OPTIONS } from '../services/avatarService';
 import { getSpiritualGrowthProfile, SpiritualGrowthProfile, FaithBadge } from '../services/gamificationService';
-import { HoldToExplodeBadge } from '../components/HoldToExplodeBadge';
+import { MascotAssets } from '../services/mascotAssets';
 import { ShareMilestoneModal } from '../components/ShareMilestoneModal';
 import { StreaksJourneyView } from '../components/StreaksJourneyView';
 import { ArmorOfGodView } from '../components/ArmorOfGodView';
@@ -106,12 +106,35 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     setAvatarSeedOffset(prev => prev + 1);
   };
 
-  const handleBadgeExploded = (badge: FaithBadge) => {
-    setCelebratingBadge(badge);
-    triggerInstantMilestonePush(
-      `🎉 Milestone Unlocked: ${badge.title}`,
-      `"${badge.subtitle}" — +${badge.xpReward} Grace XP added to your faith journey!`
-    );
+  const getBadgeMascot = (badgeId: string) => {
+    switch (badgeId) {
+      case 'first_reflection':
+      case 'streak_7':
+        return MascotAssets.bread;
+      case 'streak_30':
+      case 'prayer_warrior':
+        return MascotAssets.flame;
+      case 'scripture_seeker':
+      case 'deep_fellowship':
+        return MascotAssets.cloud;
+      case 'faith_walker':
+        return MascotAssets.dewdrop;
+      case 'rock_of_faith':
+      case 'psalm_singer':
+        return MascotAssets.rock;
+      case 'cedar_strength':
+        return MascotAssets.cedar;
+      case 'lily_pure':
+        return MascotAssets.blossom;
+      default:
+        return MascotAssets.group;
+    }
+  };
+
+  const handleBadgePress = (badge: FaithBadge) => {
+    if (badge.unlocked) {
+      setCelebratingBadge(badge);
+    }
   };
 
   const currentSeed = `${profile.fullName || profile.email || 'Disciple'}${avatarSeedOffset > 0 ? `_${avatarSeedOffset}` : ''}`;
@@ -352,18 +375,38 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             onOpenBible={onOpenBible}
           />
         ) : activeSubTab === 'badges' && growthProfile ? (
-          /* Tab 3: Badges with Hold-to-Explode Physics */
+          /* Tab 3: Faith Badges & Mascot Companions */
           <View style={styles.badgesList}>
-            <Text style={styles.holdInstruction}>
-              💡 Press and hold any unlocked badge to explode in celebration!
-            </Text>
-            {growthProfile.badges.map((badge) => (
-              <HoldToExplodeBadge
-                key={badge.id}
-                badge={badge}
-                onExplode={handleBadgeExploded}
-              />
-            ))}
+            {growthProfile.badges.map((badge) => {
+              const mascotImg = getBadgeMascot(badge.id);
+              return (
+                <TouchableOpacity
+                  key={badge.id}
+                  style={[styles.faithBadgeCard, !badge.unlocked && styles.faithBadgeLocked]}
+                  onPress={() => handleBadgePress(badge)}
+                  activeOpacity={badge.unlocked ? 0.8 : 1}
+                >
+                  <View style={styles.badgeMascotWrap}>
+                    <Image
+                      source={mascotImg}
+                      style={[styles.badgeMascotImg, !badge.unlocked && { opacity: 0.35 }]}
+                    />
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 14 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Text style={styles.badgeCardTitle}>{badge.name}</Text>
+                      <View style={styles.badgeXpPill}>
+                        <Text style={styles.badgeXpText}>+{badge.graceXpReward || 50} XP</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.badgeCardDesc}>{badge.description}</Text>
+                    <Text style={[styles.badgeCardStatus, badge.unlocked ? styles.badgeStatusUnlocked : styles.badgeStatusLocked]}>
+                      {badge.unlocked ? '✨ Unlocked & Crowned' : '🔒 In Progress'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         ) : activeSubTab === 'bookmarks' ? (
           /* Tab 4: Saved Bookmarks */
@@ -750,14 +793,67 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   badgesList: {
-    gap: 4,
+    gap: 10,
   },
-  holdInstruction: {
+  faithBadgeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E2E2E2',
+    padding: 14,
+  },
+  faithBadgeLocked: {
+    backgroundColor: '#F6F6F6',
+    borderColor: '#ECECEC',
+  },
+  badgeMascotWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    overflow: 'hidden',
+    backgroundColor: '#ECECEC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeMascotImg: {
+    width: '100%',
+    height: '100%',
+  },
+  badgeCardTitle: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 15,
+    color: '#111111',
+  },
+  badgeXpPill: {
+    backgroundColor: '#ECECEC',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  badgeXpText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 11,
+    color: '#111111',
+  },
+  badgeCardDesc: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 12,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 8,
+    fontSize: 12.5,
+    color: '#666666',
+    marginTop: 2,
+    lineHeight: 17,
+  },
+  badgeCardStatus: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 11.5,
+    marginTop: 6,
+  },
+  badgeStatusUnlocked: {
+    color: '#111111',
+  },
+  badgeStatusLocked: {
+    color: '#999999',
   },
   bookmarksContainer: {
     gap: 10,
