@@ -113,6 +113,27 @@ const initTables = async (db: SQLite.SQLiteDatabase) => {
         mentions TEXT,
         bookmarked INTEGER DEFAULT 0
       );
+
+      CREATE TABLE IF NOT EXISTS verse_highlights (
+        id TEXT PRIMARY KEY NOT NULL,
+        book TEXT NOT NULL,
+        chapter INTEGER NOT NULL,
+        verse INTEGER NOT NULL,
+        color TEXT NOT NULL,
+        verse_text TEXT NOT NULL,
+        timestamp INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS verse_notes (
+        id TEXT PRIMARY KEY NOT NULL,
+        book TEXT NOT NULL,
+        chapter INTEGER NOT NULL,
+        verse INTEGER NOT NULL,
+        reference TEXT NOT NULL,
+        verse_text TEXT NOT NULL,
+        note_text TEXT NOT NULL,
+        timestamp INTEGER NOT NULL
+      );
     `);
 
     // Safe migration for existing tables
@@ -586,6 +607,256 @@ export const deleteGroupThread = async (threadId: string): Promise<void> => {
     }
   }
 };
+
+// =========================================================================
+// VERSE HIGHLIGHTS & NOTES OPERATIONS
+// =========================================================================
+
+export interface VerseHighlight {
+  id: string;
+  book: string;
+  chapter: number;
+  verse: number;
+  color: string;
+  verseText: string;
+  timestamp: number;
+}
+
+export interface VerseNote {
+  id: string;
+  book: string;
+  chapter: number;
+  verse: number;
+  reference: string;
+  verseText: string;
+  noteText: string;
+  timestamp: number;
+}
+
+let memoryHighlights: Record<string, VerseHighlight> = {};
+let memoryNotes: Record<string, VerseNote> = {};
+
+export const saveVerseHighlight = async (
+  book: string,
+  chapter: number,
+  verse: number,
+  color: string,
+  verseText: string
+): Promise<void> => {
+  const id = `hl_${book}_${chapter}_${verse}`;
+  const hl: VerseHighlight = { id, book, chapter, verse, color, verseText, timestamp: Date.now() };
+  memoryHighlights[id] = hl;
+
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO verse_highlights (id, book, chapter, verse, color, verse_text, timestamp)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [id, book, chapter, verse, color, verseText, hl.timestamp]
+      );
+    } catch (e) {
+      console.warn('saveVerseHighlight error:', e);
+    }
+  }
+};
+
+export const removeVerseHighlight = async (
+  book: string,
+  chapter: number,
+  verse: number
+): Promise<void> => {
+  const id = `hl_${book}_${chapter}_${verse}`;
+  delete memoryHighlights[id];
+
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync('DELETE FROM verse_highlights WHERE id = ?', [id]);
+    } catch (e) {
+      console.warn('removeVerseHighlight error:', e);
+    }
+  }
+};
+
+export const fetchHighlightsForChapter = async (
+  book: string,
+  chapter: number
+): Promise<Record<number, string>> => {
+  const result: Record<number, string> = {};
+
+  // Check memory
+  for (const key in memoryHighlights) {
+    const hl = memoryHighlights[key];
+    if (hl.book === book && hl.chapter === chapter) {
+      result[hl.verse] = hl.color;
+    }
+  }
+
+  const db = await getDB();
+  if (db) {
+    try {
+      const rows = await db.getAllAsync<{ verse: number; color: string }>(
+        'SELECT verse, color FROM verse_highlights WHERE book = ? AND chapter = ?',
+        [book, chapter]
+      );
+      if (rows && rows.length > 0) {
+        rows.forEach(r => {
+          result[r.verse] = r.color;
+        });
+      }
+    } catch (e) {
+      console.warn('fetchHighlightsForChapter error:', e);
+    }
+  }
+
+  return result;
+};
+
+export const fetchAllHighlights = async (): Promise<VerseHighlight[]> => {
+  const db = await getDB();
+  if (db) {
+    try {
+      const rows = await db.getAllAsync<{
+        id: string;
+        book: string;
+        chapter: number;
+        verse: number;
+        color: string;
+        verse_text: string;
+        timestamp: number;
+      }>('SELECT * FROM verse_highlights ORDER BY timestamp DESC');
+      if (rows && rows.length > 0) {
+        return rows.map(r => ({
+          id: r.id,
+          book: r.book,
+          chapter: r.chapter,
+          verse: r.verse,
+          color: r.color,
+          verseText: r.verse_text,
+          timestamp: r.timestamp
+        }));
+      }
+    } catch (e) {
+      console.warn('fetchAllHighlights error:', e);
+    }
+  }
+  return Object.values(memoryHighlights);
+};
+
+export const saveVerseNote = async (
+  book: string,
+  chapter: number,
+  verse: number,
+  reference: string,
+  verseText: string,
+  noteText: string
+): Promise<void> => {
+  const id = `note_${book}_${chapter}_${verse}`;
+  const noteItem: VerseNote = {
+    id,
+    book,
+    chapter,
+    verse,
+    reference,
+    verseText,
+    noteText,
+    timestamp: Date.now()
+  };
+  memoryNotes[id] = noteItem;
+
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO verse_notes (id, book, chapter, verse, reference, verse_text, note_text, timestamp)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id, book, chapter, verse, reference, verseText, noteText, noteItem.timestamp]
+      );
+    } catch (e) {
+      console.warn('saveVerseNote error:', e);
+    }
+  }
+};
+
+export const fetchNotesForChapter = async (
+  book: string,
+  chapter: number
+): Promise<Record<number, string>> => {
+  const result: Record<number, string> = {};
+
+  for (const key in memoryNotes) {
+    const n = memoryNotes[key];
+    if (n.book === book && n.chapter === chapter) {
+      result[n.verse] = n.noteText;
+    }
+  }
+
+  const db = await getDB();
+  if (db) {
+    try {
+      const rows = await db.getAllAsync<{ verse: number; note_text: string }>(
+        'SELECT verse, note_text FROM verse_notes WHERE book = ? AND chapter = ?',
+        [book, chapter]
+      );
+      if (rows && rows.length > 0) {
+        rows.forEach(r => {
+          result[r.verse] = r.note_text;
+        });
+      }
+    } catch (e) {
+      console.warn('fetchNotesForChapter error:', e);
+    }
+  }
+
+  return result;
+};
+
+export const fetchAllVerseNotes = async (): Promise<VerseNote[]> => {
+  const db = await getDB();
+  if (db) {
+    try {
+      const rows = await db.getAllAsync<{
+        id: string;
+        book: string;
+        chapter: number;
+        verse: number;
+        reference: string;
+        verse_text: string;
+        note_text: string;
+        timestamp: number;
+      }>('SELECT * FROM verse_notes ORDER BY timestamp DESC');
+      if (rows && rows.length > 0) {
+        return rows.map(r => ({
+          id: r.id,
+          book: r.book,
+          chapter: r.chapter,
+          verse: r.verse,
+          reference: r.reference,
+          verseText: r.verse_text,
+          noteText: r.note_text,
+          timestamp: r.timestamp
+        }));
+      }
+    } catch (e) {
+      console.warn('fetchAllVerseNotes error:', e);
+    }
+  }
+  return Object.values(memoryNotes);
+};
+
+export const deleteVerseNote = async (id: string): Promise<void> => {
+  delete memoryNotes[id];
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync('DELETE FROM verse_notes WHERE id = ?', [id]);
+    } catch (e) {
+      console.warn('deleteVerseNote error:', e);
+    }
+  }
+};
+
 
 
 

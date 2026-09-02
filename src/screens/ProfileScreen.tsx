@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
-import { fetchBookmarks, removeBookmark, fetchUserProfile, saveUserProfile } from '../services/database';
+import { fetchBookmarks, removeBookmark, fetchUserProfile, saveUserProfile, fetchAllVerseNotes, fetchAllHighlights, VerseNote, VerseHighlight } from '../services/database';
 import { supabase, fetchRemoteProfile, updateRemoteProfile, getUserAuthProvider, DEFAULT_PROFILE } from '../services/supabase';
 import { SavedBookmark, UserProfile } from '../types';
 import { SettingsScreen } from './SettingsScreen';
@@ -72,6 +72,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
     const growth = await getSpiritualGrowthProfile();
     setGrowthProfile(growth);
+
+    const [notes, hls] = await Promise.all([
+      fetchAllVerseNotes(),
+      fetchAllHighlights()
+    ]);
+    setUserNotes(notes);
+    setUserHighlights(hls);
 
     try {
       const auth = await getUserAuthProvider();
@@ -322,108 +329,185 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             })}
           </ScrollView>
 
-          {/* Activity Item 1: Saved Scripture Card */}
-          <View style={styles.activityCard}>
-            <View style={styles.activityHeader}>
-              <View style={styles.activityAvatarSmall}>
-                <Text style={styles.activityAvatarText}>{userInitial}</Text>
+          {/* DYNAMIC ACTIVITY FEED (Notes, Highlights, Badges) */}
+
+          {/* 1. NOTES FILTER */}
+          {activeActivityFilter === 'notes' && (
+            userNotes.length === 0 ? (
+              <View style={styles.emptyActivityBox}>
+                <Ionicons name="document-text-outline" size={32} color="#9CA3AF" style={{ marginBottom: 8 }} />
+                <Text style={styles.emptyActivityTitle}>No Journal Notes Yet</Text>
+                <Text style={styles.emptyActivitySub}>Tap any verse in the Bible reader and select "Add Note" to write your reflections.</Text>
               </View>
-              <View style={styles.activityMeta}>
-                <Text style={styles.activityTitleText}>
-                  You saved <Text style={{ fontFamily: Typography.fontSansBold }}>James 1:27 NIV</Text>
-                </Text>
-                <View style={styles.tagRow}>
-                  <Ionicons name="pricetag-outline" size={11} color="#6B7280" style={{ marginRight: 4 }} />
-                  <Text style={styles.activityTagText}>encouragement</Text>
+            ) : (
+              userNotes.map((note) => (
+                <View key={note.id} style={styles.activityCard}>
+                  <View style={styles.activityHeader}>
+                    <View style={styles.activityAvatarSmall}>
+                      <Text style={styles.activityAvatarText}>{userInitial}</Text>
+                    </View>
+                    <View style={styles.activityMeta}>
+                      <Text style={styles.activityTitleText}>
+                        Note on <Text style={{ fontFamily: Typography.fontSansBold }}>{note.reference}</Text>
+                      </Text>
+                      <Text style={styles.activityTimeText}>Just now</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.quoteBlock}>
+                    <View style={styles.quoteAccentLine} />
+                    <View style={styles.quoteContent}>
+                      <Text style={styles.quoteText}>“{note.verseText}”</Text>
+                      <Text style={styles.quoteRef}>{note.reference}</Text>
+                    </View>
+                  </View>
+
+                  {/* User's Reflection */}
+                  <View style={styles.userNoteBox}>
+                    <Text style={styles.userNoteText}>{note.noteText}</Text>
+                  </View>
+                </View>
+              ))
+            )
+          )}
+
+          {/* 2. HIGHLIGHTS FILTER */}
+          {activeActivityFilter === 'highlights' && (
+            userHighlights.length === 0 ? (
+              <View style={styles.emptyActivityBox}>
+                <Ionicons name="create-outline" size={32} color="#9CA3AF" style={{ marginBottom: 8 }} />
+                <Text style={styles.emptyActivityTitle}>No Highlights Yet</Text>
+                <Text style={styles.emptyActivitySub}>Tap any verse in the Bible reader to choose a color highlight.</Text>
+              </View>
+            ) : (
+              userHighlights.map((hl) => (
+                <View key={hl.id} style={styles.activityCard}>
+                  <View style={styles.activityHeader}>
+                    <View style={[styles.activityAvatarSmall, { backgroundColor: hl.color }]}>
+                      <Ionicons name="bookmark" size={14} color="#111111" />
+                    </View>
+                    <View style={styles.activityMeta}>
+                      <Text style={styles.activityTitleText}>
+                        Highlighted <Text style={{ fontFamily: Typography.fontSansBold }}>{hl.book} {hl.chapter}:{hl.verse}</Text>
+                      </Text>
+                      <Text style={styles.activityTimeText}>Just now</Text>
+                    </View>
+                  </View>
+
+                  <View style={[styles.quoteBlock, { backgroundColor: hl.color + '40', borderRadius: 12, padding: 12 }]}>
+                    <Text style={styles.quoteText}>“{hl.verseText}”</Text>
+                    <Text style={styles.quoteRef}>{hl.book} {hl.chapter}:{hl.verse}</Text>
+                  </View>
+                </View>
+              ))
+            )
+          )}
+
+          {/* 3. ALL / DEFAULT FILTER */}
+          {(activeActivityFilter === 'all' || activeActivityFilter === 'plans') && (
+            <View>
+              {/* User Notes Preview */}
+              {userNotes.slice(0, 2).map((note) => (
+                <View key={note.id} style={styles.activityCard}>
+                  <View style={styles.activityHeader}>
+                    <View style={styles.activityAvatarSmall}>
+                      <Text style={styles.activityAvatarText}>{userInitial}</Text>
+                    </View>
+                    <View style={styles.activityMeta}>
+                      <Text style={styles.activityTitleText}>
+                        Note on <Text style={{ fontFamily: Typography.fontSansBold }}>{note.reference}</Text>
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.userNoteBox}>
+                    <Text style={styles.userNoteText}>{note.noteText}</Text>
+                  </View>
+                </View>
+              ))}
+
+              {/* Saved Scripture Card */}
+              <View style={styles.activityCard}>
+                <View style={styles.activityHeader}>
+                  <View style={styles.activityAvatarSmall}>
+                    <Text style={styles.activityAvatarText}>{userInitial}</Text>
+                  </View>
+                  <View style={styles.activityMeta}>
+                    <Text style={styles.activityTitleText}>
+                      You saved <Text style={{ fontFamily: Typography.fontSansBold }}>James 1:27 NIV</Text>
+                    </Text>
+                    <View style={styles.tagRow}>
+                      <Ionicons name="pricetag-outline" size={11} color="#6B7280" style={{ marginRight: 4 }} />
+                      <Text style={styles.activityTagText}>encouragement</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.activityTimeText}>41w</Text>
+                </View>
+
+                <View style={styles.quoteBlock}>
+                  <View style={styles.quoteAccentLine} />
+                  <View style={styles.quoteContent}>
+                    <Text style={styles.quoteVerseNum}>27</Text>
+                    <Text style={styles.quoteText}>
+                      Religion that God our Father accepts as pure and faultless is this: to look after orphans and widows in their distress...
+                    </Text>
+                    <Text style={styles.quoteRef}>James 1:27 NIV</Text>
+                  </View>
+                </View>
+
+                <View style={styles.activityActionsRow}>
+                  <View style={styles.activityActionIcons}>
+                    <TouchableOpacity
+                      onPress={() => toggleLike('act_1')}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      style={{ marginRight: 16 }}
+                    >
+                      <Ionicons
+                        name={likedActivities['act_1'] ? 'heart' : 'heart-outline'}
+                        size={22}
+                        color={likedActivities['act_1'] ? '#EF4444' : '#111111'}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Ionicons name="chatbubble-outline" size={20} color="#111111" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-              <Text style={styles.activityTimeText}>41w</Text>
-            </View>
 
-            {/* Scripture Quote with Black Accent Line */}
-            <View style={styles.quoteBlock}>
-              <View style={styles.quoteAccentLine} />
-              <View style={styles.quoteContent}>
-                <Text style={styles.quoteVerseNum}>27</Text>
-                <Text style={styles.quoteText}>
-                  Religion that God our Father accepts as pure and faultless is this: to look after orphans and widows in their distress...
-                </Text>
-                <Text style={styles.quoteRef}>James 1:27 NIV</Text>
-              </View>
-            </View>
+              {/* Badge Level Up Card */}
+              <TouchableOpacity
+                style={styles.activityCard}
+                onPress={() => {
+                  const b = growthProfile?.badges.find(x => x.id === 'saved_verse') || growthProfile?.badges[0];
+                  if (b) setSelectedBadgeForDetail(b);
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={styles.activityHeader}>
+                  <View style={styles.activityAvatarSmall}>
+                    <Text style={styles.activityAvatarText}>{userInitial}</Text>
+                  </View>
+                  <View style={styles.activityMeta}>
+                    <Text style={styles.activityTitleText}>
+                      You leveled up your <Text style={{ fontFamily: Typography.fontSansBold }}>Saved Verse</Text> Badge
+                    </Text>
+                  </View>
+                  <Text style={styles.activityTimeText}>41w</Text>
+                </View>
 
-            {/* Activity Action Row */}
-            <View style={styles.activityActionsRow}>
-              <View style={styles.activityActionIcons}>
-                <TouchableOpacity
-                  onPress={() => toggleLike('act_1')}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  style={{ marginRight: 16 }}
-                >
-                  <Ionicons
-                    name={likedActivities['act_1'] ? 'heart' : 'heart-outline'}
-                    size={22}
-                    color={likedActivities['act_1'] ? '#EF4444' : '#111111'}
-                  />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons name="chatbubble-outline" size={20} color="#111111" />
-                </TouchableOpacity>
-              </View>
-
-              <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="ellipsis-vertical" size={18} color="#6B7280" />
+                <View style={styles.badgeLevelUpPreview}>
+                  <View style={styles.badgeLevelUpCard}>
+                    <View style={styles.badgeLevelUpCircle}>
+                      <Image source={MascotAssets.rock} style={styles.badgeLevelUpImg} />
+                    </View>
+                    <View style={styles.badgeLevelUpPill}>
+                      <Text style={styles.badgeLevelUpPillText}>5</Text>
+                    </View>
+                  </View>
+                </View>
               </TouchableOpacity>
             </View>
-
-            {/* Social Likes */}
-            <View style={styles.likesRow}>
-              <View style={styles.likeAvatarSmall}>
-                <Text style={styles.likeAvatarText}>P</Text>
-              </View>
-              <View style={[styles.likeAvatarSmall, { marginLeft: -6, backgroundColor: '#E5E7EB' }]}>
-                <Text style={styles.likeAvatarText}>J</Text>
-              </View>
-              <Text style={styles.likesCountText}>2 likes</Text>
-            </View>
-          </View>
-
-          {/* Activity Item 2: Leveled Up Badge Card */}
-          <TouchableOpacity
-            style={styles.activityCard}
-            onPress={() => {
-              const b = growthProfile?.badges.find(x => x.id === 'saved_verse') || growthProfile?.badges[0];
-              if (b) setSelectedBadgeForDetail(b);
-            }}
-            activeOpacity={0.8}
-          >
-            <View style={styles.activityHeader}>
-              <View style={styles.activityAvatarSmall}>
-                <Text style={styles.activityAvatarText}>{userInitial}</Text>
-              </View>
-              <View style={styles.activityMeta}>
-                <Text style={styles.activityTitleText}>
-                  You leveled up your <Text style={{ fontFamily: Typography.fontSansBold }}>Saved Verse</Text> Badge
-                </Text>
-              </View>
-              <Text style={styles.activityTimeText}>41w</Text>
-            </View>
-
-            {/* Badge Preview Showcase */}
-            <View style={styles.badgeLevelUpPreview}>
-              <View style={styles.badgeLevelUpCard}>
-                <View style={styles.badgeLevelUpCircle}>
-                  <Image source={MascotAssets.rock} style={styles.badgeLevelUpImg} />
-                </View>
-                <View style={styles.badgeLevelUpPill}>
-                  <Text style={styles.badgeLevelUpPillText}>5</Text>
-                </View>
-              </View>
-            </View>
-          </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
 
@@ -860,4 +944,43 @@ const styles = StyleSheet.create({
  fontSize: 10,
  color: '#FFFFFF',
  }
+,
+  emptyActivityBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    marginVertical: 10,
+  },
+  emptyActivityTitle: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 15,
+    color: '#111111',
+    marginBottom: 4,
+  },
+  emptyActivitySub: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 13,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  userNoteBox: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#EFEFF0',
+  },
+  userNoteText: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 14,
+    color: '#111111',
+    lineHeight: 20,
+  }
 });
