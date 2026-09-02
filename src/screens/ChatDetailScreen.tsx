@@ -277,7 +277,6 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
           renderItem={({ item }) => {
             const isUser = item.sender === 'user';
-            const isSpeaking = speakingMessageId === item.id;
             const isPreloaded = initialLoadedIdsRef.current.has(item.id);
 
             return (
