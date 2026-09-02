@@ -28,6 +28,7 @@ import { ChatDetailScreen } from './src/screens/ChatDetailScreen';
 import { GroupChatDetailScreen } from './src/screens/GroupChatDetailScreen';
 import { BibleReaderScreen } from './src/screens/BibleReaderScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
+import { YouVersionProvider } from './src/components/youversion';
 import { FloatingNavBar, NavTabType } from './src/components/FloatingNavBar';
 import { CircularRevealTransition } from './src/components/CircularRevealTransition';
 import { ApostlePersona } from './src/types';
@@ -255,9 +256,10 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      {/* 1. Onboarding Screen */}
-      {appStage === 'onboarding' ? (
-        <View style={styles.flexOne}>
+      <YouVersionProvider appKey={process.env.EXPO_PUBLIC_YOUVERSION_APP_KEY || 'vTLO6ybbDqjJHgaMCPemruLzH0o9GpIrZmfyEow7eVoF5fyp'}>
+        {/* 1. Onboarding Screen */}
+        {appStage === 'onboarding' ? (
+          <View style={styles.flexOne}>
           <StatusBar barStyle="light-content" backgroundColor="#0B0B0B" />
           <OnboardingScreen onComplete={handleStartTransition} />
 
@@ -398,6 +400,7 @@ export default function App() {
           />
         </View>
       )}
+      </YouVersionProvider>
     </SafeAreaProvider>
   );
 }
