@@ -248,58 +248,62 @@ const styles = StyleSheet.create({
   notificationCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#DCDCE1',
+    backgroundColor: '#ECECEC',
     borderRadius: 18,
     padding: 16,
     marginBottom: 12,
   },
   notificationCardUnread: {
-    borderLeftWidth: 3.5,
-    borderLeftColor: '#2563EB',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+  notificationLeft: {
+    position: 'relative',
     marginRight: 14,
   },
-  textContainer: {
+  iconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unreadDot: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+    backgroundColor: '#111111',
+  },
+  notificationContent: {
     flex: 1,
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  notifTitle: {
+  notificationTitle: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 14.5,
     color: '#111111',
+    marginBottom: 3,
   },
-  timeAgoText: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 11,
-    color: '#888888',
-  },
-  notifMessage: {
+  notificationBody: {
     fontFamily: Typography.fontSansRegular,
     fontSize: 13,
-    color: '#333333',
+    color: '#4B5563',
     lineHeight: 18,
   },
-  footerRow: {
+  notificationFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 6,
   },
-  tapToChatText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 12,
-    color: '#2563EB',
+  timeAgoText: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 11,
+    color: '#9CA3AF',
   },
   deleteBtn: {
     padding: 4,
@@ -307,12 +311,19 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 50,
   },
-  emptyText: {
+  emptyTitle: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 15,
+    color: '#111111',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  emptySubtitle: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 14,
+    fontSize: 13,
     color: '#888888',
-    marginTop: 10,
+    textAlign: 'center',
   }
 });
