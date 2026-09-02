@@ -20,6 +20,7 @@ import { getSpiritualGrowthProfile, SpiritualGrowthProfile } from '../services/g
 import { BadgesModal } from '../components/BadgesModal';
 import { MascotBadgeCard } from '../components/MascotBadgeCard';
 import { MascotAssets } from '../services/mascotAssets';
+import { CustomConfirmationModal } from '../components/CustomConfirmationModal';
 
 interface ProfileScreenProps {
   onLogout?: () => void;
@@ -42,6 +43,22 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [growthProfile, setGrowthProfile] = useState<SpiritualGrowthProfile | null>(null);
   const [activeActivityFilter, setActiveActivityFilter] = useState<'all' | 'highlights' | 'notes' | 'plans' | 'badges'>('all');
   const [likedActivities, setLikedActivities] = useState<Record<string, boolean>>({ act_1: false });
+  const [confirmModal, setConfirmModal] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    confirmStyle?: 'default' | 'destructive' | 'accent';
+    icon?: keyof typeof Ionicons.glyphMap;
+    singleButton?: boolean;
+    onConfirm: () => void;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   useEffect(() => {
     loadData();
@@ -141,7 +158,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
             <TouchableOpacity
               style={styles.cameraBadge}
-              onPress={() => Alert.alert('Update Avatar', 'Personalize your profile picture and faith companion avatar.')}
+              onPress={() => setConfirmModal({
+                visible: true,
+                title: 'Personalize Avatar',
+                message: 'Personalize your profile appearance and disciple companion avatar. Syncs across all your devices.',
+                confirmText: 'Got It',
+                singleButton: true,
+                icon: 'camera-outline',
+                onConfirm: () => {},
+              })}
               activeOpacity={0.8}
             >
               <Ionicons name="camera-outline" size={14} color="#111111" />
@@ -152,7 +177,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         {/* Action Button: Find Your Church */}
         <TouchableOpacity
           style={styles.findChurchBtn}
-          onPress={() => Alert.alert('Find Your Church', 'Locate fellow biblical community and fellowship nearby.')}
+          onPress={() => setConfirmModal({
+            visible: true,
+            title: 'Find Your Church',
+            message: 'Discover biblical community, local churches, and prayer circles walking together near your area.',
+            confirmText: 'Explore Fellowships',
+            cancelText: 'Maybe Later',
+            icon: 'home-outline',
+            onConfirm: () => {},
+          })}
           activeOpacity={0.8}
         >
           <Ionicons name="home-outline" size={17} color="#111111" style={{ marginRight: 8 }} />
@@ -181,7 +214,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => Alert.alert('Kingdom Giving', 'Support local ministry and kingdom service.')}
+            onPress={() => setConfirmModal({
+              visible: true,
+              title: 'Kingdom Giving',
+              message: 'Support Scripture translation, local outreach, and church planting around the globe.',
+              confirmText: 'Give Generously',
+              cancelText: 'Close',
+              icon: 'heart-outline',
+              onConfirm: () => {},
+            })}
             activeOpacity={0.75}
           >
             <Ionicons name="heart-outline" size={22} color="#111111" style={{ marginBottom: 6 }} />
@@ -377,27 +418,42 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         </View>
  </ScrollView>
 
- {/* Badges Screen Modal */}
- <BadgesModal
- visible={showBadgesModal}
- onClose={() => setShowBadgesModal(false)}
- badges={growthProfile?.badges || []}
- />
+      {/* Badges Screen Modal */}
+      <BadgesModal
+        visible={showBadgesModal}
+        onClose={() => setShowBadgesModal(false)}
+        badges={growthProfile?.badges || []}
+      />
 
- {/* Settings Modal */}
- {showSettingsModal && (
- <SettingsScreen
- visible={showSettingsModal}
- onClose={() => setShowSettingsModal(false)}
- onLogout={onLogout}
- userProfile={profile}
- onUpdateProfile={(updated) => {
- setProfile(updated);
- saveUserProfile(updated);
- }}
- />
- )}
- </SafeAreaView>
+      {/* Custom Soft Confirmation Modal */}
+      <CustomConfirmationModal
+        visible={confirmModal.visible}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+        confirmStyle={confirmModal.confirmStyle}
+        icon={confirmModal.icon}
+        singleButton={confirmModal.singleButton}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, visible: false }))}
+        onClose={() => setConfirmModal(prev => ({ ...prev, visible: false }))}
+      />
+
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <SettingsScreen
+          visible={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          onLogout={onLogout}
+          userProfile={profile}
+          onUpdateProfile={(updated) => {
+            setProfile(updated);
+            saveUserProfile(updated);
+          }}
+        />
+      )}
+    </SafeAreaView>
  );
 };
 

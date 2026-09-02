@@ -46,6 +46,8 @@ import * as Linking from 'expo-linking';
 import { PrivacyOnboardingModal } from './src/components/PrivacyOnboardingModal';
 import { initReferralsTable, extractReferralFromUrl, claimReferralCode } from './src/services/referralsService';
 
+import { ScreenTransition } from './src/components/ScreenTransition';
+
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 type AppStage = 'onboarding' | 'auth' | 'main' | 'checking';
@@ -256,88 +258,110 @@ export default function App() {
           <StatusBar barStyle="light-content" backgroundColor="#0B0B0B" />
           <OnboardingScreen onComplete={handleStartTransition} />
 
-          {/* Circular Ellipse Expanding Reveal Overlay */}
+          {/* Circular Ellipse Expanding Reveal Overlay with real AuthScreen clipped inside */}
           {isRevealing && (
             <CircularRevealTransition
               originX={revealCoords.x}
               originY={revealCoords.y}
               onFinished={handleRevealFinished}
-            />
+            >
+              <AuthScreen
+                onAuthSuccess={() => {
+                  setHasCompletedOnboarding(true);
+                  setAppStage('main');
+                  setShowPrivacyNotice(true);
+                }}
+                onSkip={() => {
+                  setHasCompletedOnboarding(true);
+                  setAppStage('main');
+                  setShowPrivacyNotice(true);
+                }}
+              />
+            </CircularRevealTransition>
           )}
         </View>
       ) : appStage === 'auth' ? (
         /* 2. Medium-Style Auth Screen */
-        <View style={styles.flexOne}>
-          <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-          <AuthScreen
-            onAuthSuccess={() => {
-              setHasCompletedOnboarding(true);
-              setAppStage('main');
-              setShowPrivacyNotice(true);
-            }}
-            onSkip={() => {
-              setHasCompletedOnboarding(true);
-              setAppStage('main');
-              setShowPrivacyNotice(true);
-            }}
-          />
-        </View>
+        <ScreenTransition transitionKey="auth">
+          <View style={styles.flexOne}>
+            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+            <AuthScreen
+              onAuthSuccess={() => {
+                setHasCompletedOnboarding(true);
+                setAppStage('main');
+                setShowPrivacyNotice(true);
+              }}
+              onSkip={() => {
+                setHasCompletedOnboarding(true);
+                setAppStage('main');
+                setShowPrivacyNotice(true);
+              }}
+            />
+          </View>
+        </ScreenTransition>
       ) : currentView === 'chat' && selectedApostle ? (
         /* 3. Chat Detail View */
-        <View style={styles.flexOne}>
-          <StatusBar barStyle="dark-content" backgroundColor="#F6F6F6" />
-          <ChatDetailScreen
-            apostle={selectedApostle}
-            onBack={() => setCurrentView('main')}
-          />
-        </View>
+        <ScreenTransition transitionKey={`chat_${selectedApostle.id}`}>
+          <View style={styles.flexOne}>
+            <StatusBar barStyle="dark-content" backgroundColor="#F6F6F6" />
+            <ChatDetailScreen
+              apostle={selectedApostle}
+              onBack={() => setCurrentView('main')}
+            />
+          </View>
+        </ScreenTransition>
       ) : currentView === 'groupChat' && selectedGroupCouncil ? (
         /* 3b. Group Council Detail View */
-        <View style={styles.flexOne}>
-          <StatusBar barStyle="dark-content" backgroundColor="#FAF9F6" />
-          <GroupChatDetailScreen
-            thread={selectedGroupCouncil}
-            onBack={() => setCurrentView('main')}
-          />
-        </View>
+        <ScreenTransition transitionKey={`group_${selectedGroupCouncil.id}`}>
+          <View style={styles.flexOne}>
+            <StatusBar barStyle="dark-content" backgroundColor="#FAF9F6" />
+            <GroupChatDetailScreen
+              thread={selectedGroupCouncil}
+              onBack={() => setCurrentView('main')}
+            />
+          </View>
+        </ScreenTransition>
       ) : (
         /* 4. Main App (Home / Chats / Bible / Profile) with 4-Tab Floating Nav Bar */
         <View style={styles.mainContainer}>
           <StatusBar barStyle="dark-content" backgroundColor="#F6F6F6" />
 
-          {activeNavTab === 'home' && (
-            <HomeScreen
-              onSelectApostle={(apostle) => {
-                setSelectedApostle(apostle);
-                setCurrentView('chat');
-              }}
-            />
-          )}
+          {/* Smooth Screen Transition across Tabs */}
+          <ScreenTransition transitionKey={activeNavTab}>
+            {activeNavTab === 'home' && (
+              <HomeScreen
+                onSelectApostle={(apostle) => {
+                  setSelectedApostle(apostle);
+                  setCurrentView('chat');
+                }}
+              />
+            )}
 
-          {activeNavTab === 'chats' && (
-            <ChatListScreen
-              onSelectConversation={(apostle) => {
-                setSelectedApostle(apostle);
-                setCurrentView('chat');
-              }}
-              onSelectGroupCouncil={(thread) => {
-                setSelectedGroupCouncil(thread);
-                setCurrentView('groupChat');
-              }}
-              onBack={() => setActiveNavTab('home')}
-            />
-          )}
+            {activeNavTab === 'chats' && (
+              <ChatListScreen
+                onSelectConversation={(apostle) => {
+                  setSelectedApostle(apostle);
+                  setCurrentView('chat');
+                }}
+                onSelectGroupCouncil={(thread) => {
+                  setSelectedGroupCouncil(thread);
+                  setCurrentView('groupChat');
+                }}
+                onBack={() => setActiveNavTab('home')}
+              />
+            )}
 
-          {activeNavTab === 'bible' && <BibleReaderScreen />}
+            {activeNavTab === 'bible' && <BibleReaderScreen />}
 
-          {activeNavTab === 'profile' && (
-            <ProfileScreen
-              onLogout={handleLogout}
-              onOpenAuthModal={() => setShowAuthModal(true)}
-              onSelectApostle={() => setActiveNavTab('home')}
-              onOpenBible={() => setActiveNavTab('bible')}
-            />
-          )}
+            {activeNavTab === 'profile' && (
+              <ProfileScreen
+                onLogout={handleLogout}
+                onOpenAuthModal={() => setShowAuthModal(true)}
+                onSelectApostle={() => setActiveNavTab('home')}
+                onOpenBible={() => setActiveNavTab('bible')}
+              />
+            )}
+          </ScreenTransition>
 
           {/* Floating Bottom Nav Bar */}
           <FloatingNavBar

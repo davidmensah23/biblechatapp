@@ -32,15 +32,15 @@ export const CircularRevealTransition: React.FC<CircularRevealTransitionProps> =
 }) => {
   const scale = useSharedValue(0.005);
   const ringScale = useSharedValue(0.005);
-  const ringOpacity = useSharedValue(0.85);
+  const ringOpacity = useSharedValue(0.9);
 
   useEffect(() => {
-    // 1. Primary White Expanding Eclipse Portal (1000ms calm organic curve)
+    // 1. Primary Expanding Circular Portal (1400ms calm, majestic easing)
     scale.value = withTiming(
       1,
       {
-        duration: 1000,
-        easing: Easing.bezier(0.22, 1, 0.36, 1) // 1 full second calm, smooth acceleration & deceleration
+        duration: 1400,
+        easing: Easing.bezier(0.38, 0.04, 0.2, 1) // Calm acceleration, visible bloom, and graceful finish
       },
       (finished) => {
         if (finished) {
@@ -49,14 +49,14 @@ export const CircularRevealTransition: React.FC<CircularRevealTransitionProps> =
       }
     );
 
-    // 2. Subtle Radiant Outer Shockwave Ring preceding the portal
-    ringScale.value = withTiming(1.06, {
-      duration: 1000,
-      easing: Easing.bezier(0.22, 1, 0.36, 1)
+    // 2. Radiant Outer Shockwave Ring preceding the portal
+    ringScale.value = withTiming(1.04, {
+      duration: 1400,
+      easing: Easing.bezier(0.38, 0.04, 0.2, 1)
     });
 
     ringOpacity.value = withTiming(0, {
-      duration: 1000,
+      duration: 1400,
       easing: Easing.bezier(0.4, 0, 0.2, 1)
     });
   }, []);
@@ -71,6 +71,18 @@ export const CircularRevealTransition: React.FC<CircularRevealTransitionProps> =
       height: size,
       borderRadius: size / 2,
       backgroundColor: '#FFFFFF',
+      overflow: 'hidden',
+    };
+  });
+
+  const contentInvertedStyle = useAnimatedStyle(() => {
+    const size = MAX_RADIUS * 2 * scale.value;
+    return {
+      position: 'absolute',
+      left: -(originX - size / 2),
+      top: -(originY - size / 2),
+      width: SCREEN_WIDTH,
+      height: SCREEN_HEIGHT,
     };
   });
 
@@ -83,8 +95,8 @@ export const CircularRevealTransition: React.FC<CircularRevealTransitionProps> =
       width: ringSize,
       height: ringSize,
       borderRadius: ringSize / 2,
-      borderWidth: 2,
-      borderColor: '#E2E2E2',
+      borderWidth: 2.5,
+      borderColor: '#D4D4D8',
       opacity: ringOpacity.value
     };
   });
@@ -92,12 +104,16 @@ export const CircularRevealTransition: React.FC<CircularRevealTransitionProps> =
   return (
     <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
       {/* Radiant Shockwave Edge Ring */}
-      <Animated.View style={ringAnimatedStyle} />
+      <Animated.View style={ringAnimatedStyle} pointerEvents="none" />
 
-      {/* Main Expanding White Eclipse Portal */}
-      <Animated.View style={circleAnimatedStyle} />
-
-      {children}
+      {/* Main Expanding Portal with Clipped Child Screen */}
+      <Animated.View style={circleAnimatedStyle}>
+        {children ? (
+          <Animated.View style={contentInvertedStyle}>
+            {children}
+          </Animated.View>
+        ) : null}
+      </Animated.View>
     </View>
   );
 };

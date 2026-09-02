@@ -22,23 +22,28 @@ const TAB_BTN_SIZE = 46;
 const TAB_GAP = 10;
 const STEP_DISTANCE = TAB_BTN_SIZE + TAB_GAP; // 56px
 
+const FAST_TAB_SPRING = {
+  damping: 25,
+  stiffness: 350,
+  mass: 0.6,
+};
+
 // =========================================================================
 // CUSTOM ANIMATED SVG ICONS
 // =========================================================================
 
-// 1. Home Icon (Modern Architectural House with Elastic Bounce)
+// 1. Home Icon (Modern Architectural House with Instant Responsive Bounce)
 const AnimatedHomeIcon: React.FC<{ active: boolean }> = ({ active }) => {
   const scale = useSharedValue(1);
 
   useEffect(() => {
     if (active) {
       scale.value = withSequence(
-        withTiming(0.85, { duration: 100 }),
-        withSpring(1.15, { damping: 10, stiffness: 200 }),
-        withSpring(1.0, { damping: 12, stiffness: 180 })
+        withSpring(1.18, { damping: 12, stiffness: 380 }),
+        withSpring(1.0, { damping: 16, stiffness: 280 })
       );
     } else {
-      scale.value = withTiming(1.0, { duration: 150 });
+      scale.value = withTiming(1.0, { duration: 120 });
     }
   }, [active]);
 
@@ -70,7 +75,7 @@ const AnimatedHomeIcon: React.FC<{ active: boolean }> = ({ active }) => {
   );
 };
 
-// 2. Chats Icon (Dialogue Bubble with Acoustic Wobble)
+// 2. Chats Icon (Dialogue Bubble with Instant Acoustic Pop)
 const AnimatedChatsIcon: React.FC<{ active: boolean }> = ({ active }) => {
   const rotation = useSharedValue(0);
   const scale = useSharedValue(1);
@@ -78,19 +83,17 @@ const AnimatedChatsIcon: React.FC<{ active: boolean }> = ({ active }) => {
   useEffect(() => {
     if (active) {
       rotation.value = withSequence(
-        withTiming(-8, { duration: 90 }),
-        withTiming(6, { duration: 90 }),
-        withTiming(-3, { duration: 80 }),
-        withTiming(0, { duration: 80 })
+        withSpring(-6, { damping: 10, stiffness: 350 }),
+        withSpring(4, { damping: 12, stiffness: 300 }),
+        withSpring(0, { damping: 14, stiffness: 260 })
       );
       scale.value = withSequence(
-        withTiming(0.88, { duration: 100 }),
-        withSpring(1.14, { damping: 10, stiffness: 200 }),
-        withSpring(1.0, { damping: 12, stiffness: 180 })
+        withSpring(1.18, { damping: 12, stiffness: 380 }),
+        withSpring(1.0, { damping: 16, stiffness: 280 })
       );
     } else {
-      rotation.value = withTiming(0, { duration: 150 });
-      scale.value = withTiming(1.0, { duration: 150 });
+      rotation.value = withTiming(0, { duration: 120 });
+      scale.value = withTiming(1.0, { duration: 120 });
     }
   }, [active]);
 
@@ -135,32 +138,23 @@ const AnimatedChatsIcon: React.FC<{ active: boolean }> = ({ active }) => {
   );
 };
 
-// 3. Bible Icon (Open Scripture Book with Page Spread Motion)
+// 3. Bible Icon (Open Scripture Book with Instant Response)
 const AnimatedBibleIcon: React.FC<{ active: boolean }> = ({ active }) => {
-  const scaleX = useSharedValue(1);
   const scale = useSharedValue(1);
 
   useEffect(() => {
     if (active) {
-      scaleX.value = withSequence(
-        withTiming(0.82, { duration: 110 }),
-        withSpring(1.12, { damping: 10, stiffness: 200 }),
-        withSpring(1.0, { damping: 12, stiffness: 180 })
-      );
       scale.value = withSequence(
-        withTiming(0.88, { duration: 100 }),
-        withSpring(1.12, { damping: 10, stiffness: 200 }),
-        withSpring(1.0, { damping: 12, stiffness: 180 })
+        withSpring(1.18, { damping: 12, stiffness: 380 }),
+        withSpring(1.0, { damping: 16, stiffness: 280 })
       );
     } else {
-      scaleX.value = withTiming(1.0, { duration: 150 });
-      scale.value = withTiming(1.0, { duration: 150 });
+      scale.value = withTiming(1.0, { duration: 120 });
     }
   }, [active]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
-      { scaleX: scaleX.value },
       { scale: scale.value }
     ],
   }));
@@ -196,19 +190,18 @@ const AnimatedBibleIcon: React.FC<{ active: boolean }> = ({ active }) => {
   );
 };
 
-// 4. Profile Icon (Minimal User Disc with Head Rise)
+// 4. Profile Icon (Minimal User Disc with Instant Snap)
 const AnimatedProfileIcon: React.FC<{ active: boolean; initial?: string }> = ({ active, initial = 'D' }) => {
   const scale = useSharedValue(1);
 
   useEffect(() => {
     if (active) {
       scale.value = withSequence(
-        withTiming(0.88, { duration: 100 }),
-        withSpring(1.14, { damping: 10, stiffness: 200 }),
-        withSpring(1.0, { damping: 12, stiffness: 180 })
+        withSpring(1.18, { damping: 12, stiffness: 380 }),
+        withSpring(1.0, { damping: 16, stiffness: 280 })
       );
     } else {
-      scale.value = withTiming(1.0, { duration: 150 });
+      scale.value = withTiming(1.0, { duration: 120 });
     }
   }, [active]);
 
@@ -251,13 +244,13 @@ export const FloatingNavBar: React.FC<FloatingNavBarProps> = ({ activeTab, onTab
 
   useEffect(() => {
     if (activeTab === 'home') {
-      indicatorOffset.value = withSpring(0, SpringConfigs.bouncy);
+      indicatorOffset.value = withSpring(0, FAST_TAB_SPRING);
     } else if (activeTab === 'chats') {
-      indicatorOffset.value = withSpring(STEP_DISTANCE, SpringConfigs.bouncy);
+      indicatorOffset.value = withSpring(STEP_DISTANCE, FAST_TAB_SPRING);
     } else if (activeTab === 'bible') {
-      indicatorOffset.value = withSpring(STEP_DISTANCE * 2, SpringConfigs.bouncy);
+      indicatorOffset.value = withSpring(STEP_DISTANCE * 2, FAST_TAB_SPRING);
     } else if (activeTab === 'profile') {
-      indicatorOffset.value = withSpring(STEP_DISTANCE * 3, SpringConfigs.bouncy);
+      indicatorOffset.value = withSpring(STEP_DISTANCE * 3, FAST_TAB_SPRING);
     }
   }, [activeTab]);
 
