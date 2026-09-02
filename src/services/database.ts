@@ -85,9 +85,17 @@ const initTables = async (db: SQLite.SQLiteDatabase) => {
         email TEXT NOT NULL,
         bio TEXT NOT NULL,
         location TEXT NOT NULL,
-        date_of_birth TEXT NOT NULL
+        date_of_birth TEXT NOT NULL,
+        gender TEXT DEFAULT 'neutral'
       );
     `);
+
+    // Safe migration for existing tables
+    try {
+      await db.execAsync(`ALTER TABLE user_profile ADD COLUMN gender TEXT DEFAULT 'neutral';`);
+    } catch {
+      // Column already exists
+    }
   } catch (e) {
     console.warn('Table creation note:', e);
   }
@@ -245,7 +253,8 @@ export const fetchUserProfile = async (): Promise<UserProfile> => {
           email: row.email,
           bio: row.bio,
           location: row.location,
-          dateOfBirth: row.date_of_birth
+          dateOfBirth: row.date_of_birth,
+          gender: row.gender || 'neutral'
         };
       }
     } catch (e) {
@@ -261,8 +270,8 @@ export const saveUserProfile = async (profile: UserProfile): Promise<void> => {
   if (db) {
     try {
       await db.runAsync(
-        'INSERT OR REPLACE INTO user_profile (id, full_name, email, bio, location, date_of_birth) VALUES (?, ?, ?, ?, ?, ?)',
-        ['current_user', profile.fullName, profile.email, profile.bio, profile.location, profile.dateOfBirth]
+        'INSERT OR REPLACE INTO user_profile (id, full_name, email, bio, location, date_of_birth, gender) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        ['current_user', profile.fullName, profile.email, profile.bio, profile.location, profile.dateOfBirth, profile.gender || 'neutral']
       );
     } catch (e) {
       console.warn('saveUserProfile SQLite error:', e);

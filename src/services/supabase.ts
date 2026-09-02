@@ -233,7 +233,8 @@ export const signInWithEmail = async (email: string, pass: string): Promise<{ us
 export const signUpWithEmail = async (
   email: string,
   pass: string,
-  fullName?: string
+  fullName?: string,
+  gender?: string
 ): Promise<{ user: any | null; session: any | null; error: Error | null }> => {
   try {
     const { data, error } = await supabase.auth.signUp({
@@ -241,7 +242,8 @@ export const signUpWithEmail = async (
       password: pass,
       options: {
         data: {
-          full_name: fullName || splitEmailToName(email)
+          full_name: fullName || splitEmailToName(email),
+          gender: gender || 'neutral'
         }
       }
     });
@@ -395,7 +397,8 @@ export const fetchRemoteProfile = async (userId: string): Promise<UserProfile | 
         bio: data.bio || DEFAULT_PROFILE.bio,
         location: data.location || '',
         dateOfBirth: data.date_of_birth || '',
-        avatarUrl: data.avatar_url || undefined
+        avatarUrl: data.avatar_url || undefined,
+        gender: data.gender || 'neutral'
       };
     }
     return null;
@@ -418,6 +421,7 @@ export const updateRemoteProfile = async (userId: string, profile: Partial<UserP
         location: profile.location,
         date_of_birth: profile.dateOfBirth,
         avatar_url: profile.avatarUrl,
+        gender: profile.gender || 'neutral',
         updated_at: new Date().toISOString()
       });
 

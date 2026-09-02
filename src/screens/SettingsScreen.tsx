@@ -520,6 +520,50 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             </View>
 
             <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Spiritual Address (How Apostles greet you)</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                <TouchableOpacity
+                  style={[
+                    styles.optionPill,
+                    draftProfile.gender === 'brother' && styles.optionPillActive
+                  ]}
+                  onPress={() => setDraftProfile({ ...draftProfile, gender: 'brother' })}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.optionPillText, draftProfile.gender === 'brother' && styles.optionPillTextActive]}>
+                    🧔 Brother
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.optionPill,
+                    draftProfile.gender === 'sister' && styles.optionPillActive
+                  ]}
+                  onPress={() => setDraftProfile({ ...draftProfile, gender: 'sister' })}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.optionPillText, draftProfile.gender === 'sister' && styles.optionPillTextActive]}>
+                    🧕 Sister
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.optionPill,
+                    (!draftProfile.gender || draftProfile.gender === 'neutral') && styles.optionPillActive
+                  ]}
+                  onPress={() => setDraftProfile({ ...draftProfile, gender: 'neutral' })}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.optionPillText, (!draftProfile.gender || draftProfile.gender === 'neutral') && styles.optionPillTextActive]}>
+                    🕊️ Pilgrim
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Email</Text>
               <TextInput
                 style={styles.inputField}
@@ -1002,5 +1046,29 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6B7280',
     lineHeight: 18,
-  }
+  },
+  optionPill: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  optionPillActive: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#16A34A',
+  },
+  optionPillText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 12.5,
+    color: '#4B5563',
+  },
+  optionPillTextActive: {
+    fontFamily: Typography.fontSansSemiBold,
+    color: '#16A34A',
+  },
 });

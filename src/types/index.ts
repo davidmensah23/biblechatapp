@@ -63,6 +63,7 @@ export interface UserProfile {
   location: string;
   dateOfBirth: string;
   avatarUrl?: string;
+  gender?: 'brother' | 'sister' | 'neutral' | string;
 }
 
 export interface AppNotification {

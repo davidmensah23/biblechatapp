@@ -72,6 +72,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [selectedGender, setSelectedGender] = useState<'brother' | 'sister' | 'neutral'>('neutral');
 
   // 6-Digit OTP State
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
@@ -146,7 +147,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
     setLoading(true);
     try {
       if (isSignUp) {
-        const { user, session, error } = await signUpWithEmail(email, password, fullName);
+        const { user, session, error } = await signUpWithEmail(email, password, fullName, selectedGender);
         if (error) {
           Alert.alert('Sign Up Error', error.message);
         } else if (session) {
@@ -511,6 +512,40 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
                     secureTextEntry
                   />
                 </View>
+
+                {/* Optional 1-Tap Spiritual Address Selector */}
+                {isSignUp && (
+                  <View style={styles.genderRowWrap}>
+                    <Text style={styles.genderLabel}>Address you in prayer & reflections:</Text>
+                    <View style={styles.genderPillsRow}>
+                      <TouchableOpacity
+                        style={[
+                          styles.genderPill,
+                          selectedGender === 'brother' && styles.genderPillActive
+                        ]}
+                        onPress={() => setSelectedGender(selectedGender === 'brother' ? 'neutral' : 'brother')}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.genderPillText, selectedGender === 'brother' && styles.genderPillTextActive]}>
+                          🧔 Brother
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.genderPill,
+                          selectedGender === 'sister' && styles.genderPillActive
+                        ]}
+                        onPress={() => setSelectedGender(selectedGender === 'sister' ? 'neutral' : 'sister')}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.genderPillText, selectedGender === 'sister' && styles.genderPillTextActive]}>
+                          🧕 Sister
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
 
                 <TouchableOpacity
                   style={styles.submitEmailBtn}
@@ -969,5 +1004,43 @@ const styles = StyleSheet.create({
   disclaimerLink: {
     color: '#16A34A',
     textDecorationLine: 'underline',
+  },
+  genderRowWrap: {
+    marginTop: 2,
+    marginBottom: 16,
+  },
+  genderLabel: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 12.5,
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  genderPillsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  genderPill: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  genderPillActive: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#16A34A',
+  },
+  genderPillText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 13.5,
+    color: '#4B5563',
+  },
+  genderPillTextActive: {
+    fontFamily: Typography.fontSansSemiBold,
+    color: '#16A34A',
   },
 });

@@ -5,6 +5,7 @@ export interface UserProfileMemory {
   age?: string;
   location?: string;
   bio?: string;
+  gender?: string;
 }
 
 export type ConversationMode =
@@ -152,12 +153,19 @@ ${persona.systemPrompt}
 
   // LAYER 2: Memory & Personalization Layer
   if (userProfile && userProfile.fullName) {
-    prompt += `\n=== USER RELATIONSHIP & MEMORY CONTEXT ===
+    const addressTitle = userProfile.gender === 'brother'
+      ? 'brother in Christ'
+      : userProfile.gender === 'sister'
+      ? 'sister in Christ'
+      : 'fellow pilgrim';
+
+    prompt += `\n=== USER RELATIONSHIP & SPIRITUAL ADDRESS ===
 - User's Name: ${userProfile.fullName}
+- Spiritual Address: ${addressTitle} (When greeting them or giving warm pastoral care, you may address them as ${userProfile.gender === 'brother' ? 'brother' : userProfile.gender === 'sister' ? 'sister' : userProfile.fullName})
 ${userProfile.bio ? `- User's Faith Background / Note: "${userProfile.bio}"` : ''}
 
 Memory Usage Rule:
-- Address ${userProfile.fullName} warmly and naturally by name when appropriate.
+- Address ${userProfile.fullName} warmly and naturally with pastoral care.
 - Never robotically regurgitate their profile details back to them.
 `;
   }

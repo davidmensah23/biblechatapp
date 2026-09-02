@@ -192,7 +192,8 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
           ? {
               fullName: userProfile.fullName,
               location: userProfile.location || 'Ghana',
-              bio: userProfile.bio
+              bio: userProfile.bio,
+              gender: userProfile.gender
             }
           : undefined
       );
