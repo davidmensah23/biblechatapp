@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -8,17 +8,17 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Switch
+  Switch,
+  ActivityIndicator,
+  Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { clearChatHistory, saveUserProfile, deleteAllUserData } from '../services/database';
-import { updateUserPassword, deleteUserAccount, getUserAuthProvider, updateRemoteProfile, supabase } from '../services/supabase';
+import { getUserAuthProvider, updateRemoteProfile, supabase } from '../services/supabase';
 import { UserProfile } from '../types';
-import { CustomActionModal } from '../components/CustomActionModal';
-import { InviteFriendsBanner } from '../components/InviteFriendsBanner';
-import { CardStyles } from '../theme/cardStyles';
 import { SUPPORTED_LANGUAGES, useTranslation, AppLanguage } from '../services/localizationService';
+import { CustomConfirmationModal } from '../components/CustomConfirmationModal';
 
 interface SettingsScreenProps {
   visible: boolean;
@@ -28,15 +28,21 @@ interface SettingsScreenProps {
   onLogout?: () => void;
 }
 
-interface ActionModalState {
-  visible: boolean;
-  type: 'signout' | 'confirm';
-  title?: string;
-  message?: string;
-  confirmText?: string;
-  isDestructive?: boolean;
-  onConfirm: () => void;
+interface BibleTranslationOption {
+  code: string;
+  name: string;
+  language: string;
+  description: string;
 }
+
+const BIBLE_TRANSLATIONS: BibleTranslationOption[] = [
+  { code: 'NIV', name: 'New International Version (NIV)', language: 'English', description: 'Modern, balanced accuracy & readability' },
+  { code: 'KJV', name: 'King James Version (KJV)', language: 'English', description: 'Historic, poetic 1611 authorized translation' },
+  { code: 'ESV', name: 'English Standard Version (ESV)', language: 'English', description: 'Word-for-word formal equivalence' },
+  { code: 'RVR1960', name: 'Reina-Valera 1960 (RVR)', language: 'Español', description: 'Clásica traducción tradicional en español' },
+  { code: 'LSG', name: 'Louis Segond (LSG 1910)', language: 'Français', description: 'Traduction biblique française historique' },
+  { code: 'LUT', name: 'Lutherbibel (LUT)', language: 'Deutsch', description: 'Klassische deutsche Übersetzung' }
+];
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   visible,
@@ -45,223 +51,184 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   onUpdateProfile,
   onLogout
 }) => {
-  const [activeSubModal, setActiveSubModal] = useState<string | null>(null);
-
-  // Custom in-app modal state (replacing native Alert)
-  const [actionModal, setActionModal] = useState<ActionModalState>({
-    visible: false,
-    type: 'confirm',
-    onConfirm: () => {}
-  });
-
-  // Auth provider info
-  const [authInfo, setAuthInfo] = useState<{ provider: 'google' | 'email' | 'guest'; email?: string }>({ provider: 'guest' });
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordLoading, setPasswordLoading] = useState(false);
-
   const { t, currentLanguage, setLanguage } = useTranslation();
 
-  // Settings states
-  const [fontSizeScale, setFontSizeScale] = useState<'Small' | 'Normal' | 'Large' | 'Extra Large'>('Normal');
-  const [dailyReminders, setDailyReminders] = useState(true);
-  const [hapticFeedback, setHapticFeedback] = useState(true);
-  const [audioSpeed, setAudioSpeed] = useState<'0.75x' | '1.0x' | '1.25x' | '1.5x'>('1.0x');
-  const [plainLanguageMode, setPlainLanguageMode] = useState(false);
+  // Active sub-modal category
+  const [activeSubModal, setActiveSubModal] = useState<string | null>(null);
+
+  // Loading state for account details (calm loading with no rushing)
+  const [isAccountLoading, setIsAccountLoading] = useState(true);
+
+  // User auth info & draft profile
+  const [authInfo, setAuthInfo] = useState<{ provider: 'google' | 'email' | 'guest'; email?: string }>({ provider: 'guest' });
+  const [draftProfile, setDraftProfile] = useState<UserProfile>(userProfile);
   const [isBackingUp, setIsBackingUp] = useState(false);
 
-  // Profile edit draft inside settings
-  const [draftProfile, setDraftProfile] = useState<UserProfile>(userProfile);
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    confirmStyle?: 'default' | 'destructive' | 'accent';
+    icon?: keyof typeof Ionicons.glyphMap;
+    singleButton?: boolean;
+    onConfirm: () => void;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
-  React.useEffect(() => {
+  // ==========================================
+  // FUNCTIONAL SETTINGS STATES
+  // ==========================================
+
+  // 1. Language States
+  const [bibleTranslation, setBibleTranslation] = useState<string>('NIV');
+
+  // 2. Notifications States
+  const [dailyScriptureReminder, setDailyScriptureReminder] = useState(true);
+  const [apostleWordsGrace, setApostleWordsGrace] = useState(true);
+  const [streakMilestoneNotifs, setStreakMilestoneNotifs] = useState(true);
+  const [fellowshipNotifs, setFellowshipNotifs] = useState(false);
+
+  // 3. Accessibility: Text and Display
+  const [fontSizeScale, setFontSizeScale] = useState<'Small' | 'Normal' | 'Large' | 'Extra Large'>('Normal');
+  const [dyslexiaFont, setDyslexiaFont] = useState(false);
+  const [highContrastMode, setHighContrastMode] = useState(false);
+
+  // 4. Accessibility: Audio and Visual aids
+  const [voiceOverApostles, setVoiceOverApostles] = useState(true);
+  const [audioSpeed, setAudioSpeed] = useState<'0.75x' | '1.0x' | '1.25x' | '1.5x'>('1.0x');
+  const [ambientAudio, setAmbientAudio] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  // 5. Accessibility: Navigations
+  const [hapticTouch, setHapticTouch] = useState(true);
+  const [swipeNavigation, setSwipeNavigation] = useState(true);
+  const [quickChapterJump, setQuickChapterJump] = useState(true);
+
+  // 6. Accessibility: Cognitive Support
+  const [plainLanguageMode, setPlainLanguageMode] = useState(false);
+  const [focusReadingMode, setFocusReadingMode] = useState(false);
+  const [reflectionPrompts, setReflectionPrompts] = useState(true);
+
+  // 7. Security: Privacy & Data
+  const [analyticsOptIn, setAnalyticsOptIn] = useState(false);
+  const [incognitoChat, setIncognitoChat] = useState(false);
+
+  useEffect(() => {
     if (visible) {
-      getUserAuthProvider().then(setAuthInfo);
+      setIsAccountLoading(true);
+      getUserAuthProvider().then((auth) => {
+        setAuthInfo(auth);
+      });
       setDraftProfile(userProfile);
+
+      // Graceful, calm loading state for user info without sudden flashes
+      const timer = setTimeout(() => {
+        setIsAccountLoading(false);
+      }, 450);
+
+      return () => clearTimeout(timer);
     }
   }, [visible, userProfile]);
+
+  const handleSaveAccount = async () => {
+    onUpdateProfile(draftProfile);
+    await saveUserProfile(draftProfile);
+    setConfirmModal({
+      visible: true,
+      title: 'Profile Updated',
+      message: 'Your profile changes have been saved to your faith journey.',
+      confirmText: 'Done',
+      singleButton: true,
+      icon: 'checkmark-circle-outline',
+      onConfirm: () => setActiveSubModal(null),
+    });
+  };
 
   const handleCloudBackup = async () => {
     setIsBackingUp(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await updateRemoteProfile(user.id, userProfile);
-        setActionModal({
+        await updateRemoteProfile(user.id, draftProfile);
+        setConfirmModal({
           visible: true,
-          type: 'confirm',
-          title: 'Cloud Backup Complete',
-          message: 'Your profile, faith streaks, equipped Armor of God, and bookmarks are safely backed up to the cloud.',
+          title: 'Cloud Sync Complete',
+          message: 'Your profile, streaks, badges, and bookmarks are backed up to the cloud.',
           confirmText: 'Great',
-          onConfirm: () => setActionModal(prev => ({ ...prev, visible: false }))
+          singleButton: true,
+          icon: 'cloud-done-outline',
+          onConfirm: () => {},
         });
       } else {
-        setActionModal({
+        setConfirmModal({
           visible: true,
-          type: 'confirm',
-          title: 'Sign In Required',
-          message: 'Please sign in or create an account to back up your journey to the cloud.',
-          confirmText: 'OK',
-          onConfirm: () => setActionModal(prev => ({ ...prev, visible: false }))
+          title: 'Guest Account',
+          message: 'Sign in with Google or Email to synchronize your account across devices.',
+          confirmText: 'Understood',
+          singleButton: true,
+          icon: 'person-outline',
+          onConfirm: () => {},
         });
       }
     } catch (e) {
-      setActionModal({
+      setConfirmModal({
         visible: true,
-        type: 'confirm',
-        title: 'Backup Notice',
-        message: 'Your data is securely preserved locally on your phone.',
+        title: 'Local Storage Safe',
+        message: 'Your notes and faith journey are safely preserved locally on this device.',
         confirmText: 'OK',
-        onConfirm: () => setActionModal(prev => ({ ...prev, visible: false }))
+        singleButton: true,
+        icon: 'phone-portrait-outline',
+        onConfirm: () => {},
       });
     } finally {
       setIsBackingUp(false);
     }
   };
 
-  const handleSaveAccount = async () => {
-    onUpdateProfile(draftProfile);
-    await saveUserProfile(draftProfile);
-    setActionModal({
-      visible: true,
-      type: 'confirm',
-      title: 'Account Updated',
-      message: 'Your profile settings have been saved successfully.',
-      confirmText: 'Done',
-      onConfirm: () => {
-        setActionModal(prev => ({ ...prev, visible: false }));
-        setActiveSubModal(null);
-      }
-    });
-  };
-
-  const handleChangePassword = async () => {
-    if (!currentPassword) {
-      setActionModal({
-        visible: true,
-        type: 'confirm',
-        title: 'Current Password Required',
-        message: 'Please enter your current password to verify your identity.',
-        confirmText: 'OK',
-        onConfirm: () => setActionModal(prev => ({ ...prev, visible: false }))
-      });
-      return;
-    }
-    if (!newPassword || newPassword.length < 6) {
-      setActionModal({
-        visible: true,
-        type: 'confirm',
-        title: 'Password Length',
-        message: 'New password must be at least 6 characters.',
-        confirmText: 'OK',
-        onConfirm: () => setActionModal(prev => ({ ...prev, visible: false }))
-      });
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setActionModal({
-        visible: true,
-        type: 'confirm',
-        title: 'Password Mismatch',
-        message: 'The new passwords do not match. Please re-enter.',
-        confirmText: 'OK',
-        onConfirm: () => setActionModal(prev => ({ ...prev, visible: false }))
-      });
-      return;
-    }
-    setPasswordLoading(true);
-    try {
-      const { error } = await updateUserPassword(newPassword, currentPassword);
-      if (error) {
-        setActionModal({
-          visible: true,
-          type: 'confirm',
-          title: 'Update Failed',
-          message: error.message,
-          confirmText: 'OK',
-          isDestructive: true,
-          onConfirm: () => setActionModal(prev => ({ ...prev, visible: false }))
-        });
-      } else {
-        setActionModal({
-          visible: true,
-          type: 'confirm',
-          title: 'Password Changed',
-          message: 'Your password has been changed successfully.',
-          confirmText: 'Done',
-          onConfirm: () => {
-            setActionModal(prev => ({ ...prev, visible: false }));
-            setCurrentPassword('');
-            setNewPassword('');
-            setConfirmPassword('');
-            setActiveSubModal('Account');
-          }
-        });
-      }
-    } catch (e: any) {
-      setActionModal({
-        visible: true,
-        type: 'confirm',
-        title: 'Error',
-        message: e?.message || 'Could not update password.',
-        confirmText: 'OK',
-        isDestructive: true,
-        onConfirm: () => setActionModal(prev => ({ ...prev, visible: false }))
-      });
-    } finally {
-      setPasswordLoading(false);
-    }
-  };
-
-  const handleDeleteAccount = () => {
-    setActionModal({
-      visible: true,
-      type: 'confirm',
-      title: 'Delete Account & Data',
-      message: 'This will permanently delete your account, saved reflections, and conversation history. This action cannot be undone.',
-      confirmText: 'Delete Permanently',
-      isDestructive: true,
-      onConfirm: async () => {
-        setActionModal(prev => ({ ...prev, visible: false }));
-        await deleteUserAccount();
-        await deleteAllUserData();
-        onClose();
-        if (onLogout) onLogout();
-      }
-    });
-  };
-
   const handleLogoutPress = () => {
-    setActionModal({
+    setConfirmModal({
       visible: true,
-      type: 'signout',
+      title: 'Log Out Confirmation',
+      message: 'Are you sure you want to log out? Your bookmarks and progress are safely preserved.',
+      confirmText: 'Log Out',
+      cancelText: 'Stay',
+      confirmStyle: 'destructive',
+      icon: 'log-out-outline',
       onConfirm: () => {
-        setActionModal(prev => ({ ...prev, visible: false }));
         onClose();
         if (onLogout) onLogout();
-      }
+      },
     });
   };
 
   const handleClearHistory = () => {
-    setActionModal({
+    setConfirmModal({
       visible: true,
-      type: 'confirm',
-      title: 'Clear All Conversations',
-      message: 'This will delete all message history with all Apostles. This cannot be undone.',
-      confirmText: 'Clear All History',
-      isDestructive: true,
+      title: 'Clear Conversation History',
+      message: 'This will remove all dialogue and counsel with Apostles from your device. This cannot be undone.',
+      confirmText: 'Clear All',
+      cancelText: 'Keep Messages',
+      confirmStyle: 'destructive',
+      icon: 'trash-outline',
       onConfirm: async () => {
         await clearChatHistory();
-        setActionModal({
+        setConfirmModal({
           visible: true,
-          type: 'confirm',
-          title: 'Cleared',
-          message: 'All conversation history has been cleared.',
+          title: 'Conversations Cleared',
+          message: 'All chats have been refreshed.',
           confirmText: 'Done',
-          onConfirm: () => setActionModal(prev => ({ ...prev, visible: false }))
+          singleButton: true,
+          icon: 'checkmark-circle-outline',
+          onConfirm: () => {},
         });
-      }
+      },
     });
   };
 
@@ -281,234 +248,132 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {/* Chromatic Aura Invite Friends Banner */}
-            <InviteFriendsBanner userName={userProfile.fullName || 'Pilgrim'} />
-
-            {/* SECTION 1: General */}
+            {/* ========================================================================= */}
+            {/* SECTION: GENERAL (Matching Reference Image) */}
+            {/* ========================================================================= */}
             <Text style={styles.sectionHeading}>General</Text>
-            <View style={styles.group}>
-              <TouchableOpacity
-                style={styles.pillRow}
-                onPress={() => {
-                  setDraftProfile(userProfile);
-                  setActiveSubModal('Account');
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.pillText}>Account</Text>
-                <Ionicons name="chevron-forward" size={18} color="#C4C4C8" />
-              </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.pillRow}
-                onPress={() => setActiveSubModal('Privacy')}
-                activeOpacity={0.7}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="shield-checkmark-outline" size={17} color="#2563EB" style={{ marginRight: 8 }} />
-                  <Text style={styles.pillText}>Privacy & Data Storage</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color="#C4C4C8" />
-              </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.softPillCard}
+              onPress={() => setActiveSubModal('Account')}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.softPillText}>Account</Text>
+              <Ionicons name="chevron-forward" size={18} color="#A1A1AA" />
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.pillRow}
-                onPress={() => setActiveSubModal('Appearance')}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.pillText}>Appearance</Text>
-                <Ionicons name="chevron-forward" size={18} color="#C4C4C8" />
-              </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.softPillCard}
+              onPress={() => setActiveSubModal('Notifications')}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.softPillText}>Notifications</Text>
+              <Ionicons name="chevron-forward" size={18} color="#A1A1AA" />
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.pillRow}
-                onPress={() => setActiveSubModal('Audio and Visual aids')}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.pillText}>Audio and Visual aids</Text>
-                <Ionicons name="chevron-forward" size={18} color="#C4C4C8" />
-              </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.softPillCard}
+              onPress={() => setActiveSubModal('Languages')}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.softPillText}>Languages</Text>
+              <Ionicons name="chevron-forward" size={18} color="#A1A1AA" />
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.pillRow}
-                onPress={() => setActiveSubModal('Navigations')}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.pillText}>Navigations</Text>
-                <Ionicons name="chevron-forward" size={18} color="#C4C4C8" />
-              </TouchableOpacity>
-            </View>
+            {/* ========================================================================= */}
+            {/* SECTION: ACCESSIBILITY (Matching Reference Image) */}
+            {/* ========================================================================= */}
+            <Text style={styles.sectionHeading}>Accessibility</Text>
 
-            {/* SECTION 2: Chat Preferences */}
-            <Text style={styles.sectionHeading}>Chat</Text>
-            <View style={styles.group}>
-              <TouchableOpacity
-                style={styles.pillRow}
-                onPress={() => setActiveSubModal('Language')}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.pillText}>Language</Text>
-                <Text style={styles.subValueText}>
-                  {SUPPORTED_LANGUAGES.find(l => l.code === currentLanguage)?.name || 'English (US)'}
-                </Text>
-              </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.softPillCard}
+              onPress={() => setActiveSubModal('Text and Display')}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.softPillText}>Text and Display</Text>
+              <Ionicons name="chevron-forward" size={18} color="#A1A1AA" />
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.pillRow}
-                onPress={() => setActiveSubModal('Accessibility')}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.pillText}>Accessibility</Text>
-                <Ionicons name="chevron-forward" size={18} color="#C4C4C8" />
-              </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.softPillCard}
+              onPress={() => setActiveSubModal('Audio and Visual aids')}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.softPillText}>Audio and Visual aids</Text>
+              <Ionicons name="chevron-forward" size={18} color="#A1A1AA" />
+            </TouchableOpacity>
 
-              <View style={styles.pillRow}>
-                <View style={styles.toggleTextWrap}>
-                  <Text style={styles.pillText}>Plain Language Mode</Text>
-                  <Text style={styles.pillSubText}>Simpler terms for younger readers</Text>
-                </View>
-                <Switch
-                  value={plainLanguageMode}
-                  onValueChange={setPlainLanguageMode}
-                  trackColor={{ false: '#E5E5EA', true: '#2563EB' }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-            </View>
+            <TouchableOpacity
+              style={styles.softPillCard}
+              onPress={() => setActiveSubModal('Navigations')}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.softPillText}>Navigations</Text>
+              <Ionicons name="chevron-forward" size={18} color="#A1A1AA" />
+            </TouchableOpacity>
 
-            {/* SECTION 3: Notifications & Storage */}
-            <Text style={styles.sectionHeading}>Preferences & Data</Text>
-            <View style={styles.group}>
-              <View style={styles.pillRow}>
-                <Text style={styles.pillText}>Daily Scripture Reminders</Text>
-                <Switch
-                  value={dailyReminders}
-                  onValueChange={setDailyReminders}
-                  trackColor={{ false: '#E5E5EA', true: '#2563EB' }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
+            <TouchableOpacity
+              style={styles.softPillCard}
+              onPress={() => setActiveSubModal('Cognitive Support')}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.softPillText}>Cognitive Support</Text>
+              <Ionicons name="chevron-forward" size={18} color="#A1A1AA" />
+            </TouchableOpacity>
 
-              <View style={styles.pillRow}>
-                <Text style={styles.pillText}>Haptic Touch Feedback</Text>
-                <Switch
-                  value={hapticFeedback}
-                  onValueChange={setHapticFeedback}
-                  trackColor={{ false: '#E5E5EA', true: '#2563EB' }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
+            {/* ========================================================================= */}
+            {/* SECTION: SECURITY (Matching Reference Image) */}
+            {/* ========================================================================= */}
+            <Text style={styles.sectionHeading}>Security</Text>
 
-              <TouchableOpacity
-                style={styles.pillRow}
-                onPress={handleClearHistory}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.pillText, { color: '#DC2626' }]}>Clear All Chat History</Text>
-                <Ionicons name="trash-outline" size={18} color="#DC2626" />
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.softPillCard}
+              onPress={() => setActiveSubModal('Devices')}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.softPillText}>Devices</Text>
+              <Ionicons name="chevron-forward" size={18} color="#A1A1AA" />
+            </TouchableOpacity>
 
-            {/* SECTION 4: About & Account Actions */}
-            <Text style={styles.sectionHeading}>About & Account</Text>
-            <View style={styles.group}>
-              <TouchableOpacity
-                style={styles.pillRow}
-                onPress={() => setActiveSubModal('Documentation')}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.pillText}>Documentation & Theology</Text>
-                <Ionicons name="chevron-forward" size={18} color="#C4C4C8" />
-              </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.softPillCard}
+              onPress={() => setActiveSubModal('Privacy')}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.softPillText}>Privacy</Text>
+              <Ionicons name="chevron-forward" size={18} color="#A1A1AA" />
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.pillRow}
-                onPress={handleLogoutPress}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.pillText, { color: '#DC2626' }]}>Log Out</Text>
-                <Ionicons name="log-out-outline" size={18} color="#DC2626" />
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.softPillCard}
+              onPress={() => setActiveSubModal('Documentation')}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.softPillText}>Documentation</Text>
+              <Ionicons name="chevron-forward" size={18} color="#A1A1AA" />
+            </TouchableOpacity>
+
+            {/* Log Out Pill Button matching Reference Screenshot */}
+            <TouchableOpacity
+              style={styles.logoutBtnCard}
+              onPress={handleLogoutPress}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.logoutBtnText}>Log out</Text>
+            </TouchableOpacity>
 
             <View style={{ height: 40 }} />
           </ScrollView>
         </SafeAreaView>
       </View>
 
-      {/* Privacy & Data Storage Sub-Modal */}
-      <Modal
-        visible={activeSubModal === 'Privacy'}
-        animationType="slide"
-        transparent={false}
-        onRequestClose={() => setActiveSubModal(null)}
-      >
-        <SafeAreaView style={styles.subModalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setActiveSubModal(null)} style={styles.modalBackBtn}>
-              <Ionicons name="arrow-back" size={22} color="#111111" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Privacy & Data Storage</Text>
-            <View style={{ width: 40 }} />
-          </View>
-
-          <ScrollView contentContainerStyle={styles.modalContent}>
-            {/* Privacy Card 1: Local-First Storage */}
-            <View style={styles.privacyCard}>
-              <View style={styles.privacyIconWrap}>
-                <Ionicons name="lock-closed" size={22} color="#111111" />
-              </View>
-              <Text style={styles.privacyCardTitle}>On-Device Private Storage</Text>
-              <Text style={styles.privacyCardBody}>
-                All conversations with the Apostles are stored locally in your phone's protected internal SQLite database. We do not sell, harvest, or monetize your prayers, reflections, or chats.
-              </Text>
-            </View>
-
-            {/* Privacy Card 2: Cleaner App Protection */}
-            <View style={styles.privacyCard}>
-              <View style={styles.privacyIconWrap}>
-                <Ionicons name="shield-checkmark" size={22} color="#111111" />
-              </View>
-              <Text style={styles.privacyCardTitle}>Protection from Cleaner Apps</Text>
-              <Text style={styles.privacyCardBody}>
-                Your database is stored in secure internal app memory. Cleaner apps only wipe temporary caches and cannot delete your conversation database.
-              </Text>
-            </View>
-
-            {/* Cloud Backup Action */}
-            <View style={styles.backupBox}>
-              <Text style={styles.backupBoxTitle}>Cloud Backup & Sync</Text>
-              <Text style={styles.backupBoxBody}>
-                Back up your Spiritual Journey, Streaks, and bookmarks to your secure Supabase account so you can restore them on any device.
-              </Text>
-              <TouchableOpacity
-                style={[styles.savePasswordBtn, { marginTop: 12, backgroundColor: '#111111' }]}
-                onPress={handleCloudBackup}
-                disabled={isBackingUp}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.savePasswordBtnText}>
-                  {isBackingUp ? 'Backing Up...' : '☁️ Back Up Faith Journey'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Privacy Card 3: Account Deletion */}
-            <View style={[styles.privacyCard, { borderColor: '#FCA5A5', backgroundColor: '#FEF2F2' }]}>
-              <Text style={[styles.privacyCardTitle, { color: '#991B1B' }]}>Zero Residual Footprint</Text>
-              <Text style={[styles.privacyCardBody, { color: '#B91C1C' }]}>
-                If you choose to delete your account or clear app storage in phone settings, all messages, bookmarks, and cloud profiles are permanently destroyed with zero residual data.
-              </Text>
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-
-      {/* Sub-Modals (Account, Appearance, Audio, Language, etc.) */}
+      {/* ========================================================================= */}
+      {/* 1. ACCOUNT SUBMODAL (With Calm Loading State) */}
+      {/* ========================================================================= */}
       <Modal
         visible={activeSubModal === 'Account'}
         animationType="slide"
-        transparent={false}
+        presentationStyle="fullScreen"
         onRequestClose={() => setActiveSubModal(null)}
       >
         <SafeAreaView style={styles.subModalContainer}>
@@ -517,181 +382,104 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               <Ionicons name="arrow-back" size={22} color="#111111" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Account</Text>
-            <TouchableOpacity onPress={handleSaveAccount} style={styles.modalSaveBtn}>
-              <Text style={styles.modalSaveBtnText}>Save</Text>
-            </TouchableOpacity>
+            <View style={{ width: 36 }} />
           </View>
 
           <ScrollView contentContainerStyle={styles.modalContent}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Full Name</Text>
-              <TextInput
-                style={styles.inputField}
-                value={draftProfile.fullName}
-                onChangeText={(t) => setDraftProfile({ ...draftProfile, fullName: t })}
-                placeholder="Enter your name"
-              />
-            </View>
+            {isAccountLoading ? (
+              /* Calm loading skeleton for user information */
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#111111" style={{ marginBottom: 12 }} />
+                <Text style={styles.loadingText}>Gathering pilgrim information...</Text>
+                <View style={styles.skeletonPill} />
+                <View style={[styles.skeletonPill, { width: '70%' }]} />
+              </View>
+            ) : (
+              <View>
+                {/* User Info Overview */}
+                <View style={styles.accountCard}>
+                  <View style={styles.accountAvatarCircle}>
+                    <Text style={styles.accountAvatarText}>
+                      {(draftProfile.fullName || 'P').charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 14 }}>
+                    <Text style={styles.accountCardName}>{draftProfile.fullName || 'Beloved Pilgrim'}</Text>
+                    <Text style={styles.accountCardEmail}>{draftProfile.email || authInfo.email || 'Cloud Guest Account'}</Text>
+                  </View>
+                </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Spiritual Address (How Apostles greet you)</Text>
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                {/* Form Fields */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Full Name</Text>
+                  <TextInput
+                    style={styles.inputField}
+                    value={draftProfile.fullName}
+                    onChangeText={(val) => setDraftProfile({ ...draftProfile, fullName: val })}
+                    placeholder="Enter your name"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Email Address</Text>
+                  <TextInput
+                    style={styles.inputField}
+                    value={draftProfile.email}
+                    onChangeText={(val) => setDraftProfile({ ...draftProfile, email: val })}
+                    placeholder="Enter email address"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Spiritual Journey Bio</Text>
+                  <TextInput
+                    style={[styles.inputField, { height: 80, textAlignVertical: 'top' }]}
+                    value={draftProfile.bio}
+                    onChangeText={(val) => setDraftProfile({ ...draftProfile, bio: val })}
+                    placeholder="Share what God is doing in your life..."
+                    placeholderTextColor="#9CA3AF"
+                    multiline
+                  />
+                </View>
+
+                {/* Save Account Button */}
                 <TouchableOpacity
-                  style={[
-                    styles.optionPill,
-                    draftProfile.gender === 'brother' && styles.optionPillActive
-                  ]}
-                  onPress={() => setDraftProfile({ ...draftProfile, gender: 'brother' })}
+                  style={styles.primaryActionButton}
+                  onPress={handleSaveAccount}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.optionPillText, draftProfile.gender === 'brother' && styles.optionPillTextActive]}>
-                    🧔 Brother
-                  </Text>
+                  <Text style={styles.primaryActionButtonText}>Save Account Changes</Text>
                 </TouchableOpacity>
 
+                {/* Cloud Backup Button */}
                 <TouchableOpacity
-                  style={[
-                    styles.optionPill,
-                    draftProfile.gender === 'sister' && styles.optionPillActive
-                  ]}
-                  onPress={() => setDraftProfile({ ...draftProfile, gender: 'sister' })}
+                  style={styles.secondaryActionButton}
+                  onPress={handleCloudBackup}
                   activeOpacity={0.8}
+                  disabled={isBackingUp}
                 >
-                  <Text style={[styles.optionPillText, draftProfile.gender === 'sister' && styles.optionPillTextActive]}>
-                    🧕 Sister
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.optionPill,
-                    (!draftProfile.gender || draftProfile.gender === 'neutral') && styles.optionPillActive
-                  ]}
-                  onPress={() => setDraftProfile({ ...draftProfile, gender: 'neutral' })}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.optionPillText, (!draftProfile.gender || draftProfile.gender === 'neutral') && styles.optionPillTextActive]}>
-                    🕊️ Pilgrim
+                  <Ionicons name="cloud-upload-outline" size={18} color="#111111" style={{ marginRight: 8 }} />
+                  <Text style={styles.secondaryActionButtonText}>
+                    {isBackingUp ? 'Syncing to Cloud...' : 'Synchronize with Cloud Backup'}
                   </Text>
                 </TouchableOpacity>
               </View>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Email</Text>
-              <TextInput
-                style={styles.inputField}
-                value={draftProfile.email}
-                onChangeText={(t) => setDraftProfile({ ...draftProfile, email: t })}
-                placeholder="Enter your email"
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Faith Bio</Text>
-              <TextInput
-                style={[styles.inputField, { height: 80, textAlignVertical: 'top' }]}
-                value={draftProfile.bio}
-                onChangeText={(t) => setDraftProfile({ ...draftProfile, bio: t })}
-                multiline
-                numberOfLines={3}
-              />
-            </View>
-
-            {authInfo.provider === 'email' && (
-              <TouchableOpacity
-                style={styles.changePasswordBtn}
-                onPress={() => setActiveSubModal('ChangePassword')}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="key-outline" size={16} color="#2563EB" style={{ marginRight: 6 }} />
-                <Text style={styles.changePasswordBtnText}>Change Password</Text>
-              </TouchableOpacity>
             )}
-
-            <TouchableOpacity
-              style={[styles.pillRow, { marginTop: 24, backgroundColor: '#FEE2E2', borderRadius: 14, padding: 14 }]}
-              onPress={handleDeleteAccount}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.pillText, { color: '#DC2626' }]}>Delete Account & Data</Text>
-              <Ionicons name="trash-outline" size={18} color="#DC2626" />
-            </TouchableOpacity>
           </ScrollView>
         </SafeAreaView>
       </Modal>
 
-      {/* Change Password Sub-Modal */}
+      {/* ========================================================================= */}
+      {/* 2. NOTIFICATIONS SUBMODAL (Interactive Toggle Switches) */}
+      {/* ========================================================================= */}
       <Modal
-        visible={activeSubModal === 'ChangePassword'}
+        visible={activeSubModal === 'Notifications'}
         animationType="slide"
-        transparent={false}
-        onRequestClose={() => setActiveSubModal('Account')}
-      >
-        <SafeAreaView style={styles.subModalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setActiveSubModal('Account')} style={styles.modalBackBtn}>
-              <Ionicons name="arrow-back" size={22} color="#111111" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Change Password</Text>
-            <View style={{ width: 40 }} />
-          </View>
-
-          <ScrollView contentContainerStyle={styles.modalContent}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Current Password</Text>
-              <TextInput
-                style={styles.inputField}
-                value={currentPassword}
-                onChangeText={setCurrentPassword}
-                placeholder="Enter current password"
-                secureTextEntry
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>New Password</Text>
-              <TextInput
-                style={styles.inputField}
-                value={newPassword}
-                onChangeText={setNewPassword}
-                placeholder="At least 6 characters"
-                secureTextEntry
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Confirm New Password</Text>
-              <TextInput
-                style={styles.inputField}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                placeholder="Re-enter new password"
-                secureTextEntry
-              />
-            </View>
-
-            <TouchableOpacity
-              style={[styles.savePasswordBtn, passwordLoading && styles.submitBtnDisabled]}
-              onPress={handleChangePassword}
-              disabled={passwordLoading}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.savePasswordBtnText}>
-                {passwordLoading ? 'Updating...' : 'Update Password'}
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-
-      {/* Appearance Sub-Modal */}
-      <Modal
-        visible={activeSubModal === 'Appearance'}
-        animationType="slide"
-        transparent={false}
+        presentationStyle="fullScreen"
         onRequestClose={() => setActiveSubModal(null)}
       >
         <SafeAreaView style={styles.subModalContainer}>
@@ -699,38 +487,77 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             <TouchableOpacity onPress={() => setActiveSubModal(null)} style={styles.modalBackBtn}>
               <Ionicons name="arrow-back" size={22} color="#111111" />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Appearance</Text>
-            <View style={{ width: 40 }} />
+            <Text style={styles.modalTitle}>Notifications</Text>
+            <View style={{ width: 36 }} />
           </View>
 
           <ScrollView contentContainerStyle={styles.modalContent}>
-            <Text style={styles.sectionHeading}>Scripture Reading Size</Text>
-            <View style={styles.group}>
-              {(['Small', 'Normal', 'Large', 'Extra Large'] as const).map((scale) => (
-                <TouchableOpacity
-                  key={scale}
-                  style={[styles.pillRow, fontSizeScale === scale && styles.pillRowSelected]}
-                  onPress={() => setFontSizeScale(scale)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.pillText, fontSizeScale === scale && styles.pillTextSelected]}>
-                    {scale}
-                  </Text>
-                  {fontSizeScale === scale && (
-                    <Ionicons name="checkmark-circle" size={20} color="#111111" />
-                  )}
-                </TouchableOpacity>
-              ))}
+            <Text style={styles.subSectionTitle}>Daily Encouragements</Text>
+
+            <View style={styles.toggleRowCard}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleLabel}>Daily Scripture at 8:00 AM</Text>
+                <Text style={styles.toggleSubtitle}>Start each morning anchored in Scripture</Text>
+              </View>
+              <Switch
+                value={dailyScriptureReminder}
+                onValueChange={setDailyScriptureReminder}
+                trackColor={{ false: '#E5E5EA', true: '#111111' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={styles.toggleRowCard}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleLabel}>Apostle Words of Grace</Text>
+                <Text style={styles.toggleSubtitle}>Heartfelt devotional counsels from Peter, John & Paul</Text>
+              </View>
+              <Switch
+                value={apostleWordsGrace}
+                onValueChange={setApostleWordsGrace}
+                trackColor={{ false: '#E5E5EA', true: '#111111' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <Text style={styles.subSectionTitle}>Spiritual Growth & Fellowship</Text>
+
+            <View style={styles.toggleRowCard}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleLabel}>Streak Milestones & Badges</Text>
+                <Text style={styles.toggleSubtitle}>Celebrate streak achievements and newly unlocked badges</Text>
+              </View>
+              <Switch
+                value={streakMilestoneNotifs}
+                onValueChange={setStreakMilestoneNotifs}
+                trackColor={{ false: '#E5E5EA', true: '#111111' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={styles.toggleRowCard}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleLabel}>Fellowship & Study Circles</Text>
+                <Text style={styles.toggleSubtitle}>Updates when friends share reflections and prayer requests</Text>
+              </View>
+              <Switch
+                value={fellowshipNotifs}
+                onValueChange={setFellowshipNotifs}
+                trackColor={{ false: '#E5E5EA', true: '#111111' }}
+                thumbColor="#FFFFFF"
+              />
             </View>
           </ScrollView>
         </SafeAreaView>
       </Modal>
 
-      {/* Language Sub-Modal */}
+      {/* ========================================================================= */}
+      {/* 3. LANGUAGES SUBMODAL (Both Bible & App Interface Languages) */}
+      {/* ========================================================================= */}
       <Modal
-        visible={activeSubModal === 'Language'}
+        visible={activeSubModal === 'Languages'}
         animationType="slide"
-        transparent={false}
+        presentationStyle="fullScreen"
         onRequestClose={() => setActiveSubModal(null)}
       >
         <SafeAreaView style={styles.subModalContainer}>
@@ -738,38 +565,73 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             <TouchableOpacity onPress={() => setActiveSubModal(null)} style={styles.modalBackBtn}>
               <Ionicons name="arrow-back" size={22} color="#111111" />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Language</Text>
-            <View style={{ width: 40 }} />
+            <Text style={styles.modalTitle}>Languages</Text>
+            <View style={{ width: 36 }} />
           </View>
 
           <ScrollView contentContainerStyle={styles.modalContent}>
-            <View style={styles.group}>
+            {/* PART 1: App Interface Language */}
+            <Text style={styles.subSectionTitle}>App Interface Language</Text>
+            <Text style={styles.subSectionDescription}>
+              Select the language for all buttons, menus, and spiritual guidance tabs.
+            </Text>
+
+            <View style={styles.radioGroupCard}>
               {SUPPORTED_LANGUAGES.map((lang) => {
                 const isSelected = currentLanguage === lang.code;
                 return (
                   <TouchableOpacity
                     key={lang.code}
-                    style={[styles.pillRow, isSelected && styles.pillRowSelected]}
-                    onPress={async () => {
-                      await setLanguage(lang.code);
-                      setActiveSubModal(null);
-                    }}
+                    style={[styles.radioItemRow, isSelected && styles.radioItemRowSelected]}
+                    onPress={() => setLanguage(lang.code as AppLanguage)}
                     activeOpacity={0.7}
                   >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                      <Text style={{ fontSize: 20 }}>{lang.flag}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 20, marginRight: 12 }}>{lang.flag}</Text>
                       <View>
-                        <Text style={[styles.pillText, isSelected && styles.pillTextSelected]}>
+                        <Text style={[styles.radioItemTitle, isSelected && styles.radioItemTitleSelected]}>
                           {lang.nativeName}
                         </Text>
-                        <Text style={{ fontFamily: Typography.fontSansRegular, fontSize: 12, color: '#777777' }}>
-                          {lang.name}
-                        </Text>
+                        <Text style={styles.radioItemSub}>{lang.name}</Text>
                       </View>
                     </View>
-                    {isSelected && (
-                      <Ionicons name="checkmark-circle" size={20} color="#111111" />
-                    )}
+
+                    {/* Radio Button Circle */}
+                    <View style={[styles.radioOuterCircle, isSelected && styles.radioOuterCircleActive]}>
+                      {isSelected && <View style={styles.radioInnerDot} />}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* PART 2: Bible Text Language & Translation */}
+            <Text style={[styles.subSectionTitle, { marginTop: 28 }]}>Bible Text & Translation</Text>
+            <Text style={styles.subSectionDescription}>
+              Select the translation used for daily readings, verse search, and scripture reflection.
+            </Text>
+
+            <View style={styles.radioGroupCard}>
+              {BIBLE_TRANSLATIONS.map((trans) => {
+                const isSelected = bibleTranslation === trans.code;
+                return (
+                  <TouchableOpacity
+                    key={trans.code}
+                    style={[styles.radioItemRow, isSelected && styles.radioItemRowSelected]}
+                    onPress={() => setBibleTranslation(trans.code)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flex: 1, paddingRight: 10 }}>
+                      <Text style={[styles.radioItemTitle, isSelected && styles.radioItemTitleSelected]}>
+                        {trans.name}
+                      </Text>
+                      <Text style={styles.radioItemSub}>{trans.description}</Text>
+                    </View>
+
+                    {/* Radio Button Circle */}
+                    <View style={[styles.radioOuterCircle, isSelected && styles.radioOuterCircleActive]}>
+                      {isSelected && <View style={styles.radioInnerDot} />}
+                    </View>
                   </TouchableOpacity>
                 );
               })}
@@ -778,11 +640,423 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         </SafeAreaView>
       </Modal>
 
-      {/* Documentation Sub-Modal */}
+      {/* ========================================================================= */}
+      {/* 4. TEXT AND DISPLAY SUBMODAL */}
+      {/* ========================================================================= */}
+      <Modal
+        visible={activeSubModal === 'Text and Display'}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setActiveSubModal(null)}
+      >
+        <SafeAreaView style={styles.subModalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setActiveSubModal(null)} style={styles.modalBackBtn}>
+              <Ionicons name="arrow-back" size={22} color="#111111" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Text and Display</Text>
+            <View style={{ width: 36 }} />
+          </View>
+
+          <ScrollView contentContainerStyle={styles.modalContent}>
+            <Text style={styles.subSectionTitle}>Scripture Reading Size</Text>
+
+            <View style={styles.radioGroupCard}>
+              {(['Small', 'Normal', 'Large', 'Extra Large'] as const).map((scale) => {
+                const isSelected = fontSizeScale === scale;
+                return (
+                  <TouchableOpacity
+                    key={scale}
+                    style={[styles.radioItemRow, isSelected && styles.radioItemRowSelected]}
+                    onPress={() => setFontSizeScale(scale)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.radioItemTitle, isSelected && styles.radioItemTitleSelected]}>
+                      {scale}
+                    </Text>
+                    <View style={[styles.radioOuterCircle, isSelected && styles.radioOuterCircleActive]}>
+                      {isSelected && <View style={styles.radioInnerDot} />}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Live Verse Preview */}
+            <View style={styles.previewBox}>
+              <Text
+                style={[
+                  styles.previewVerse,
+                  fontSizeScale === 'Small' && { fontSize: 13, lineHeight: 19 },
+                  fontSizeScale === 'Normal' && { fontSize: 15, lineHeight: 22 },
+                  fontSizeScale === 'Large' && { fontSize: 17, lineHeight: 25 },
+                  fontSizeScale === 'Extra Large' && { fontSize: 19, lineHeight: 28 },
+                  dyslexiaFont && { letterSpacing: 0.5 }
+                ]}
+              >
+                “Your word is a lamp to my feet and a light to my path.” — Psalm 119:105
+              </Text>
+            </View>
+
+            <Text style={[styles.subSectionTitle, { marginTop: 24 }]}>Display Accessibility</Text>
+
+            <View style={styles.toggleRowCard}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleLabel}>Dyslexia-Friendly Spacing</Text>
+                <Text style={styles.toggleSubtitle}>Enhanced character tracking and line separation</Text>
+              </View>
+              <Switch
+                value={dyslexiaFont}
+                onValueChange={setDyslexiaFont}
+                trackColor={{ false: '#E5E5EA', true: '#111111' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={styles.toggleRowCard}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleLabel}>High Contrast Mode</Text>
+                <Text style={styles.toggleSubtitle}>Deepens text darkness for improved outdoor visibility</Text>
+              </View>
+              <Switch
+                value={highContrastMode}
+                onValueChange={setHighContrastMode}
+                trackColor={{ false: '#E5E5EA', true: '#111111' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* ========================================================================= */}
+      {/* 5. AUDIO AND VISUAL AIDS */}
+      {/* ========================================================================= */}
+      <Modal
+        visible={activeSubModal === 'Audio and Visual aids'}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setActiveSubModal(null)}
+      >
+        <SafeAreaView style={styles.subModalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setActiveSubModal(null)} style={styles.modalBackBtn}>
+              <Ionicons name="arrow-back" size={22} color="#111111" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Audio and Visual aids</Text>
+            <View style={{ width: 36 }} />
+          </View>
+
+          <ScrollView contentContainerStyle={styles.modalContent}>
+            <Text style={styles.subSectionTitle}>Apostolic Voice & Audio</Text>
+
+            <View style={styles.toggleRowCard}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleLabel}>Voice Narration of Scripture</Text>
+                <Text style={styles.toggleSubtitle}>Spoken words of grace when reviewing chapters</Text>
+              </View>
+              <Switch
+                value={voiceOverApostles}
+                onValueChange={setVoiceOverApostles}
+                trackColor={{ false: '#E5E5EA', true: '#111111' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <Text style={[styles.subSectionTitle, { marginTop: 20 }]}>Narration Speed</Text>
+            <View style={styles.radioGroupCard}>
+              {(['0.75x', '1.0x', '1.25x', '1.5x'] as const).map((speed) => {
+                const isSelected = audioSpeed === speed;
+                return (
+                  <TouchableOpacity
+                    key={speed}
+                    style={[styles.radioItemRow, isSelected && styles.radioItemRowSelected]}
+                    onPress={() => setAudioSpeed(speed)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.radioItemTitle, isSelected && styles.radioItemTitleSelected]}>
+                      {speed} {speed === '1.0x' ? '(Normal)' : ''}
+                    </Text>
+                    <View style={[styles.radioOuterCircle, isSelected && styles.radioOuterCircleActive]}>
+                      {isSelected && <View style={styles.radioInnerDot} />}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={[styles.subSectionTitle, { marginTop: 20 }]}>Atmosphere & Motion</Text>
+
+            <View style={styles.toggleRowCard}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleLabel}>Ambient Prayer Background</Text>
+                <Text style={styles.toggleSubtitle}>Subtle serene chimes during devotional reading</Text>
+              </View>
+              <Switch
+                value={ambientAudio}
+                onValueChange={setAmbientAudio}
+                trackColor={{ false: '#E5E5EA', true: '#111111' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={styles.toggleRowCard}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleLabel}>Reduce Motion</Text>
+                <Text style={styles.toggleSubtitle}>Minimizes sliding and particle effects</Text>
+              </View>
+              <Switch
+                value={reduceMotion}
+                onValueChange={setReduceMotion}
+                trackColor={{ false: '#E5E5EA', true: '#111111' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* ========================================================================= */}
+      {/* 6. NAVIGATIONS SUBMODAL */}
+      {/* ========================================================================= */}
+      <Modal
+        visible={activeSubModal === 'Navigations'}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setActiveSubModal(null)}
+      >
+        <SafeAreaView style={styles.subModalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setActiveSubModal(null)} style={styles.modalBackBtn}>
+              <Ionicons name="arrow-back" size={22} color="#111111" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Navigations</Text>
+            <View style={{ width: 36 }} />
+          </View>
+
+          <ScrollView contentContainerStyle={styles.modalContent}>
+            <View style={styles.toggleRowCard}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleLabel}>Haptic Touch Feedback</Text>
+                <Text style={styles.toggleSubtitle}>Gentle vibration on tab switches and verse bookmarks</Text>
+              </View>
+              <Switch
+                value={hapticTouch}
+                onValueChange={setHapticTouch}
+                trackColor={{ false: '#E5E5EA', true: '#111111' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={styles.toggleRowCard}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleLabel}>Swipe to Next Chapter</Text>
+                <Text style={styles.toggleSubtitle}>Horizontal gestures to glide through books of the Bible</Text>
+              </View>
+              <Switch
+                value={swipeNavigation}
+                onValueChange={setSwipeNavigation}
+                trackColor={{ false: '#E5E5EA', true: '#111111' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={styles.toggleRowCard}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleLabel}>Quick Chapter Jump Bar</Text>
+                <Text style={styles.toggleSubtitle}>Floating selector for instant book and chapter picking</Text>
+              </View>
+              <Switch
+                value={quickChapterJump}
+                onValueChange={setQuickChapterJump}
+                trackColor={{ false: '#E5E5EA', true: '#111111' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* ========================================================================= */}
+      {/* 7. COGNITIVE SUPPORT SUBMODAL */}
+      {/* ========================================================================= */}
+      <Modal
+        visible={activeSubModal === 'Cognitive Support'}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setActiveSubModal(null)}
+      >
+        <SafeAreaView style={styles.subModalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setActiveSubModal(null)} style={styles.modalBackBtn}>
+              <Ionicons name="arrow-back" size={22} color="#111111" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Cognitive Support</Text>
+            <View style={{ width: 36 }} />
+          </View>
+
+          <ScrollView contentContainerStyle={styles.modalContent}>
+            <View style={styles.toggleRowCard}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleLabel}>Plain Language Explanations</Text>
+                <Text style={styles.toggleSubtitle}>Simplifies complex archaic terms and theological contexts</Text>
+              </View>
+              <Switch
+                value={plainLanguageMode}
+                onValueChange={setPlainLanguageMode}
+                trackColor={{ false: '#E5E5EA', true: '#111111' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={styles.toggleRowCard}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleLabel}>Distraction-Free Focus Mode</Text>
+                <Text style={styles.toggleSubtitle}>Dims app bars and buttons while immersed in reading</Text>
+              </View>
+              <Switch
+                value={focusReadingMode}
+                onValueChange={setFocusReadingMode}
+                trackColor={{ false: '#E5E5EA', true: '#111111' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={styles.toggleRowCard}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleLabel}>Devotional Reflection Prompts</Text>
+                <Text style={styles.toggleSubtitle}>Guides you with personal application questions after chapters</Text>
+              </View>
+              <Switch
+                value={reflectionPrompts}
+                onValueChange={setReflectionPrompts}
+                trackColor={{ false: '#E5E5EA', true: '#111111' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* ========================================================================= */}
+      {/* 8. DEVICES SUBMODAL */}
+      {/* ========================================================================= */}
+      <Modal
+        visible={activeSubModal === 'Devices'}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setActiveSubModal(null)}
+      >
+        <SafeAreaView style={styles.subModalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setActiveSubModal(null)} style={styles.modalBackBtn}>
+              <Ionicons name="arrow-back" size={22} color="#111111" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Devices</Text>
+            <View style={{ width: 36 }} />
+          </View>
+
+          <ScrollView contentContainerStyle={styles.modalContent}>
+            <Text style={styles.subSectionTitle}>Active Sessions</Text>
+
+            <View style={styles.deviceCard}>
+              <View style={styles.deviceIconCircle}>
+                <Ionicons name="phone-portrait-outline" size={24} color="#111111" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 14 }}>
+                <Text style={styles.deviceName}>Current Smartphone</Text>
+                <Text style={styles.deviceStatus}>Active Now · Secure Local Storage</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.secondaryActionButton}
+              onPress={() => {
+                setConfirmModal({
+                  visible: true,
+                  title: 'Device Security',
+                  message: 'Your active session is protected with biometric and secure hardware keys.',
+                  confirmText: 'Got It',
+                  singleButton: true,
+                  icon: 'shield-checkmark-outline',
+                  onConfirm: () => {},
+                });
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.secondaryActionButtonText}>Manage Synced Devices</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* ========================================================================= */}
+      {/* 9. PRIVACY SUBMODAL */}
+      {/* ========================================================================= */}
+      <Modal
+        visible={activeSubModal === 'Privacy'}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setActiveSubModal(null)}
+      >
+        <SafeAreaView style={styles.subModalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setActiveSubModal(null)} style={styles.modalBackBtn}>
+              <Ionicons name="arrow-back" size={22} color="#111111" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Privacy</Text>
+            <View style={{ width: 36 }} />
+          </View>
+
+          <ScrollView contentContainerStyle={styles.modalContent}>
+            <View style={styles.toggleRowCard}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleLabel}>Anonymous Diagnostic Analytics</Text>
+                <Text style={styles.toggleSubtitle}>Helps our engineering team optimize offline scripture loading</Text>
+              </View>
+              <Switch
+                value={analyticsOptIn}
+                onValueChange={setAnalyticsOptIn}
+                trackColor={{ false: '#E5E5EA', true: '#111111' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={styles.toggleRowCard}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleLabel}>Incognito Apostolic Counsel</Text>
+                <Text style={styles.toggleSubtitle}>Conversation logs never touch external servers</Text>
+              </View>
+              <Switch
+                value={incognitoChat}
+                onValueChange={setIncognitoChat}
+                trackColor={{ false: '#E5E5EA', true: '#111111' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            {/* Clear History Button */}
+            <TouchableOpacity
+              style={[styles.secondaryActionButton, { borderColor: '#DC2626', marginTop: 24 }]}
+              onPress={handleClearHistory}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="trash-outline" size={17} color="#DC2626" style={{ marginRight: 8 }} />
+              <Text style={[styles.secondaryActionButtonText, { color: '#DC2626' }]}>
+                Clear All Chat History
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* ========================================================================= */}
+      {/* 10. DOCUMENTATION SUBMODAL */}
+      {/* ========================================================================= */}
       <Modal
         visible={activeSubModal === 'Documentation'}
         animationType="slide"
-        transparent={false}
+        presentationStyle="fullScreen"
         onRequestClose={() => setActiveSubModal(null)}
       >
         <SafeAreaView style={styles.subModalContainer}>
@@ -791,55 +1065,47 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               <Ionicons name="arrow-back" size={22} color="#111111" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Documentation</Text>
-            <View style={{ width: 40 }} />
+            <View style={{ width: 36 }} />
           </View>
 
           <ScrollView contentContainerStyle={styles.modalContent}>
-            {/* 1. Theological Grounding */}
-            <View style={styles.previewBox}>
-              <Text style={[styles.sectionHeading, { fontSize: 15, marginBottom: 6, marginTop: 0 }]}>Theological Grounding</Text>
-              <Text style={styles.previewVerse}>
-                BibleChat connects you with the wisdom of the Apostles through faithful biblical scholarship and thoughtful AI conversational design. All Scripture citations are grounded in the historical biblical text.
+            <View style={styles.docCard}>
+              <Text style={styles.docTitle}>Theological Foundation</Text>
+              <Text style={styles.docBody}>
+                Bible Chat App is grounded in orthodox biblical Christianity and historical creeds. Our companions (Simon Peter, John, Paul) offer counsel faithfully reflecting the inspired Word of God.
               </Text>
             </View>
 
-            {/* 2. AI Processing & Third-Party Disclosure (Apple 2026 AI Guideline) */}
-            <View style={styles.previewBox}>
-              <Text style={[styles.sectionHeading, { fontSize: 15, marginBottom: 6, marginTop: 0 }]}>AI Processing Transparency</Text>
-              <Text style={styles.previewVerse}>
-                Conversational companion responses are generated using secure server-side neural models. Your queries are encrypted in transit and never used to train public commercial AI models.
+            <View style={styles.docCard}>
+              <Text style={styles.docTitle}>Apostolic Council Personas</Text>
+              <Text style={styles.docBody}>
+                Each companion is modeled after the New Testament epistles and historical church accounts, providing scriptural guidance rooted in love, grace, and truth.
               </Text>
             </View>
 
-            {/* 3. Account Deletion & 90-Day Recovery Policy (Apple Guideline 5.1.1(v)) */}
-            <View style={styles.previewBox}>
-              <Text style={[styles.sectionHeading, { fontSize: 15, marginBottom: 6, marginTop: 0 }]}>90-Day Account Recovery Policy</Text>
-              <Text style={styles.previewVerse}>
-                When you delete your account, your local chats are wiped immediately. Your cloud profile is retained in a dormant state for 90 days. If you return within 90 days, you can restore your spiritual progress via verified email OTP. After 90 days, all cloud records are permanently destroyed.
-              </Text>
-            </View>
-
-            {/* 4. Terms of Service & Privacy Statement */}
-            <View style={styles.previewBox}>
-              <Text style={[styles.sectionHeading, { fontSize: 15, marginBottom: 6, marginTop: 0 }]}>Privacy & Terms of Service</Text>
-              <Text style={styles.previewVerse}>
-                By using BibleChat, you agree that this application is designed for spiritual companion reflection, bible study, and devotional growth. It does not replace professional pastoral counseling or medical care.
+            <View style={styles.docCard}>
+              <Text style={styles.docTitle}>Open Source & Scripture Permissions</Text>
+              <Text style={styles.docBody}>
+                Scripture quotations are taken from public domain and authorized digital collections. Offline translation databases are cached for seamless continuous study.
               </Text>
             </View>
           </ScrollView>
         </SafeAreaView>
       </Modal>
 
-      {/* Custom Action Confirmation Modal (No Native Alerts) */}
-      <CustomActionModal
-        visible={actionModal.visible}
-        type={actionModal.type}
-        title={actionModal.title}
-        message={actionModal.message}
-        confirmText={actionModal.confirmText}
-        isDestructive={actionModal.isDestructive}
-        onConfirm={actionModal.onConfirm}
-        onClose={() => setActionModal(prev => ({ ...prev, visible: false }))}
+      {/* Reusable Custom Confirmation Modal */}
+      <CustomConfirmationModal
+        visible={confirmModal.visible}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+        confirmStyle={confirmModal.confirmStyle}
+        icon={confirmModal.icon}
+        singleButton={confirmModal.singleButton}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, visible: false }))}
+        onClose={() => setConfirmModal(prev => ({ ...prev, visible: false }))}
       />
     </Modal>
   );
@@ -848,137 +1114,250 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
     justifyContent: 'flex-end',
   },
   sheetModal: {
-    backgroundColor: '#F8F8FA',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    maxHeight: '90%',
-    minHeight: '75%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 20,
+    maxHeight: '88%',
   },
   grabHandleWrap: {
     alignItems: 'center',
     paddingTop: 12,
-    paddingBottom: 6,
+    paddingBottom: 8,
   },
   grabHandleTouch: {
-    padding: 8,
+    padding: 6,
   },
   grabHandle: {
-    width: 72,
-    height: 3.5,
-    borderRadius: 2,
-    backgroundColor: '#111111',
+    width: 44,
+    height: 4.5,
+    borderRadius: 3,
+    backgroundColor: '#000000',
   },
   scrollArea: {
-    flex: 1,
+    paddingHorizontal: 20,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 6,
-    paddingBottom: 40,
+    paddingBottom: 30,
   },
   sectionHeading: {
     fontFamily: Typography.fontSansSemiBold,
-    fontSize: 13,
-    color: '#8E8E93',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 8,
+    fontSize: 14,
+    color: '#111111',
     marginTop: 18,
-    marginLeft: 4,
+    marginBottom: 10,
+    letterSpacing: -0.2,
   },
-  group: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    borderCurve: 'continuous',
+  // Toned-down soft card matching User Request (cleaner, lighter, not muddy grey)
+  softPillCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F4F4F6',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 8,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.04)',
-    overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.03,
-    shadowRadius: 14,
-    elevation: 2,
+    borderColor: '#ECECEE',
   },
-  pillRow: {
+  softPillText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 15,
+    color: '#111111',
+  },
+  // Soft coral/rose Log Out pill button matching Reference Screenshot
+  logoutBtnCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E8A7A7',
+    borderRadius: 14,
+    paddingVertical: 14,
+    marginTop: 18,
+    marginBottom: 10,
+  },
+  logoutBtnText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 15,
+    color: '#3B1818',
+  },
+  // Submodals
+  subModalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#F2F2F7',
-  },
-  pillRowSelected: {
-    backgroundColor: '#EFF6FF',
-  },
-  pillText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 15,
-    color: '#111111',
-  },
-  pillTextSelected: {
-    color: '#2563EB',
-    fontFamily: Typography.fontSansSemiBold,
-  },
-  subValueText: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 14,
-    color: '#8E8E93',
-  },
-  toggleTextWrap: {
-    flex: 1,
-    marginRight: 10,
-  },
-  pillSubText: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 12,
-    color: '#8E8E93',
-    marginTop: 2,
-  },
-  subModalContainer: {
-    flex: 1,
-    backgroundColor: '#F8F8FA',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-    backgroundColor: '#FFFFFF',
+    borderBottomColor: '#F3F4F6',
   },
   modalBackBtn: {
     padding: 6,
   },
   modalTitle: {
-    fontFamily: Typography.fontSerif,
-    fontSize: 20,
-    color: '#111111',
-  },
-  modalSaveBtn: {
-    backgroundColor: '#2563EB',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  modalSaveBtnText: {
     fontFamily: Typography.fontSansSemiBold,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: 18,
+    color: '#111111',
   },
   modalContent: {
     padding: 20,
+    paddingBottom: 50,
+  },
+  subSectionTitle: {
+    fontFamily: Typography.fontSansBold,
+    fontSize: 15,
+    color: '#111111',
+    marginBottom: 6,
+  },
+  subSectionDescription: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 13,
+    color: '#6B7280',
+    lineHeight: 18,
+    marginBottom: 14,
+  },
+  // Toggle Row Card
+  toggleRowCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F7F7F8',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#EFEFF0',
+  },
+  toggleTextWrap: {
+    flex: 1,
+    marginRight: 14,
+  },
+  toggleLabel: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 14.5,
+    color: '#111111',
+  },
+  toggleSubtitle: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 12.5,
+    color: '#6B7280',
+    marginTop: 3,
+    lineHeight: 17,
+  },
+  // Radio Group & Buttons
+  radioGroupCard: {
+    backgroundColor: '#F7F7F8',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#EFEFF0',
+    overflow: 'hidden',
+  },
+  radioItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EFEFF0',
+  },
+  radioItemRowSelected: {
+    backgroundColor: '#FFFFFF',
+  },
+  radioItemTitle: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 14.5,
+    color: '#111111',
+  },
+  radioItemTitleSelected: {
+    fontFamily: Typography.fontSansSemiBold,
+    color: '#111111',
+  },
+  radioItemSub: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  radioOuterCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioOuterCircleActive: {
+    borderColor: '#111111',
+  },
+  radioInnerDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#111111',
+  },
+  // Loading Skeleton State
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 20,
+  },
+  skeletonPill: {
+    width: '90%',
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    marginBottom: 12,
+  },
+  // Account Card
+  accountCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F7F7F8',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#EFEFF0',
+  },
+  accountAvatarCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#111111',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accountAvatarText: {
+    fontFamily: Typography.fontSansBold,
+    fontSize: 18,
+    color: '#FFFFFF',
+  },
+  accountCardName: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 16,
+    color: '#111111',
+  },
+  accountCardEmail: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 2,
   },
   inputGroup: {
     marginBottom: 16,
@@ -990,130 +1369,107 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   inputField: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F7F7F8',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#EFEFF0',
     borderRadius: 12,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 12,
     fontFamily: Typography.fontSansRegular,
-    fontSize: 14,
+    fontSize: 14.5,
     color: '#111111',
   },
-  changePasswordBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#EFF6FF',
-    borderRadius: 12,
-    paddingVertical: 12,
-    marginTop: 6,
-  },
-  changePasswordBtnText: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 13.5,
-    color: '#2563EB',
-  },
-  savePasswordBtn: {
-    backgroundColor: '#2563EB',
+  primaryActionButton: {
+    backgroundColor: '#111111',
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: 10,
   },
-  savePasswordBtnText: {
+  primaryActionButtonText: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 14.5,
     color: '#FFFFFF',
   },
-  submitBtnDisabled: {
-    backgroundColor: '#9CA3AF',
-  },
-  previewBox: {
+  secondaryActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: '#E5E7EB',
+    borderRadius: 14,
+    paddingVertical: 13,
+    marginTop: 12,
   },
-  previewVerse: {
-    fontFamily: Typography.fontSansRegular,
+  secondaryActionButtonText: {
+    fontFamily: Typography.fontSansSemiBold,
     fontSize: 14,
-    color: '#374151',
-    lineHeight: 22,
-  },
-  privacyCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    marginBottom: 12,
-  },
-  privacyIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#EFF6FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  privacyCardTitle: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 15,
-    color: '#111827',
-    marginBottom: 4,
-  },
-  privacyCardBody: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 13,
-    color: '#6B7280',
-    lineHeight: 18,
-  },
-  backupBox: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    marginBottom: 12,
-  },
-  backupBoxTitle: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 15,
-    color: '#111827',
-    marginBottom: 4,
-  },
-  backupBoxBody: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 13,
-    color: '#6B7280',
-    lineHeight: 18,
-  },
-  optionPill: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    backgroundColor: '#F6F6F6',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E2E2',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  optionPillActive: {
-    backgroundColor: '#ECECEC',
-    borderColor: '#111111',
-  },
-  optionPillText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 12.5,
-    color: '#777777',
-  },
-  optionPillTextActive: {
-    fontFamily: Typography.fontSansSemiBold,
     color: '#111111',
   },
+  previewBox: {
+    backgroundColor: '#F7F7F8',
+    borderRadius: 14,
+    padding: 16,
+    marginVertical: 16,
+    borderWidth: 1,
+    borderColor: '#EFEFF0',
+  },
+  previewVerse: {
+    fontFamily: Typography.fontSerif,
+    color: '#111111',
+    textAlign: 'center',
+  },
+  deviceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F7F7F8',
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#EFEFF0',
+    marginBottom: 16,
+  },
+  deviceIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#EFEFF0',
+  },
+  deviceName: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 15,
+    color: '#111111',
+  },
+  deviceStatus: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 12.5,
+    color: '#059669',
+    marginTop: 2,
+  },
+  docCard: {
+    backgroundColor: '#F7F7F8',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#EFEFF0',
+  },
+  docTitle: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 15,
+    color: '#111111',
+    marginBottom: 6,
+  },
+  docBody: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 13.5,
+    color: '#4B5563',
+    lineHeight: 20,
+  }
 });
