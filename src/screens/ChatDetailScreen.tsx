@@ -362,7 +362,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
 
                       {isPlayingThis && (
                         <View style={styles.playingIndicatorBadge}>
-                          <Ionicons name="volume-high" size={12} color="#2563EB" style={{ marginRight: 3 }} />
+                          <Ionicons name="volume-high" size={12} color="#8B1E1E" style={{ marginRight: 3 }} />
                           <Text style={styles.playingIndicatorText}>Playing</Text>
                         </View>
                       )}
@@ -457,9 +457,9 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
                     <Ionicons
                       name={playingMessageId === actionMessage?.id ? 'pause' : 'volume-high-outline'}
                       size={18}
-                      color={playingMessageId === actionMessage?.id ? '#2563EB' : '#111111'}
+                      color={playingMessageId === actionMessage?.id ? '#8B1E1E' : '#111111'}
                     />
-                    <Text style={[styles.pillActionLabel, playingMessageId === actionMessage?.id && { color: '#2563EB' }]}>
+                    <Text style={[styles.pillActionLabel, playingMessageId === actionMessage?.id && { color: '#8B1E1E' }]}>
                       {playingMessageId === actionMessage?.id ? 'Pause' : 'Read'}
                     </Text>
                   </TouchableOpacity>
@@ -738,7 +738,7 @@ const styles = StyleSheet.create({
   playingIndicatorText: {
     fontFamily: Typography.fontSansMedium,
     fontSize: 10.5,
-    color: '#2563EB',
+    color: '#8B1E1E',
   },
   actionModalBackdrop: {
     flex: 1,

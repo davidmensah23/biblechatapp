@@ -240,7 +240,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ onAskApost
             <Ionicons
               name={isPlayingAudio ? 'volume-high' : 'volume-medium-outline'}
               size={23}
-              color={isPlayingAudio ? '#2563EB' : Colors.textPrimary}
+              color={isPlayingAudio ? '#8B1E1E' : Colors.textPrimary}
             />
           </TouchableOpacity>
 
@@ -320,7 +320,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ onAskApost
                     >
                       <Text style={styles.superscriptVerseNumber}>{v.verseNumber} </Text>
                       {hasNote && (
-                        <Ionicons name="document-text" size={11} color="#2563EB" style={{ marginRight: 3 }} />
+                        <Ionicons name="document-text" size={11} color="#8B1E1E" style={{ marginRight: 3 }} />
                       )}
                       {v.text}
                     </Text>

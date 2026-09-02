@@ -193,7 +193,7 @@ export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
                     <Ionicons
                       name={isSelected ? "radio-button-on" : "radio-button-off"}
                       size={20}
-                      color={isSelected ? "#2563EB" : "#9CA3AF"}
+                      color={isSelected ? "#8B1E1E" : "#9CA3AF"}
                     />
                   </TouchableOpacity>
                 );
@@ -236,7 +236,7 @@ export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
 
                     {isDownloading ? (
                       <View style={styles.downloadProgressWrap}>
-                        <ActivityIndicator size="small" color="#2563EB" />
+                        <ActivityIndicator size="small" color="#8B1E1E" />
                         <Text style={styles.progressPercentText}>{downloadProgress}%</Text>
                       </View>
                     ) : (
@@ -245,7 +245,7 @@ export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
                         onPress={() => handleDownload(item)}
                         activeOpacity={0.7}
                       >
-                        <Ionicons name="cloud-download-outline" size={16} color="#2563EB" style={{ marginRight: 4 }} />
+                        <Ionicons name="cloud-download-outline" size={16} color="#8B1E1E" style={{ marginRight: 4 }} />
                         <Text style={styles.downloadBtnText}>Save</Text>
                       </TouchableOpacity>
                     )}
@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
   },
   versionRowSelected: {
     borderWidth: 1.5,
-    borderColor: '#2563EB',
+    borderColor: '#8B1E1E',
     backgroundColor: '#E8E8EE',
   },
   versionInfo: {
@@ -401,10 +401,10 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   versionCodeSelected: {
-    color: '#2563EB',
+    color: '#8B1E1E',
   },
   activePill: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#8B1E1E',
     borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 1.5,
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
   downloadBtnText: {
     fontFamily: Typography.fontSansMedium,
     fontSize: 12,
-    color: '#2563EB',
+    color: '#8B1E1E',
   },
   downloadProgressWrap: {
     flexDirection: 'row',
@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
   progressPercentText: {
     fontFamily: Typography.fontSansMedium,
     fontSize: 12,
-    color: '#2563EB',
+    color: '#8B1E1E',
   },
   versionName: {
     fontFamily: Typography.fontSansRegular,

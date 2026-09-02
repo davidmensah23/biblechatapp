@@ -142,7 +142,7 @@ export const VerseActionSheet: React.FC<VerseActionSheetProps> = ({
               <Ionicons
                 name={hasNote ? 'document-text' : 'document-text-outline'}
                 size={20}
-                color={hasNote ? '#2563EB' : '#111111'}
+                color={hasNote ? '#8B1E1E' : '#111111'}
               />
             </View>
             <Text style={[styles.actionLabel, hasNote && styles.actionLabelActive]}>
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   actionLabelActive: {
-    color: '#2563EB',
+    color: '#8B1E1E',
     fontFamily: Typography.fontSansSemiBold,
   },
 });

@@ -27,8 +27,8 @@ export const PASTORAL_GUIDES: PastoralGuide[] = [
     subtitle: "Peace that surpasses human understanding",
     reflection: "I wrote these words while chained inside a Roman prison cell. Anxiety tells you that you are utterly alone and that everything hinges on your grip. But prayer is simply opening your white-knuckled fingers and placing the burden into the hands of the One who holds the stars.",
     guidedPrayer: "Father, my chest feels tight and my mind is racing ahead into tomorrow. I hand You the worries I cannot fix or control. Station Your supernatural peace as a guard around my heart right now. In Jesus’ name, Amen.",
-    color: "#2563EB",
-    accentBg: "#EFF6FF"
+    color: "#475569",
+    accentBg: "#F1F5F9"
   },
   {
     id: "failure",
@@ -102,7 +102,7 @@ export const PASTORAL_GUIDES: PastoralGuide[] = [
     subtitle: "Stepping into Kingdom alignment",
     reflection: "I sat in my tax collector booth counting Roman silver, rich in money but poor in spirit and despised by my neighbors. When Jesus looked at me and said 'Follow me,' I had to trade worldly certainty for a divine journey. Your calling is not the title on your desk; it is who you follow each morning.",
     guidedPrayer: "Heavenly Father, align my desires with Your kingdom. Free me from the exhausting treadmill of worldly validation. Show me the sacred work You have prepared for my hands today. Amen.",
-    color: "#0284C7",
-    accentBg: "#F0F9FF"
+    color: "#92400E",
+    accentBg: "#FEF3C7"
   }
 ];

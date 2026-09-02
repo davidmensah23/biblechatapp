@@ -155,7 +155,7 @@ export const DailyLiturgyModal: React.FC<DailyLiturgyModalProps> = ({
 
           {isPlayingAudio && (
             <View style={styles.playingWaveBadge}>
-              <Ionicons name="volume-high" size={15} color="#2563EB" />
+              <Ionicons name="volume-high" size={15} color="#8B1E1E" />
             </View>
           )}
         </TouchableOpacity>
@@ -206,9 +206,9 @@ export const DailyLiturgyModal: React.FC<DailyLiturgyModalProps> = ({
                 <Ionicons name="flame" size={16} color="#F97316" style={{ marginRight: 5 }} />
                 <Text style={styles.rewardPillText}>+1 Streak Day</Text>
               </View>
-              <View style={[styles.rewardPill, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
-                <Ionicons name="sparkles" size={15} color="#2563EB" style={{ marginRight: 5 }} />
-                <Text style={[styles.rewardPillText, { color: '#1E40AF' }]}>+25 Spiritual XP</Text>
+              <View style={[styles.rewardPill, { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' }]}>
+                <Ionicons name="sparkles" size={15} color="#D97706" style={{ marginRight: 5 }} />
+                <Text style={[styles.rewardPillText, { color: '#92400E' }]}>+25 Spiritual XP</Text>
               </View>
             </View>
 
@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   audioPlayBtnActive: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#8B1E1E',
   },
   audioInfo: {
     flex: 1,
