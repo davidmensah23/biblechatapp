@@ -135,7 +135,9 @@ export const signInWithYouVersion = async (): Promise<{
         fullName: currentProfile?.fullName || 'YouVersion Pilgrim',
         email: currentProfile?.email || 'youversion.user@bible.com',
         avatarUrl: currentProfile?.avatarUrl || '',
-        bio: 'Connected via YouVersion Bible Platform'
+        bio: 'Connected via YouVersion Bible Platform',
+        location: currentProfile?.location || 'Worldwide',
+        dateOfBirth: currentProfile?.dateOfBirth || ''
       };
 
       await saveUserProfile(updatedProfile);
