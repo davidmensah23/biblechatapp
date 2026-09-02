@@ -10,9 +10,7 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  Alert,
-  ScrollView,
-  Share
+  ScrollView
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -26,7 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
 import { ApostlePersona, ChatMessage, UserProfile } from '../types';
-import { fetchMessages, saveMessage, saveBookmark, fetchUserProfile } from '../services/database';
+import { fetchMessages, saveMessage, fetchUserProfile } from '../services/database';
 import { generateApostleReply } from '../services/groq';
 import { VoiceCallModal } from '../components/VoiceCallModal';
 import { FormattedMessageText } from '../components/FormattedMessageText';
@@ -35,7 +33,6 @@ import { splitIntoThoughtBubbles } from '../services/messageSplitter';
 import { calculateBubbleTypingDelay, calculateInitialContemplationDelay } from '../services/typingSpeed';
 import { AnimatedChatBubble } from '../components/AnimatedChatBubble';
 import { getContextualChips } from '../services/quickChips';
-import { speakApostleMessage, stopApostleSpeech } from '../services/speechService';
 
 interface ChatDetailScreenProps {
   apostle: ApostlePersona;
@@ -99,7 +96,6 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
   const [isLoading, setIsLoading] = useState(false);
   const [showCallModal, setShowCallModal] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   
   const flatListRef = useRef<FlatList>(null);
   const activeDispatchIdRef = useRef<number>(0);
@@ -110,9 +106,6 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
   useEffect(() => {
     loadChatHistory();
     loadProfileContext();
-    return () => {
-      stopApostleSpeech();
-    };
   }, [apostle.id]);
 
   const loadProfileContext = async () => {
@@ -240,44 +233,6 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
     handleSendText(inputText);
   };
 
-  const handleBookmark = async (msg: ChatMessage) => {
-    await saveBookmark({
-      id: `bm_${msg.id}`,
-      type: 'insight',
-      title: `${apostle.name}'s Insight`,
-      content: msg.content,
-      timestamp: Date.now()
-    });
-    Alert.alert('Saved', 'Added to your Bookmarks in Profile');
-  };
-
-  const handleToggleSpeak = async (msg: ChatMessage) => {
-    if (speakingMessageId === msg.id) {
-      stopApostleSpeech();
-      setSpeakingMessageId(null);
-    } else {
-      setSpeakingMessageId(msg.id);
-      await speakApostleMessage(
-        msg.id,
-        msg.content,
-        apostle.id,
-        () => setSpeakingMessageId(msg.id),
-        () => setSpeakingMessageId(null)
-      );
-    }
-  };
-
-  const handleShareMessage = async (msg: ChatMessage) => {
-    try {
-      await Share.share({
-        message: `"${msg.content}"\n\n— Apostle ${apostle.name} (Bible Chat App)`,
-        title: `Word from ${apostle.name}`
-      });
-    } catch (e) {
-      console.warn('Share error:', e);
-    }
-  };
-
   const lastAssistantMsg = [...messages].reverse().find(m => m.sender === 'assistant')?.content;
   const dynamicChips = getContextualChips(apostle.id, lastAssistantMsg);
 
@@ -335,40 +290,6 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
                       fontSize={15.5}
                     />
 
-                    {!isUser && (
-                      <View style={styles.bubbleActionRow}>
-                        {/* Audio Voice Readout */}
-                        <TouchableOpacity
-                          onPress={() => handleToggleSpeak(item)}
-                          style={styles.actionIconBtn}
-                          activeOpacity={0.7}
-                        >
-                          <Ionicons
-                            name={isSpeaking ? "volume-high" : "volume-medium-outline"}
-                            size={16}
-                            color={isSpeaking ? "#111111" : Colors.textMuted}
-                          />
-                        </TouchableOpacity>
-
-                        {/* Share Insight */}
-                        <TouchableOpacity
-                          onPress={() => handleShareMessage(item)}
-                          style={styles.actionIconBtn}
-                          activeOpacity={0.7}
-                        >
-                          <Ionicons name="share-outline" size={15} color={Colors.textMuted} />
-                        </TouchableOpacity>
-
-                        {/* Bookmark */}
-                        <TouchableOpacity
-                          onPress={() => handleBookmark(item)}
-                          style={styles.actionIconBtn}
-                          activeOpacity={0.7}
-                        >
-                          <Ionicons name="bookmark-outline" size={15} color={Colors.textMuted} />
-                        </TouchableOpacity>
-                      </View>
-                    )}
                   </View>
                 </AnimatedChatBubble>
               </View>
@@ -535,16 +456,6 @@ const styles = StyleSheet.create({
   assistantBubble: {
     backgroundColor: '#ECECEC',
     borderBottomLeftRadius: 4,
-  },
-  bubbleActionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    marginTop: 6,
-    gap: 8,
-  },
-  actionIconBtn: {
-    padding: 3,
   },
   typingContainer: {
     flexDirection: 'row',

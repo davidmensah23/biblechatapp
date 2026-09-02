@@ -275,9 +275,6 @@ export const GroupChatDetailScreen: React.FC<GroupChatDetailScreenProps> = ({ th
                     <Text style={[styles.apostleNameText, { color: accentColor }]}>
                       {item.apostleName || 'Apostle'}
                     </Text>
-                    <TouchableOpacity onPress={() => handleBookmark(item)} activeOpacity={0.6} style={{ marginLeft: 6 }}>
-                      <Ionicons name="bookmark-outline" size={13} color="#9CA3AF" />
-                    </TouchableOpacity>
                   </View>
                 )}
 
@@ -293,6 +290,7 @@ export const GroupChatDetailScreen: React.FC<GroupChatDetailScreenProps> = ({ th
 
                 {/* Message Text */}
                 <TouchableOpacity
+                  onPress={() => !isUser && handleSelectReply(item)}
                   onLongPress={() => handleSelectReply(item)}
                   activeOpacity={0.9}
                 >
@@ -300,18 +298,6 @@ export const GroupChatDetailScreen: React.FC<GroupChatDetailScreenProps> = ({ th
                     {item.content}
                   </Text>
                 </TouchableOpacity>
-
-                {/* Quick Reply Trigger Pill */}
-                {!isUser && (
-                  <TouchableOpacity
-                    style={styles.replyButtonPill}
-                    onPress={() => handleSelectReply(item)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="return-up-back" size={12} color="#9CA3AF" style={{ marginRight: 3 }} />
-                    <Text style={styles.replyButtonText}>Reply</Text>
-                  </TouchableOpacity>
-                )}
               </View>
             </View>
           );
