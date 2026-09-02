@@ -21,7 +21,14 @@ import { CircularRevealTransition } from './src/components/CircularRevealTransit
 import { ApostlePersona } from './src/types';
 import { GroupCouncilThread } from './src/types/groupChat';
 import { getDB, saveUserProfile, migrateGuestDataToUser } from './src/services/database';
-import { supabase, fetchRemoteProfile, signOutUser, handleAuthDeepLink } from './src/services/supabase';
+import {
+  supabase,
+  fetchRemoteProfile,
+  signOutUser,
+  handleAuthDeepLink,
+  setHasCompletedOnboarding,
+  getHasCompletedOnboarding
+} from './src/services/supabase';
 import { initializePushNotifications } from './src/services/pushNotificationService';
 import * as Linking from 'expo-linking';
 import { PrivacyOnboardingModal } from './src/components/PrivacyOnboardingModal';
@@ -29,7 +36,7 @@ import { initReferralsTable, extractReferralFromUrl, claimReferralCode } from '.
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-type AppStage = 'onboarding' | 'auth' | 'main';
+type AppStage = 'onboarding' | 'auth' | 'main' | 'checking';
 
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({
@@ -42,7 +49,7 @@ export default function App() {
     Poppins_700Bold
   });
 
-  const [appStage, setAppStage] = useState<AppStage>('onboarding');
+  const [appStage, setAppStage] = useState<AppStage>('checking');
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [isRevealing, setIsRevealing] = useState<boolean>(false);
   const [revealCoords, setRevealCoords] = useState<{ x: number; y: number }>({
@@ -58,6 +65,8 @@ export default function App() {
   const [showPrivacyNotice, setShowPrivacyNotice] = useState<boolean>(false);
 
   useEffect(() => {
+    let isMounted = true;
+
     // Initialize Database, Push Notifications & Referral System
     getDB().catch(console.error);
     initializePushNotifications().catch(console.error);
@@ -80,22 +89,41 @@ export default function App() {
       if (event.url) processDeepLink(event.url);
     });
 
-    // Check existing Supabase session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setAppStage('main');
-        migrateGuestDataToUser(session.user.id);
-        fetchRemoteProfile(session.user.id).then((profile) => {
-          if (profile) saveUserProfile(profile);
-        });
+    // Check existing Supabase session or persistent user state
+    const verifyUserSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          if (isMounted) setAppStage('main');
+          await setHasCompletedOnboarding(true);
+          migrateGuestDataToUser(session.user.id);
+          fetchRemoteProfile(session.user.id).then((profile) => {
+            if (profile) saveUserProfile(profile);
+          });
+          return;
+        }
+
+        const hasCompleted = await getHasCompletedOnboarding();
+        if (hasCompleted) {
+          if (isMounted) setAppStage('main');
+          return;
+        }
+
+        if (isMounted) setAppStage('onboarding');
+      } catch (e) {
+        console.warn('verifyUserSession error:', e);
+        if (isMounted) setAppStage('onboarding');
       }
-    });
+    };
+
+    verifyUserSession();
 
     // Listen to Supabase auth events
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         setAppStage('main');
         setShowAuthModal(false);
+        setHasCompletedOnboarding(true);
         migrateGuestDataToUser(session.user.id);
         fetchRemoteProfile(session.user.id).then((profile) => {
           if (profile) saveUserProfile(profile);
@@ -109,6 +137,7 @@ export default function App() {
     }, 600);
 
     return () => {
+      isMounted = false;
       linkSubscription.remove();
       subscription.unsubscribe();
       clearTimeout(timer);
@@ -190,8 +219,8 @@ export default function App() {
     setCurrentView('main');
   };
 
-  // If fonts are still loading and timeout hasn't fired yet, show a dark container
-  if (!fontsLoaded && !fontError && !forceRender) {
+  // If fonts are still loading or session check in progress, show a dark container
+  if ((!fontsLoaded && !fontError && !forceRender) || appStage === 'checking') {
     return (
       <View style={styles.darkBackground}>
         <StatusBar barStyle="light-content" backgroundColor="#0B0B0B" />
@@ -222,10 +251,12 @@ export default function App() {
           <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
           <AuthScreen
             onAuthSuccess={() => {
+              setHasCompletedOnboarding(true);
               setAppStage('main');
               setShowPrivacyNotice(true);
             }}
             onSkip={() => {
+              setHasCompletedOnboarding(true);
               setAppStage('main');
               setShowPrivacyNotice(true);
             }}
@@ -304,7 +335,10 @@ export default function App() {
             <View style={styles.flexOne}>
               <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
               <AuthScreen
-                onAuthSuccess={() => setShowAuthModal(false)}
+                onAuthSuccess={() => {
+                  setHasCompletedOnboarding(true);
+                  setShowAuthModal(false);
+                }}
                 onSkip={() => setShowAuthModal(false)}
               />
             </View>

@@ -68,6 +68,39 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 });
 
+const ONBOARDING_COMPLETED_KEY = 'akorno_onboarding_completed_state_v1';
+
+export const setHasCompletedOnboarding = async (completed: boolean): Promise<void> => {
+  try {
+    if (Platform.OS === 'web') {
+      if (typeof localStorage !== 'undefined') {
+        if (completed) localStorage.setItem(ONBOARDING_COMPLETED_KEY, 'true');
+        else localStorage.removeItem(ONBOARDING_COMPLETED_KEY);
+      }
+      return;
+    }
+    if (completed) {
+      await SecureStore.setItemAsync(ONBOARDING_COMPLETED_KEY, 'true');
+    } else {
+      await SecureStore.deleteItemAsync(ONBOARDING_COMPLETED_KEY);
+    }
+  } catch (e) {
+    console.warn('setHasCompletedOnboarding error:', e);
+  }
+};
+
+export const getHasCompletedOnboarding = async (): Promise<boolean> => {
+  try {
+    if (Platform.OS === 'web') {
+      return typeof localStorage !== 'undefined' ? localStorage.getItem(ONBOARDING_COMPLETED_KEY) === 'true' : false;
+    }
+    const val = await SecureStore.getItemAsync(ONBOARDING_COMPLETED_KEY);
+    return val === 'true';
+  } catch (e) {
+    return false;
+  }
+};
+
 export const DEFAULT_PROFILE: UserProfile = {
   fullName: 'Seeker',
   email: 'seeker@akorno.app',
@@ -367,6 +400,7 @@ export const handleAuthDeepLink = async (url: string | null): Promise<void> => {
 // Sign Out
 export const signOutUser = async (): Promise<{ error: Error | null }> => {
   try {
+    await setHasCompletedOnboarding(false);
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
     return { error: null };
