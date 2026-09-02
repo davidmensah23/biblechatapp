@@ -82,6 +82,12 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ onAskApost
       ]);
       setChapterHighlights(hlMap);
       setChapterNotes(noteMap);
+
+      // Background pre-fetch adjacent chapters for seamless reading & automatic offline caching
+      setTimeout(() => {
+        if (c > 1) fetchChapter(b, c - 1, t);
+        fetchChapter(b, c + 1, t);
+      }, 1200);
     } catch (e) {
       console.warn('Error loading chapter:', e);
     } finally {
@@ -526,14 +532,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   heroChapterNumber: {
-    fontFamily: Typography.fontSerif,
+    fontFamily: Typography.fontYouVersionSerifBold,
     fontSize: 76,
     color: Colors.textPrimary,
     lineHeight: 84,
     marginVertical: 2,
   },
   heroSectionTitle: {
-    fontFamily: Typography.fontSerifItalic,
+    fontFamily: Typography.fontYouVersionSerifItalic,
     fontSize: 22,
     color: Colors.textPrimary,
     textAlign: 'center',
@@ -558,7 +564,7 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
   },
   verseContentText: {
-    fontFamily: Typography.fontSerifRegular,
+    fontFamily: Typography.fontYouVersionSerif,
     color: '#1F2937',
     letterSpacing: 0.15,
   },

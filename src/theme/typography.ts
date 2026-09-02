@@ -1,4 +1,9 @@
 export const Typography = {
+  // YouVersion Official Typography (Untitled Serif)
+  fontYouVersionSerif: 'UntitledSerif-Regular',
+  fontYouVersionSerifBold: 'UntitledSerif-Bold',
+  fontYouVersionSerifItalic: 'UntitledSerif-Italic',
+
   // YouVersion Editorial Scripture Reading Serif (Literata)
   fontSerif: 'Literata_600SemiBold',
   fontSerifBold: 'Literata_700Bold',

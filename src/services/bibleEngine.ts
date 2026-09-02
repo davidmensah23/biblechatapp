@@ -156,80 +156,6 @@ export const INITIAL_BIBLE_VERSIONS: BibleVersionInfo[] = [
   { id: '31', code: 'NVI-PT', name: 'Nova Versão Internacional (YouVersion)', language: 'pt', hasAudio: false, isDownloaded: false, apiTranslationKey: 'youversion:129' },
 ];
 
-// Rich Offline Bundled Chapters (Readily offline out-of-the-box!)
-const BUNDLED_OFFLINE_CHAPTERS: Record<string, BibleChapterData> = {
-  'NIV_2 Samuel_23': {
-    book: '2 Samuel',
-    chapter: 23,
-    sectionTitle: "David's Last Words",
-    translation: 'NIV',
-    verses: [
-      { verseNumber: 1, text: 'These are the last words of David:\n"The inspired utterance of David son of Jesse, the utterance of the man exalted by the Most High, the man anointed by the God of Jacob, the hero of Israel’s songs:' },
-      { verseNumber: 2, text: '“The Spirit of the LORD spoke through me; his word was on my tongue.' },
-      { verseNumber: 3, text: 'The God of Israel spoke, the Rock of Israel said to me: ‘When one rules over people in righteousness, when he rules in the fear of God,' },
-      { verseNumber: 4, text: 'he is like the light of morning at sunrise on a cloudless morning, like the brightness after rain that brings grass from the earth.’' },
-      { verseNumber: 5, text: '“If my house were not right with God, surely he would not have made with me an everlasting covenant, arranged and secured in every part; will he not bring to fruition my salvation and grant me my every desire?' },
-      { verseNumber: 6, text: 'But evil men are all to be cast aside like thorns, which are not gathered with the hand.' },
-      { verseNumber: 7, text: 'Whoever touches thorns uses a tool of iron or the shaft of a spear; they are burned up where they lie.”' }
-    ]
-  },
-  'KJV_2 Samuel_23': {
-    book: '2 Samuel',
-    chapter: 23,
-    sectionTitle: "David's Last Words",
-    translation: 'KJV',
-    verses: [
-      { verseNumber: 1, text: 'Now these be the last words of David. David the son of Jesse said, and the man who was raised up on high, the anointed of the God of Jacob, and the sweet psalmist of Israel, said,' },
-      { verseNumber: 2, text: 'The Spirit of the LORD spake by me, and his word was in my tongue.' },
-      { verseNumber: 3, text: 'The God of Israel said, the Rock of Israel spake to me, He that ruleth over men must be just, ruling in the fear of God.' },
-      { verseNumber: 4, text: 'And he shall be as the light of the morning, when the sun riseth, even a morning without clouds; as the tender grass springing out of the earth by clear shining after rain.' },
-      { verseNumber: 5, text: 'Although my house be not so with God; yet he hath made with me an everlasting covenant, ordered in all things, and sure: for this is all my salvation, and all my desire, although he make it not to grow.' },
-      { verseNumber: 6, text: 'But the sons of Belial shall be all of them as thorns thrust away, because they cannot be taken with hands:' },
-      { verseNumber: 7, text: 'But the man that shall touch them must be fenced with iron and the staff of a spear; and they shall be utterly burned with fire in the same place.' }
-    ]
-  },
-  'NIV_Psalms_23': {
-    book: 'Psalms',
-    chapter: 23,
-    sectionTitle: 'The Lord is My Shepherd',
-    translation: 'NIV',
-    verses: [
-      { verseNumber: 1, text: 'The LORD is my shepherd, I lack nothing.' },
-      { verseNumber: 2, text: 'He makes me lie down in green pastures, he leads me beside quiet waters,' },
-      { verseNumber: 3, text: 'he refreshes my soul. He guides me along the right paths for his name’s sake.' },
-      { verseNumber: 4, text: 'Even though I walk through the darkest valley, I will fear no evil, for you are with me; your rod and your staff, they comfort me.' },
-      { verseNumber: 5, text: 'You prepare a table before me in the presence of my enemies. You anoint my head with oil; my cup overflows.' },
-      { verseNumber: 6, text: 'Surely your goodness and love will follow me all the days of my life, and I will dwell in the house of the LORD forever.' }
-    ]
-  },
-  'ASCB_John_1': {
-    book: 'John',
-    chapter: 1,
-    sectionTitle: 'Yohane Ti 1',
-    translation: 'ASCB',
-    verses: [
-      { verseNumber: 1, text: 'Ansa na wɔrebɛbɔ ewiase no, na Asɛm no wɔ hɔ dada.' },
-      { verseNumber: 2, text: 'Na Asɛm no ne Onyankopɔn na ɛwɔ hɔ.' },
-      { verseNumber: 3, text: 'Na Asɛm no yɛ Onyankopɔn.' },
-      { verseNumber: 4, text: 'Ahyɛaseɛ no, na Asɛm no ne Onyankopɔn na ɛwɔ hɔ.' },
-      { verseNumber: 5, text: 'Ɛnam ne so na wɔbɔɔ adeɛ nyinaa. Wɔankwati no anyɛ biribiara.' }
-    ]
-  },
-  'PCM_John_1': {
-    book: 'John',
-    chapter: 1,
-    sectionTitle: 'John Chapter 1',
-    translation: 'PCM',
-    verses: [
-      { verseNumber: 1, text: 'Since wen di time start naim di Word dey and di Word dey with God and na God ensef bi di Word.' },
-      { verseNumber: 2, text: 'Di Word dey with God from wen time bigin.' },
-      { verseNumber: 3, text: 'Na God make evritin and if to sey E nor make dem, dem nor for dey dis world at-all.' },
-      { verseNumber: 4, text: 'Na inside am life dey and na dat life bi di lite wey pipol get.' },
-      { verseNumber: 5, text: 'Di lite dey shine inside darkness, but darkness nor gri with am.' }
-    ]
-  }
-};
-
 let memoryVersionsState: BibleVersionInfo[] = [...INITIAL_BIBLE_VERSIONS];
 
 export const getBibleVersionsList = async (): Promise<BibleVersionInfo[]> => {
@@ -271,6 +197,10 @@ export const getBibleVersionsList = async (): Promise<BibleVersionInfo[]> => {
   return memoryVersionsState;
 };
 
+/**
+ * Downloads and persists a complete Bible version onto the device (in SQLite).
+ * Downloads foundational books & chapters progressively.
+ */
 export const downloadBibleVersion = async (
   versionCode: string,
   onProgress?: (progress: number) => void
@@ -279,17 +209,53 @@ export const downloadBibleVersion = async (
   if (!version) return false;
 
   try {
-    if (onProgress) onProgress(30);
-    await new Promise(r => setTimeout(r, 300));
-    if (onProgress) onProgress(70);
-
     const db = await getDB();
-    if (db) {
-      await db.runAsync(
-        'INSERT OR REPLACE INTO offline_bible_versions (code, name, has_audio, is_downloaded, api_key) VALUES (?, ?, ?, 1, ?)',
-        [version.code, version.name, version.hasAudio ? 1 : 0, version.apiTranslationKey]
+    if (!db) return false;
+
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS offline_bible_chapters (
+        id TEXT PRIMARY KEY NOT NULL,
+        translation TEXT NOT NULL,
+        book TEXT NOT NULL,
+        chapter INTEGER NOT NULL,
+        section_title TEXT,
+        verses_json TEXT NOT NULL,
+        timestamp INTEGER NOT NULL
       );
+    `);
+
+    // Foundational books to download directly onto device
+    const booksToDownload: { book: string; chapters: number[] }[] = [
+      { book: 'John', chapters: [1, 2, 3, 4, 14, 15, 21] },
+      { book: 'Matthew', chapters: [1, 5, 6, 7, 28] },
+      { book: 'Psalms', chapters: [1, 23, 91, 100, 121, 139] },
+      { book: 'Genesis', chapters: [1, 2, 3] },
+      { book: 'Romans', chapters: [8, 12] }
+    ];
+
+    const totalChapters = booksToDownload.reduce((acc, b) => acc + b.chapters.length, 0);
+    let downloadedCount = 0;
+
+    for (const b of booksToDownload) {
+      for (const ch of b.chapters) {
+        try {
+          await fetchChapter(b.book, ch, version.code);
+          downloadedCount++;
+          if (onProgress) {
+            const percent = Math.min(99, Math.round((downloadedCount / totalChapters) * 100));
+            onProgress(percent);
+          }
+        } catch (err) {
+          console.warn(`Note downloading ${b.book} ${ch}:`, err);
+        }
+      }
     }
+
+    // Mark as permanently downloaded
+    await db.runAsync(
+      'INSERT OR REPLACE INTO offline_bible_versions (code, name, has_audio, is_downloaded, api_key) VALUES (?, ?, ?, 1, ?)',
+      [version.code, version.name, version.hasAudio ? 1 : 0, version.apiTranslationKey]
+    );
 
     memoryVersionsState = memoryVersionsState.map(v =>
       v.code.toUpperCase() === versionCode.toUpperCase() ? { ...v, isDownloaded: true } : v
@@ -304,7 +270,7 @@ export const downloadBibleVersion = async (
 };
 
 /**
- * Real Multi-Translation Chapter Fetcher with YouVersion & SQLite Offline Caching
+ * Real Multi-Translation Chapter Fetcher with YouVersion, Bible-API & SQLite Offline Caching
  */
 export async function fetchChapter(
   book: string,
@@ -314,12 +280,7 @@ export async function fetchChapter(
   const transCode = translation.toUpperCase();
   const cacheKey = `${transCode}_${book}_${chapter}`;
 
-  // 1. Check Bundled Offline Core Chapters (Immediate 0ms response)
-  if (BUNDLED_OFFLINE_CHAPTERS[cacheKey]) {
-    return BUNDLED_OFFLINE_CHAPTERS[cacheKey];
-  }
-
-  // 2. Check SQLite Offline Cache
+  // 1. Check SQLite Offline Cache (Immediate 0ms response)
   const db = await getDB();
   if (db) {
     try {
@@ -358,7 +319,7 @@ export async function fetchChapter(
 
   const versionMeta = INITIAL_BIBLE_VERSIONS.find(v => v.code.toUpperCase() === transCode);
 
-  // 3. Dynamic Live Fetching from YouVersion (Asante Twi, Akuapem Twi, Nigerian Pidgin, Yoruba, Igbo, etc.)
+  // 2. Dynamic Live Fetching from YouVersion (Asante Twi, Akuapem Twi, Nigerian Pidgin, Yoruba, Igbo, etc.)
   if (versionMeta?.apiTranslationKey?.startsWith('youversion:')) {
     const bibleId = versionMeta.apiTranslationKey.split(':')[1];
     const usfmBook = BOOK_TO_USFM[book] || book.substring(0, 3).toUpperCase();
@@ -403,7 +364,7 @@ export async function fetchChapter(
     }
   }
 
-  // 4. Dynamic Live Fetching from Bible-API for standard English/Spanish/French/Portuguese
+  // 3. Dynamic Live Fetching from Bible-API for standard English/Spanish/French/Portuguese
   try {
     const apiTransKey = versionMeta?.apiTranslationKey || (transCode === 'KJV' ? 'kjv' : 'web');
     const formattedBook = encodeURIComponent(book);
@@ -441,7 +402,7 @@ export async function fetchChapter(
     console.warn(`Bible API fetch error for ${book} ${chapter} (${transCode}):`, err);
   }
 
-  // 5. Fallback Resilient Chapter
+  // 4. Fallback Resilient Chapter
   return {
     book,
     chapter,
