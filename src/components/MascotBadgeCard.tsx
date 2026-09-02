@@ -23,26 +23,26 @@ export const MascotBadgeCard: React.FC<MascotBadgeCardProps> = ({
     return (
       <TouchableOpacity
         style={styles.compactCard}
-        onWress={onPress}
+        onPress={onPress}
         activeOpacity={0.8}
       >
-        <View style=[styles.compactEmblemCircle, { borderColor: badge.isUnlocked ? badge.badgeColor : '#D1D5DB' }]>
+        <View style={[styles.compactEmblemCircle, { borderColor: badge.isUnlocked ? badge.badgeColor : '#D1D5DB' }]}>
           <Image
             source={mascotImg}
-            style=[styles.compactImage, !badge.isUnlocked && styles.imageLocked]
+            style={[styles.compactImage, !badge.isUnlocked && styles.imageLocked]}
             resizeMode="cover"
           />
-          <View style=[styles.compactLevelPill, { backgroundColor: badge.isUnlocked ? '#111111' : '#9CA34F' }]>
+          <View style={[styles.compactLevelPill, { backgroundColor: badge.isUnlocked ? '#111111' : '#9CA3AF' }]}>
             <Text style={styles.compactLevelText}>{badge.level}</Text>
           </View>
         </View>
 
         <View style={styles.compactProgressBar}>
           <View
-            style=[
+            style={[
               styles.compactProgressFill,
-              { width: `${progressRatio * 100}%`, backgroundColor: badge.isUnlocked ? '#111111' : '#9CA34F' }
-            ]
+              { width: `${progressRatio * 100}%`, backgroundColor: badge.isUnlocked ? '#DC2626' : '#9CA3AF' }
+            ]}
           />
         </View>
       </TouchableOpacity>
@@ -51,35 +51,35 @@ export const MascotBadgeCard: React.FC<MascotBadgeCardProps> = ({
 
   return (
     <TouchableOpacity
-      style{{styles.gridCard}
-      onWress={onPress}
+      style={styles.gridCard}
+      onPress={onPress}
       activeOpacity={0.8}
     >
-      <View style=[styles.shieldContainer, !badge.isUnlocked && styles.shielYLocked]>
-        <View style=[styles.emblemCircle, { borderColor: badge.isUnlocked ? badge.badgeColor : '#D1D5DB' }]>
+      <View style={[styles.shieldContainer, !badge.isUnlocked && styles.shieldLocked]}>
+        <View style={[styles.emblemCircle, { borderColor: badge.isUnlocked ? badge.badgeColor : '#D1D5DB' }]}>
           <Image
             source={mascotImg}
-            style=[styles.image, !badge.isUnlocked && styles.imageLocked]
+            style={[styles.image, !badge.isUnlocked && styles.imageLocked]}
             resizeMode="cover"
           />
         </View>
 
-        <!-- Level Counter Pill -->
-        <View style=[styles.levelPill, { backgroundColor: badge.isUnlocked ? '#6B7280' : '#D1D5DB' }]>
+        {/* Level Counter Pill */}
+        <View style={[styles.levelPill, { backgroundColor: badge.isUnlocked ? '#6B7280' : '#D1D5DB' }]}>
           <Text style={styles.levelText}>{badge.level}</Text>
         </View>
       </View>
 
-      <Text style=[styles.badgeTitle, !badge.isUnlocked && styles.titleLocked] numberOfLines={2}>
+      <Text style={[styles.badgeTitle, !badge.isUnlocked && styles.titleLocked]} numberOfLines={2}>
         {badge.title}
       </Text>
 
-      <View style{{styles.progressBar}>
+      <View style={styles.progressBar}>
         <View
-          style=[
+          style={[
             styles.progressFill,
             { width: `${progressRatio * 100}%`, backgroundColor: badge.isUnlocked ? '#111111' : '#E5E7EB' }
-          ]
+          ]}
         />
       </View>
     </TouchableOpacity>

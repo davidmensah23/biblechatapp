@@ -412,7 +412,6 @@ export const getSpiritualGrowthProfile = async (): Promise<SpiritualGrowthProfil
     ]
   };
 };
-};
 
 export const awardGraceXp = async (points: number, reason: string): Promise<number> => {
   await recordDailyActivity('app_open', points);
