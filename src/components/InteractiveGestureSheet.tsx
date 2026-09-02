@@ -6,13 +6,18 @@ import {
   Dimensions,
   Animated,
   PanResponder,
+  TouchableOpacity,
   TouchableWithoutFeedback,
+  Easing,
   Platform,
   BackHandler
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Premium Easy-Ease cubic bezier curve (smooth acceleration, organic deceleration)
+const EASY_EASE_CURVE = Easing.bezier(0.25, 1, 0.5, 1);
 
 interface InteractiveGestureSheetProps {
   visible: boolean;
@@ -54,14 +59,15 @@ export const InteractiveGestureSheet: React.FC<InteractiveGestureSheetProps> = (
       Animated.parallel([
         Animated.timing(backdropOpacity, {
           toValue: 1,
-          duration: 350,
+          duration: 280,
+          easing: EASY_EASE_CURVE,
           useNativeDriver: true,
         }),
         Animated.spring(translateY, {
           toValue: targetY,
-          damping: 26,
-          stiffness: 220,
-          mass: 0.9,
+          damping: 24,
+          stiffness: 240,
+          mass: 0.8,
           useNativeDriver: true,
         })
       ]).start();
@@ -81,15 +87,21 @@ export const InteractiveGestureSheet: React.FC<InteractiveGestureSheetProps> = (
   }, [modalVisible]);
 
   const dismissSheet = () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (e) {}
+
     Animated.parallel([
       Animated.timing(backdropOpacity, {
         toValue: 0,
-        duration: 250,
+        duration: 220,
+        easing: EASY_EASE_CURVE,
         useNativeDriver: true,
       }),
       Animated.timing(translateY, {
         toValue: CLOSED_Y,
-        duration: 280,
+        duration: 240,
+        easing: EASY_EASE_CURVE,
         useNativeDriver: true,
       })
     ]).start(() => {
@@ -109,16 +121,19 @@ export const InteractiveGestureSheet: React.FC<InteractiveGestureSheetProps> = (
     Animated.spring(translateY, {
       toValue: targetY,
       damping: 24,
-      stiffness: 220,
+      stiffness: 260,
+      mass: 0.8,
       useNativeDriver: true,
     }).start();
   };
 
+  // Highly responsive, non-sticky PanResponder
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dy) > 4;
+        // Instant gesture capture on minor vertical move
+        return Math.abs(gestureState.dy) > 2;
       },
       onPanResponderGrant: () => {
         translateY.stopAnimation();
@@ -128,8 +143,9 @@ export const InteractiveGestureSheet: React.FC<InteractiveGestureSheetProps> = (
         const nextY = startY + gestureState.dy;
 
         if (nextY < FULL_Y) {
+          // Subtle rubber-band resistance when pulling above full height
           const overdrag = FULL_Y - nextY;
-          translateY.setValue(FULL_Y - Math.sqrt(overdrag) * 3);
+          translateY.setValue(FULL_Y - Math.sqrt(overdrag) * 2.5);
         } else {
           translateY.setValue(nextY);
         }
@@ -137,26 +153,29 @@ export const InteractiveGestureSheet: React.FC<InteractiveGestureSheetProps> = (
       onPanResponderRelease: (_, gestureState) => {
         const { dy, vy } = gestureState;
 
-        if (vy > 1.2 || (currentSnapRef.current === 'mid' && dy > 100)) {
+        // Fluid flick-down to dismiss (low velocity threshold, not sticky!)
+        if (vy > 0.35 || dy > 60) {
           dismissSheet();
           return;
         }
 
-        if (vy < -1.1 || dy < -90) {
+        // Quick flick-up to expand
+        if (vy < -0.35 || dy < -50) {
           snapTo('full');
           return;
         }
 
+        // Position-based snap
         if (currentSnapRef.current === 'full') {
-          if (dy > 120) {
+          if (dy > 80) {
             snapTo('mid');
           } else {
             snapTo('full');
           }
         } else {
-          if (dy > 80) {
+          if (dy > 45) {
             dismissSheet();
-          } else if (dy < -60) {
+          } else if (dy < -45) {
             snapTo('full');
           } else {
             snapTo('mid');
@@ -176,7 +195,12 @@ export const InteractiveGestureSheet: React.FC<InteractiveGestureSheetProps> = (
       onRequestClose={dismissSheet}
     >
       <View style={styles.modalRoot}>
-        <TouchableWithoutFeedback onPress={dismissSheet}>
+        {/* Full-screen backdrop: Tapping the empty space closes the sheet */}
+        <TouchableOpacity
+          style={StyleSheet.absoluteFillObject}
+          activeOpacity={1}
+          onPress={dismissSheet}
+        >
           <Animated.View
             style={[
               styles.backdrop,
@@ -185,8 +209,9 @@ export const InteractiveGestureSheet: React.FC<InteractiveGestureSheetProps> = (
               }
             ]}
           />
-        </TouchableWithoutFeedback>
+        </TouchableOpacity>
 
+        {/* Sliding Sheet Card */}
         <Animated.View
           style={[
             styles.sheetCard,
@@ -197,10 +222,12 @@ export const InteractiveGestureSheet: React.FC<InteractiveGestureSheetProps> = (
             containerStyle
           ]}
         >
+          {/* Draggable Header with Grab Bar */}
           <View style={styles.dragHeader} {...panResponder.panHandlers}>
             {showGrabBar && <View style={styles.grabBar} />}
           </View>
 
+          {/* Sheet Body Content */}
           <View style={styles.sheetContent}>
             {children}
           </View>
@@ -217,7 +244,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
   },
   sheetCard: {
     width: '100%',
@@ -227,19 +254,19 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.14,
     shadowRadius: 18,
     elevation: 12,
   },
   dragHeader: {
     width: '100%',
-    height: 32,
+    height: 38,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
   },
   grabBar: {
-    width: 40,
+    width: 44,
     height: 5,
     borderRadius: 2.5,
     backgroundColor: '#D1D5DB',
