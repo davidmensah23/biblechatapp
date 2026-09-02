@@ -394,18 +394,19 @@ const styles = StyleSheet.create({
   },
   personaName: {
     fontFamily: Typography.fontSansSemiBold,
-    fontSize: 15,
+    fontSize: 16,
     color: Colors.textPrimary,
   },
   timestamp: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 11.5,
+    fontSize: 12,
     color: Colors.textLight,
   },
   lastMessage: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 13,
+    fontSize: 14.5,
     color: Colors.textMuted,
+    lineHeight: 19,
   },
   councilCard: {
     backgroundColor: '#FFFFFF',
@@ -450,13 +451,14 @@ const styles = StyleSheet.create({
   },
   councilName: {
     fontFamily: Typography.fontSansSemiBold,
-    fontSize: 15,
+    fontSize: 16,
     color: '#111827',
   },
   councilTopic: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 12,
+    fontSize: 13.5,
     color: '#6B7280',
+    marginTop: 1,
   },
   councilDivider: {
     height: 1,
@@ -470,8 +472,9 @@ const styles = StyleSheet.create({
   councilLastMsg: {
     flex: 1,
     fontFamily: Typography.fontSansRegular,
-    fontSize: 12.5,
+    fontSize: 14,
     color: '#4B5563',
+    lineHeight: 19,
   },
   emptyState: {
     alignItems: 'center',

@@ -144,16 +144,16 @@ const styles = StyleSheet.create({
   },
   headlineText: {
     fontFamily: Typography.fontSerif,
-    fontSize: 22,
+    fontSize: 23,
     color: '#111827',
-    lineHeight: 28,
+    lineHeight: 29,
     marginBottom: 6,
   },
   subtitleText: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 13.5,
-    color: '#6B7280',
-    lineHeight: 20,
+    fontSize: 15,
+    color: '#555555',
+    lineHeight: 22,
     marginBottom: 16,
   },
   checkpointsWrap: {
@@ -180,15 +180,15 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   checkCircleCompleted: {
-    backgroundColor: '#059669',
+    backgroundColor: '#111111',
   },
   checkpointText: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 13,
-    color: '#374151',
+    fontSize: 14.5,
+    color: '#333333',
   },
   checkpointTextCompleted: {
-    color: '#059669',
+    color: '#111111',
     fontFamily: Typography.fontSansMedium,
   },
   actionRow: {

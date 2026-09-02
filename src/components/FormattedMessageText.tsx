@@ -12,11 +12,11 @@ interface FormattedMessageTextProps {
 export const FormattedMessageText: React.FC<FormattedMessageTextProps> = ({
   content,
   isUser,
-  fontSize = 15.5
+  fontSize = 16.5
 }) => {
   if (isUser) {
     return (
-      <Text style={[styles.userText, { fontSize, lineHeight: fontSize * 1.45 }]}>
+      <Text style={[styles.userText, { fontSize, lineHeight: fontSize * 1.48 }]}>
         {content}
       </Text>
     );

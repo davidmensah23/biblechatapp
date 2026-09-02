@@ -33,7 +33,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ onAskApost
   const [showBookPicker, setShowBookPicker] = useState(false);
   const [showVersionsModal, setShowVersionsModal] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [fontSize, setFontSize] = useState(16.5);
+  const [fontSize, setFontSize] = useState(17.5);
 
   const scrollViewRef = useRef<ScrollView>(null);
 

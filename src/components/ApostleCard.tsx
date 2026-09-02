@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
   },
   name: {
     fontFamily: Typography.fontSerifBold,
-    fontSize: 19,
+    fontSize: 20,
     letterSpacing: -0.5,
     color: '#111111',
     marginBottom: 5,
@@ -79,10 +79,10 @@ const styles = StyleSheet.create({
   },
   quote: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 10.5,
-    color: '#284682',
+    fontSize: 12.5,
+    color: '#555555',
     textAlign: 'center',
-    lineHeight: 14,
+    lineHeight: 17,
     paddingHorizontal: 4,
   }
 });

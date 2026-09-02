@@ -44,7 +44,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle }) => {
   }, []);
 
   useEffect(() => {
-    tabIndicatorOffset.value = withSpring(activeTab === 'forYou' ? 0 : 108, SpringConfigs.bouncy);
+    tabIndicatorOffset.value = withSpring(activeTab === 'forYou' ? 0 : 88, SpringConfigs.bouncy);
   }, [activeTab]);
 
   const animatedIndicatorStyle = useAnimatedStyle(() => ({
@@ -318,25 +318,25 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
-    width: 68,
-    height: 3.5,
-    backgroundColor: '#D92D20',
+    width: 54,
+    height: 3,
+    backgroundColor: '#111111',
     borderRadius: 2,
   },
   tabButton: {
-    paddingRight: 28,
+    paddingRight: 20,
     paddingVertical: 4,
   },
   tabText: {
     fontFamily: Typography.fontSerifBold,
-    fontSize: 32,
-    letterSpacing: -1.2,
+    fontSize: 22,
+    letterSpacing: -0.5,
   },
   tabTextActive: {
     color: '#111111',
   },
   tabTextInactive: {
-    color: '#A8A8B0',
+    color: '#9E9EA7',
   },
   notificationBtn: {
     width: 42,
@@ -393,20 +393,20 @@ const styles = StyleSheet.create({
   },
   apostleQuoteName: {
     fontFamily: Typography.fontSerifBold,
-    fontSize: 22,
-    letterSpacing: -0.6,
+    fontSize: 21,
+    letterSpacing: -0.5,
     color: '#111111',
   },
   apostleQuoteContext: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 11,
-    color: '#284682',
+    fontSize: 12,
+    color: '#555555',
     marginTop: 1,
   },
   apostleQuoteBody: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 13.5,
-    lineHeight: 20,
+    fontSize: 15.5,
+    lineHeight: 23,
     color: '#222222',
     marginBottom: 12,
   },

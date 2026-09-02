@@ -115,8 +115,8 @@ const styles = StyleSheet.create({
   },
   verseText: {
     fontFamily: Typography.fontSerifBold,
-    fontSize: 20,
-    lineHeight: 26,
+    fontSize: 22,
+    lineHeight: 29,
     letterSpacing: -0.5,
     color: '#111111',
     marginBottom: 14,
