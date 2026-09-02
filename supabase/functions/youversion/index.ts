@@ -21,6 +21,9 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     const action = url.searchParams.get("action") || "votd";
     const day = url.searchParams.get("day");
+    const bibleId = url.searchParams.get("bible_id") || "111"; // Default to NIV 2011
+    const passageId = url.searchParams.get("passage_id");
+    const language = url.searchParams.get("language") || "eng";
 
     let targetUrl = `${BASE_URL}/verse_of_the_days`;
 
@@ -35,10 +38,12 @@ Deno.serve(async (req: Request) => {
         const dayOfYear = Math.floor(diff / oneDay);
         targetUrl = `${BASE_URL}/verse_of_the_days/${dayOfYear}`;
       }
+    } else if (action === "passage" && passageId) {
+      targetUrl = `${BASE_URL}/bibles/${bibleId}/passages/${passageId}`;
+    } else if (action === "bibles") {
+      targetUrl = `${BASE_URL}/bibles?language_ranges[]=${language}`;
     } else if (action === "all_votd") {
       targetUrl = `${BASE_URL}/verse_of_the_days`;
-    } else if (action === "bibles") {
-      targetUrl = `${BASE_URL}/bibles`;
     }
 
     const resp = await fetch(targetUrl, {
@@ -50,6 +55,28 @@ Deno.serve(async (req: Request) => {
     });
 
     const data = await resp.json();
+
+    // Auto-enrich VOTD with full passage text
+    if ((action === "votd" || action === "today") && data?.passage_id) {
+      try {
+        const passageResp = await fetch(
+          `${BASE_URL}/bibles/${bibleId}/passages/${data.passage_id}`,
+          {
+            headers: {
+              "X-YVP-App-Key": YOUVERSION_API_KEY,
+              "User-Agent": "BibleChatApp/1.0",
+              "Accept": "application/json",
+            },
+          }
+        );
+        if (passageResp.ok) {
+          const passageData = await passageResp.json();
+          data.passage = passageData;
+        }
+      } catch (err) {
+        console.warn("Could not enrich VOTD with passage text:", err);
+      }
+    }
 
     return new Response(JSON.stringify({ success: true, data }), {
       status: resp.status,
