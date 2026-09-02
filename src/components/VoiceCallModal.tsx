@@ -4,13 +4,23 @@ import {
   View,
   Text,
   StyleSheet,
+  SafeAreaView,
   TouchableOpacity,
   TextInput,
   ScrollView,
+  Image,
   Dimensions,
   Platform,
   ActivityIndicator
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+  Easing
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Typography } from '../theme/typography';
@@ -18,25 +28,23 @@ import { ApostlePersona, ChatMessage } from '../types';
 import { playDeepgramSpeech, stopDeepgramSpeech } from '../services/deepgramVoices';
 import { startVoiceRecording, stopVoiceRecordingAndTranscribe, cancelVoiceRecording } from '../services/voiceTranscription';
 import { generateApostleReply } from '../services/groq';
-import { AstroidSpectrumVisualizer } from './AstroidSpectrumVisualizer';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface VoiceCallModalProps {
   visible: boolean;
   apostle: ApostlePersona;
-  durationMinutes?: number;
   onEndCall: () => void;
 }
 
 type CallState = 'connecting' | 'speaking' | 'listening' | 'recording' | 'thinking';
 
 const QUICK_PROMPTS = [
-  'Pray with me for strength today',
-  'What did Jesus teach about peace?',
+  'Pray with me for peace',
+  'A word of encouragement',
   'How do I overcome worry?',
-  'Share a story from your ministry',
-  'Give me a verse for encouragement'
+  'Tell me about walking with Jesus',
+  'Give me a verse for today'
 ];
 
 export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
@@ -46,12 +54,46 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
 }) => {
   const [callState, setCallState] = useState<CallState>('connecting');
   const [callDuration, setCallDuration] = useState(0);
-  const [captionText, setCaptionText] = useState<string>('Connecting call...');
+  const [captionText, setCaptionText] = useState<string>('Connecting with Apostle...');
   const [showTextInput, setShowTextInput] = useState(false);
   const [typedMessage, setTypedMessage] = useState('');
-  
+  const [isMuted, setIsMuted] = useState(false);
+
   const conversationHistoryRef = useRef<ChatMessage[]>([]);
   const isMountedRef = useRef<boolean>(true);
+
+  // Soft breathing halo glow animation around avatar while speaking
+  const haloScale = useSharedValue(1.0);
+  const haloOpacity = useSharedValue(0.2);
+
+  useEffect(() => {
+    if (callState === 'speaking') {
+      haloScale.value = withRepeat(
+        withSequence(
+          withTiming(1.14, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1.0, { duration: 1200, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        true
+      );
+      haloOpacity.value = withRepeat(
+        withSequence(
+          withTiming(0.45, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0.15, { duration: 1200, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        true
+      );
+    } else {
+      haloScale.value = withTiming(1.0, { duration: 400 });
+      haloOpacity.value = withTiming(0.12, { duration: 400 });
+    }
+  }, [callState]);
+
+  const haloAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: haloScale.value }],
+    opacity: haloOpacity.value
+  }));
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -63,10 +105,9 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
       conversationHistoryRef.current = [];
 
       timer = setInterval(() => {
-        setCallDuration((prev) => prev + 1);
+        setCallDuration(prev => prev + 1);
       }, 1000);
 
-      // Start initial call greeting
       startCallSession();
     } else {
       cleanupCallSession();
@@ -109,8 +150,6 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
     });
 
     setCaptionText(initialGreeting);
-    setCallState('speaking');
-
     await playSpokenResponse(initialGreeting);
   };
 
@@ -131,7 +170,7 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
       },
       () => {
         if (isMountedRef.current) {
-          // When Apostle finishes speaking, automatically transition to listening mode
+          // When Apostle finishes speaking, transition to peaceful listening state
           setCallState('listening');
           try {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -157,16 +196,15 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
 
   const handleStopSpeakingAndSend = async () => {
     setCallState('thinking');
-    setCaptionText('Transcribing and consulting scripture...');
+    setCaptionText('Discerning scripture & prayer...');
 
     const transcribedText = await stopVoiceRecordingAndTranscribe();
 
     if (transcribedText && transcribedText.trim().length > 0) {
       await processUserSpeech(transcribedText.trim());
     } else {
-      // Fallback if audio was too short or quiet
       setCallState('listening');
-      setCaptionText('I could not hear you clearly. Tap the microphone to speak again.');
+      setCaptionText('I am listening. Tap the microphone to speak, or pick a prayer below.');
     }
   };
 
@@ -239,18 +277,20 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
 
   return (
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={handleEndCall}>
-      <View style={styles.container}>
-        {/* Top Header Bar */}
+      <SafeAreaView style={styles.container}>
+        {/* Top Header: Status Badge & Live Chat Time */}
         <View style={styles.topHeader}>
           <View style={styles.statusBadge}>
             <View
               style={[
                 styles.statusIndicatorDot,
-                callState === 'recording'
+                callState === 'speaking'
+                  ? styles.dotSpeaking
+                  : callState === 'recording'
                   ? styles.dotRecording
                   : callState === 'thinking'
                   ? styles.dotThinking
-                  : styles.dotActive
+                  : styles.dotListening
               ]}
             />
             <Text style={styles.statusBadgeText}>
@@ -259,31 +299,52 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
                 : callState === 'speaking'
                 ? `${apostle.name} Speaking`
                 : callState === 'recording'
-                ? 'Recording Your Voice...'
+                ? 'Listening to You...'
                 : callState === 'thinking'
-                ? 'Consulting Scripture...'
+                ? 'Discerning Scripture...'
                 : 'Listening to You'}
             </Text>
           </View>
 
-          <Text style={styles.title}>{apostle.name}</Text>
+          {/* Chat Duration */}
           <Text style={styles.durationText}>{formatDuration(callDuration)}</Text>
         </View>
 
-        {/* Center Harmonic Astroid Spectral Visualizer */}
-        <View style={styles.spectrumCenterArea}>
-          <AstroidSpectrumVisualizer isSpeaking={callState === 'speaking' || callState === 'recording'} />
+        {/* Centerpiece: Apostle Avatar & Identity */}
+        <View style={styles.centerSection}>
+          <View style={styles.avatarWrapper}>
+            {/* Subtle soft breathing halo */}
+            <Animated.View
+              style={[
+                styles.haloCircle,
+                { backgroundColor: apostle.accentColor || '#3B82F6' },
+                haloAnimatedStyle
+              ]}
+            />
+
+            <View style={styles.avatarContainer}>
+              <Image source={apostle.avatar} style={styles.avatarImg} />
+            </View>
+          </View>
+
+          <Text style={styles.apostleName}>{apostle.name}</Text>
+          <Text style={styles.apostleTitle}>{apostle.title}</Text>
         </View>
 
-        {/* Live Spoken Captions */}
-        <View style={styles.captionsContainer}>
-          <Text style={styles.captionText} numberOfLines={4}>
-            {captionText}
-          </Text>
+        {/* Transcribing Texts / Live Captions in Literata Serif */}
+        <View style={styles.captionsArea}>
+          <ScrollView
+            contentContainerStyle={styles.captionsScroll}
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={styles.captionText}>
+              “{captionText}”
+            </Text>
+          </ScrollView>
         </View>
 
-        {/* Quick Suggestion Chips (Visible during listening mode) */}
-        {callState === 'listening' && !showTextInput && (
+        {/* Quick Topic Prompts */}
+        {!showTextInput && (
           <View style={styles.quickPromptsWrap}>
             <ScrollView
               horizontal
@@ -304,72 +365,63 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
           </View>
         )}
 
-        {/* Text Whisper Input Sheet (if toggled) */}
+        {/* Text Whisper Input Bar (if toggled) */}
         {showTextInput && (
           <View style={styles.textInputBar}>
             <TextInput
               style={styles.whisperInput}
               value={typedMessage}
               onChangeText={setTypedMessage}
-              placeholder="Type your question or prayer..."
-              placeholderTextColor="#777777"
+              placeholder={`Type prayer to Apostle ${apostle.name}...`}
+              placeholderTextColor="#9CA3AF"
               onSubmitEditing={handleSendTypedMessage}
               autoFocus
             />
             <TouchableOpacity onPress={handleSendTypedMessage} style={styles.whisperSendBtn} activeOpacity={0.8}>
-              <Ionicons name="arrow-up" size={18} color="#000000" />
+              <Ionicons name="arrow-up" size={18} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         )}
 
-        {/* Bottom Interactive Call Controls */}
+        {/* Bottom Call Controls (Matching Soft UI Design) */}
         <View style={styles.bottomControls}>
-          {/* 1. Toggle Keyboard Whisper Input */}
+          {/* 1. Mute / Mic Toggle */}
           <TouchableOpacity
-            style={styles.auxControlBtn}
-            onPress={() => setShowTextInput((prev) => !prev)}
-            activeOpacity={0.7}
+            style={[styles.circleBtn, isMuted && styles.circleBtnActive]}
+            onPress={() => setIsMuted(!isMuted)}
+            activeOpacity={0.75}
           >
             <Ionicons
-              name={showTextInput ? 'mic-outline' : 'chatbox-ellipses-outline'}
+              name={isMuted ? 'mic-off' : 'mic'}
               size={22}
-              color="#FFFFFF"
+              color={isMuted ? '#EF4444' : '#111111'}
             />
           </TouchableOpacity>
 
-          {/* 2. Main Central Talk Button */}
-          {callState === 'recording' ? (
-            <TouchableOpacity
-              style={[styles.mainTalkBtn, styles.mainTalkBtnRecording]}
-              onPress={handleStopSpeakingAndSend}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="stop" size={30} color="#FFFFFF" />
-            </TouchableOpacity>
-          ) : callState === 'thinking' ? (
-            <View style={[styles.mainTalkBtn, styles.mainTalkBtnThinking]}>
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={styles.mainTalkBtn}
-              onPress={handleStartSpeaking}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="mic" size={32} color="#000000" />
-            </TouchableOpacity>
-          )}
-
-          {/* 3. Hang Up Red Button */}
+          {/* 2. Soft Coral / Rose End Call Button (Matching Settings) */}
           <TouchableOpacity
-            style={styles.endCallBtn}
+            style={styles.endCallPillBtn}
             onPress={handleEndCall}
-            activeOpacity={0.85}
+            activeOpacity={0.8}
           >
-            <Ionicons name="call" size={24} color="#FFFFFF" style={{ transform: [{ rotate: '135deg' }] }} />
+            <Ionicons name="call" size={18} color="#3B1818" style={{ marginRight: 8, transform: [{ rotate: '135deg' }] }} />
+            <Text style={styles.endCallPillText}>End Call</Text>
+          </TouchableOpacity>
+
+          {/* 3. Whisper Keyboard Toggle */}
+          <TouchableOpacity
+            style={[styles.circleBtn, showTextInput && styles.circleBtnActive]}
+            onPress={() => setShowTextInput(!showTextInput)}
+            activeOpacity={0.75}
+          >
+            <Ionicons
+              name={showTextInput ? 'mic-outline' : 'chatbubble-ellipses-outline'}
+              size={22}
+              color="#111111"
+            />
           </TouchableOpacity>
         </View>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 };
@@ -377,33 +429,37 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0B0B0B',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'space-between',
-    paddingTop: 54,
-    paddingBottom: 44,
-    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   topHeader: {
     alignItems: 'center',
-    width: '100%',
+    paddingHorizontal: 20,
+    paddingTop: 10,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    backgroundColor: '#F4F4F6',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: 20,
-    marginBottom: 8,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
   },
   statusIndicatorDot: {
-    width: 7,
-    height: 7,
+    width: 8,
+    height: 8,
     borderRadius: 4,
-    marginRight: 6,
+    marginRight: 8,
   },
-  dotActive: {
+  dotSpeaking: {
     backgroundColor: '#10B981',
+  },
+  dotListening: {
+    backgroundColor: '#3B82F6',
   },
   dotRecording: {
     backgroundColor: '#EF4444',
@@ -413,85 +469,124 @@ const styles = StyleSheet.create({
   },
   statusBadgeText: {
     fontFamily: Typography.fontSansMedium,
-    fontSize: 12,
-    color: '#D1D5DB',
-  },
-  title: {
-    fontFamily: Typography.fontSerif,
-    fontSize: 30,
-    color: '#FFFFFF',
-    marginBottom: 2,
-    textAlign: 'center',
+    fontSize: 13,
+    color: '#374151',
   },
   durationText: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 13,
-    color: '#9CA3AF',
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 15,
+    color: '#111111',
+    letterSpacing: 0.5,
   },
-  spectrumCenterArea: {
+  centerSection: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  avatarWrapper: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  haloCircle: {
+    position: 'absolute',
+    width: 136,
+    height: 136,
+    borderRadius: 68,
+  },
+  avatarContainer: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    overflow: 'hidden',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
+    backgroundColor: '#F3F4F6',
+  },
+  avatarImg: {
     width: '100%',
-    height: 280,
-    alignItems: 'center',
-    justifyContent: 'center',
+    height: '100%',
   },
-  captionsContainer: {
-    paddingHorizontal: 16,
-    minHeight: 90,
+  apostleName: {
+    fontFamily: Typography.fontSerif,
+    fontSize: 26,
+    color: '#111111',
+    letterSpacing: -0.3,
+  },
+  apostleTitle: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  captionsArea: {
+    flex: 1,
+    maxHeight: 140,
+    paddingHorizontal: 28,
     justifyContent: 'center',
     alignItems: 'center',
+    marginVertical: 10,
+  },
+  captionsScroll: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   captionText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 20,
-    lineHeight: 28,
-    color: '#FFFFFF',
+    fontFamily: Typography.fontSerif,
+    fontSize: 18,
+    lineHeight: 27,
+    color: '#1F2937',
     textAlign: 'center',
-    letterSpacing: -0.3,
-    opacity: 0.95,
+    letterSpacing: -0.2,
   },
   quickPromptsWrap: {
-    height: 38,
-    marginVertical: 4,
+    marginBottom: 16,
   },
   quickPromptsScroll: {
-    paddingHorizontal: 4,
+    paddingHorizontal: 20,
     gap: 8,
   },
   quickPromptPill: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 18,
+    backgroundColor: '#F4F4F6',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: '#ECECEE',
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
   },
   quickPromptPillText: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 12.5,
-    color: '#E5E7EB',
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 13,
+    color: '#111111',
   },
   textInputBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1F2937',
-    borderRadius: 24,
+    backgroundColor: '#F4F4F6',
+    borderRadius: 20,
     paddingHorizontal: 14,
-    paddingVertical: 6,
-    marginHorizontal: 10,
-    marginBottom: 10,
+    paddingVertical: 8,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#ECECEE',
   },
   whisperInput: {
     flex: 1,
     fontFamily: Typography.fontSansRegular,
     fontSize: 14,
-    color: '#FFFFFF',
-    paddingVertical: 6,
+    color: '#111111',
   },
   whisperSendBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#111111',
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
@@ -499,49 +594,42 @@ const styles = StyleSheet.create({
   bottomControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-evenly',
-    width: '100%',
-    paddingTop: 10,
+    justifyContent: 'space-between',
+    paddingHorizontal: 30,
+    paddingTop: 8,
+    paddingBottom: 14,
   },
-  auxControlBtn: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+  circleBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#F4F4F6',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ECECEE',
   },
-  mainTalkBtn: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
-    backgroundColor: '#FFFFFF',
+  circleBtnActive: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#FCA5A5',
+  },
+  endCallPillBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#FFFFFF',
+    backgroundColor: '#F3A7A7',
+    borderRadius: 28,
+    paddingHorizontal: 34,
+    paddingVertical: 15,
+    shadowColor: '#EF4444',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.15,
     shadowRadius: 10,
-    elevation: 8,
+    elevation: 4,
   },
-  mainTalkBtnRecording: {
-    backgroundColor: '#DC2626',
-    shadowColor: '#EF4444',
-  },
-  mainTalkBtnThinking: {
-    backgroundColor: '#4B5563',
-  },
-  endCallBtn: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: '#DC2626',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 6,
+  endCallPillText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 15,
+    color: '#3B1818',
   }
 });

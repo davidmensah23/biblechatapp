@@ -24,7 +24,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
 import { ApostlePersona, ChatMessage, UserProfile } from '../types';
-import { fetchMessages, saveMessage, fetchUserProfile } from '../services/database';
+import { fetchMessages, saveMessage, fetchUserProfile, saveBookmark } from '../services/database';
+import { playDeepgramSpeech, stopDeepgramSpeech } from '../services/deepgramVoices';
+import { Alert, Clipboard } from 'react-native';
 import { generateApostleReply } from '../services/groq';
 import { VoiceCallModal } from '../components/VoiceCallModal';
 import { FormattedMessageText } from '../components/FormattedMessageText';
@@ -95,6 +97,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showCallModal, setShowCallModal] = useState(false);
+  const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   
   const flatListRef = useRef<FlatList>(null);
@@ -229,6 +232,52 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
     }
   };
 
+  const handleTogglePlayAudio = async (msgId: string, text: string) => {
+    if (playingMessageId === msgId) {
+      await stopDeepgramSpeech();
+      setPlayingMessageId(null);
+    } else {
+      setPlayingMessageId(msgId);
+      await playDeepgramSpeech(
+        msgId,
+        text,
+        apostle.id,
+        () => setPlayingMessageId(msgId),
+        () => setPlayingMessageId(null)
+      );
+    }
+  };
+
+  const handleBookmarkMessage = async (msg: ChatMessage) => {
+    await saveBookmark({
+      id: `bm_counsel_${Date.now()}`,
+      type: 'quote',
+      title: `${apostle.name}'s Counsel`,
+      content: msg.content,
+      reference: apostle.title,
+      author: apostle.name,
+      timestamp: Date.now()
+    });
+    Alert.alert('Counsel Saved', `Saved ${apostle.name}'s reflection to your Profile.`);
+  };
+
+  const handleCopyMessage = (text: string) => {
+    try {
+      Clipboard.setString(text);
+    } catch (e) {}
+    Alert.alert('Copied', 'Message copied to clipboard.');
+  };
+
+  const formatMessageTime = (ts: number) => {
+    const d = new Date(ts);
+    const hours = d.getHours();
+    const mins = d.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const formattedHours = hours % 12 || 12;
+    const formattedMins = mins < 10 ? `0${mins}` : mins;
+    return `${formattedHours}:${formattedMins} ${ampm}`;
+  };
+
   const handleSend = () => {
     handleSendText(inputText);
   };
@@ -278,6 +327,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
           renderItem={({ item }) => {
             const isUser = item.sender === 'user';
             const isPreloaded = initialLoadedIdsRef.current.has(item.id);
+            const isPlayingThis = playingMessageId === item.id;
 
             return (
               <View style={[styles.messageRow, isUser ? styles.userRow : styles.assistantRow]}>
@@ -289,6 +339,47 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
                       fontSize={15.5}
                     />
 
+                    {/* Bubble Footer with Timestamp & Audio Speaker / Bookmark */}
+                    <View style={styles.bubbleFooterRow}>
+                      <Text style={[styles.bubbleTimeText, isUser && styles.bubbleTimeTextUser]}>
+                        {formatMessageTime(item.timestamp)}
+                      </Text>
+
+                      {!isUser && (
+                        <View style={styles.bubbleActions}>
+                          <TouchableOpacity
+                            onPress={() => handleTogglePlayAudio(item.id, item.content)}
+                            style={styles.inlineActionBtn}
+                            activeOpacity={0.7}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Ionicons
+                              name={isPlayingThis ? 'volume-high' : 'volume-medium-outline'}
+                              size={16}
+                              color={isPlayingThis ? '#2563EB' : '#8E8E93'}
+                            />
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            onPress={() => handleBookmarkMessage(item)}
+                            style={[styles.inlineActionBtn, { marginLeft: 8 }]}
+                            activeOpacity={0.7}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Ionicons name="bookmark-outline" size={15} color="#8E8E93" />
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            onPress={() => handleCopyMessage(item.content)}
+                            style={[styles.inlineActionBtn, { marginLeft: 8 }]}
+                            activeOpacity={0.7}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Ionicons name="copy-outline" size={15} color="#8E8E93" />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
                   </View>
                 </AnimatedChatBubble>
               </View>
@@ -546,5 +637,27 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: {
     opacity: 0.4,
-  }
+  },
+  bubbleFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 6,
+    paddingTop: 4,
+  },
+  bubbleTimeText: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 10.5,
+    color: '#9CA3AF',
+  },
+  bubbleTimeTextUser: {
+    color: 'rgba(255, 255, 255, 0.65)',
+  },
+  bubbleActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  inlineActionBtn: {
+    padding: 2,
+  },
 });
