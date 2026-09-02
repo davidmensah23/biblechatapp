@@ -10,7 +10,10 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  ScrollView
+  ScrollView,
+  Modal,
+  TouchableWithoutFeedback,
+  Share
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -98,6 +101,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
   const [isLoading, setIsLoading] = useState(false);
   const [showCallModal, setShowCallModal] = useState(false);
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<ChatMessage | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   
   const flatListRef = useRef<FlatList>(null);
@@ -332,55 +336,31 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
             return (
               <View style={[styles.messageRow, isUser ? styles.userRow : styles.assistantRow]}>
                 <AnimatedChatBubble isUser={isUser} animate={!isPreloaded}>
-                  <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.assistantBubble]}>
+                  <TouchableOpacity
+                    style={[styles.messageBubble, isUser ? styles.userBubble : styles.assistantBubble]}
+                    onPress={() => setActionMessage(item)}
+                    activeOpacity={0.88}
+                  >
                     <FormattedMessageText
                       content={item.content}
                       isUser={isUser}
                       fontSize={15.5}
                     />
 
-                    {/* Bubble Footer with Timestamp & Audio Speaker / Bookmark */}
+                    {/* Subtle Timestamp & Playing Indicator */}
                     <View style={styles.bubbleFooterRow}>
                       <Text style={[styles.bubbleTimeText, isUser && styles.bubbleTimeTextUser]}>
                         {formatMessageTime(item.timestamp)}
                       </Text>
 
-                      {!isUser && (
-                        <View style={styles.bubbleActions}>
-                          <TouchableOpacity
-                            onPress={() => handleTogglePlayAudio(item.id, item.content)}
-                            style={styles.inlineActionBtn}
-                            activeOpacity={0.7}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          >
-                            <Ionicons
-                              name={isPlayingThis ? 'volume-high' : 'volume-medium-outline'}
-                              size={16}
-                              color={isPlayingThis ? '#2563EB' : '#8E8E93'}
-                            />
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            onPress={() => handleBookmarkMessage(item)}
-                            style={[styles.inlineActionBtn, { marginLeft: 8 }]}
-                            activeOpacity={0.7}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          >
-                            <Ionicons name="bookmark-outline" size={15} color="#8E8E93" />
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            onPress={() => handleCopyMessage(item.content)}
-                            style={[styles.inlineActionBtn, { marginLeft: 8 }]}
-                            activeOpacity={0.7}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          >
-                            <Ionicons name="copy-outline" size={15} color="#8E8E93" />
-                          </TouchableOpacity>
+                      {isPlayingThis && (
+                        <View style={styles.playingIndicatorBadge}>
+                          <Ionicons name="volume-high" size={12} color="#2563EB" style={{ marginRight: 3 }} />
+                          <Text style={styles.playingIndicatorText}>Playing</Text>
                         </View>
                       )}
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 </AnimatedChatBubble>
               </View>
             );
@@ -444,6 +424,93 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
           )}
         </View>
       </KeyboardAvoidingView>
+
+      {/* Floating Action Pill on Message Tap */}
+      <Modal
+        visible={Boolean(actionMessage)}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setActionMessage(null)}
+      >
+        <TouchableWithoutFeedback onPress={() => setActionMessage(null)}>
+          <View style={styles.actionModalBackdrop}>
+            <TouchableWithoutFeedback>
+              <View style={styles.floatingActionPill}>
+                {/* 1. Read / Listen Aloud */}
+                {actionMessage && actionMessage.sender !== 'user' && (
+                  <TouchableOpacity
+                    style={styles.pillActionBtn}
+                    onPress={() => {
+                      const msg = actionMessage;
+                      setActionMessage(null);
+                      handleTogglePlayAudio(msg.id, msg.content);
+                    }}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons
+                      name={playingMessageId === actionMessage?.id ? 'pause' : 'volume-high-outline'}
+                      size={18}
+                      color={playingMessageId === actionMessage?.id ? '#2563EB' : '#111111'}
+                    />
+                    <Text style={[styles.pillActionLabel, playingMessageId === actionMessage?.id && { color: '#2563EB' }]}>
+                      {playingMessageId === actionMessage?.id ? 'Pause' : 'Read'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* 2. Save / Bookmark */}
+                <TouchableOpacity
+                  style={styles.pillActionBtn}
+                  onPress={() => {
+                    const msg = actionMessage;
+                    setActionMessage(null);
+                    if (msg) handleBookmarkMessage(msg);
+                  }}
+                  activeOpacity={0.75}
+                >
+                  <Ionicons name="bookmark-outline" size={18} color="#111111" />
+                  <Text style={styles.pillActionLabel}>Save</Text>
+                </TouchableOpacity>
+
+                {/* 3. Copy */}
+                <TouchableOpacity
+                  style={styles.pillActionBtn}
+                  onPress={() => {
+                    const msg = actionMessage;
+                    setActionMessage(null);
+                    if (msg) handleCopyMessage(msg.content);
+                  }}
+                  activeOpacity={0.75}
+                >
+                  <Ionicons name="copy-outline" size={18} color="#111111" />
+                  <Text style={styles.pillActionLabel}>Copy</Text>
+                </TouchableOpacity>
+
+                {/* 4. Share */}
+                <TouchableOpacity
+                  style={styles.pillActionBtn}
+                  onPress={async () => {
+                    const msg = actionMessage;
+                    setActionMessage(null);
+                    if (msg) {
+                      try {
+                        await Share.share({
+                          message: `“${msg.content}”\n— ${apostle.name} (${apostle.title})\n\nBible Chat App`,
+                          title: `${apostle.name}'s Counsel`
+                        });
+                      } catch (e) {}
+                    }
+                  }}
+                  activeOpacity={0.75}
+                >
+                  <Ionicons name="share-outline" size={18} color="#111111" />
+                  <Text style={styles.pillActionLabel}>Share</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
 
       {/* Voice Call Modal */}
       <VoiceCallModal
@@ -653,11 +720,52 @@ const styles = StyleSheet.create({
   bubbleTimeTextUser: {
     color: 'rgba(255, 255, 255, 0.65)',
   },
-  bubbleActions: {
+  playingIndicatorBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
   },
-  inlineActionBtn: {
-    padding: 2,
+  playingIndicatorText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 10.5,
+    color: '#2563EB',
+  },
+  actionModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  floatingActionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+    gap: 16,
+  },
+  pillActionBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  pillActionLabel: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 11.5,
+    color: '#111111',
+    marginTop: 4,
   },
 });
