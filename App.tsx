@@ -87,6 +87,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState<'main' | 'chat' | 'groupChat'>('main');
   const [selectedApostle, setSelectedApostle] = useState<ApostlePersona | null>(null);
   const [selectedGroupCouncil, setSelectedGroupCouncil] = useState<GroupCouncilThread | null>(null);
+  const [chatInitialMessage, setChatInitialMessage] = useState<string | undefined>(undefined);
   const [forceRender, setForceRender] = useState<boolean>(false);
   const [showPrivacyNotice, setShowPrivacyNotice] = useState<boolean>(false);
 
@@ -311,7 +312,11 @@ export default function App() {
             <StatusBar barStyle="dark-content" backgroundColor="#F6F6F6" />
             <ChatDetailScreen
               apostle={selectedApostle}
-              onBack={() => setCurrentView('main')}
+              initialMessage={chatInitialMessage}
+              onBack={() => {
+                setCurrentView('main');
+                setChatInitialMessage(undefined);
+              }}
             />
           </View>
         </ScreenTransition>
@@ -337,6 +342,7 @@ export default function App() {
               <HomeScreen
                 onSelectApostle={(apostle) => {
                   setSelectedApostle(apostle);
+                  setChatInitialMessage(undefined);
                   setCurrentView('chat');
                 }}
               />
@@ -344,8 +350,9 @@ export default function App() {
 
             {activeNavTab === 'chats' && (
               <ChatListScreen
-                onSelectConversation={(apostle) => {
+                onSelectConversation={(apostle, initialMessage) => {
                   setSelectedApostle(apostle);
+                  setChatInitialMessage(initialMessage);
                   setCurrentView('chat');
                 }}
                 onSelectGroupCouncil={(thread) => {

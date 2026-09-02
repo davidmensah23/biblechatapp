@@ -42,6 +42,7 @@ import { getContextualChips } from '../services/quickChips';
 interface ChatDetailScreenProps {
   apostle: ApostlePersona;
   onBack: () => void;
+  initialMessage?: string;
 }
 
 const BouncingDots: React.FC = () => {
@@ -95,9 +96,9 @@ const BouncingDots: React.FC = () => {
   );
 };
 
-export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onBack }) => {
+export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onBack, initialMessage }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputText, setInputText] = useState('');
+  const [inputText, setInputText] = useState(initialMessage || '');
   const [isLoading, setIsLoading] = useState(false);
   const [showCallModal, setShowCallModal] = useState(false);
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
@@ -109,6 +110,12 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
   const initialLoadedIdsRef = useRef<Set<string>>(new Set());
 
   const conversationId = `conv_${apostle.id}`;
+
+  useEffect(() => {
+    if (initialMessage) {
+      setInputText(initialMessage);
+    }
+  }, [initialMessage]);
 
   useEffect(() => {
     loadChatHistory();

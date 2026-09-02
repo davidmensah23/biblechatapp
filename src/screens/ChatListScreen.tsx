@@ -9,9 +9,12 @@ import { ConversationThread, ApostlePersona } from '../types';
 import { GroupCouncilThread } from '../types/groupChat';
 import { CreateGroupCouncilModal } from '../components/CreateGroupCouncilModal';
 import { ChatListSkeleton } from '../components/SoftSkeleton';
+import { PastoralGuidesRow } from '../components/PastoralGuidesRow';
+import { PastoralGuideModal } from '../components/PastoralGuideModal';
+import { PastoralGuide } from '../services/pastoralGuidesService';
 
 interface ChatListScreenProps {
-  onSelectConversation: (apostle: ApostlePersona) => void;
+  onSelectConversation: (apostle: ApostlePersona, initialMessage?: string) => void;
   onSelectGroupCouncil: (thread: GroupCouncilThread) => void;
   onBack: () => void;
 }
@@ -27,6 +30,7 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchInput, setShowSearchInput] = useState(false);
   const [showCreateCouncilModal, setShowCreateCouncilModal] = useState(false);
+  const [selectedPastoralGuide, setSelectedPastoralGuide] = useState<PastoralGuide | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -48,11 +52,11 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
   const formatTimestamp = (time: number) => {
     const diffMin = Math.floor((Date.now() - time) / (1000 * 60));
     if (diffMin < 1) return 'Just now';
-    if (diffMin < 60) return `${diffMin}m`;
+    if (diffMin < 60) return `${diffMin}m ago`;
     const diffHours = Math.floor(diffMin / 60);
-    if (diffHours < 24) return `${diffHours}h`;
+    if (diffHours < 24) return `${diffHours}h ago`;
     const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}d`;
+    return `${diffDays}d ago`;
   };
 
   const filteredConversations = conversations.filter(c =>
@@ -147,13 +151,16 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
         <ChatListSkeleton />
       ) : (
         <>
-          {/* 1-on-1 Apostles List */}
+          {/* 1-on-1 Apostles List with Walk Me Through Horizontal Cards */}
           {activeSegment === 'apostles' && (
         <FlatList
           data={filteredConversations}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            <PastoralGuidesRow onSelectGuide={(g) => setSelectedPastoralGuide(g)} />
+          }
           renderItem={({ item }) => {
             const persona = getPersonaById(item.personaId);
             return (
@@ -267,6 +274,17 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
         onCouncilCreated={(thread) => {
           setGroupThreads(prev => [thread, ...prev]);
           onSelectGroupCouncil(thread);
+        }}
+      />
+
+      {/* Walk Me Through Pastoral Guide Modal */}
+      <PastoralGuideModal
+        visible={!!selectedPastoralGuide}
+        guide={selectedPastoralGuide}
+        onClose={() => setSelectedPastoralGuide(null)}
+        onStartChat={(apostle, topic) => {
+          setSelectedPastoralGuide(null);
+          onSelectConversation(apostle, topic);
         }}
       />
     </SafeAreaView>
