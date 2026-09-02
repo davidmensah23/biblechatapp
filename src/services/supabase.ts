@@ -11,8 +11,8 @@ import { UserProfile } from '../types';
 // Complete auth session if web browser redirect is active
 WebBrowser.maybeCompleteAuthSession();
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://kciyviyjxtghhslvmzlp.supabase.co';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_gN8nbQlIkgpsfehQeHpjsg_cEgaG9Yj';
+export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://kciyviyjxtghhslvmzlp.supabase.co';
+export const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_gN8nbQlIkgpsfehQeHpjsg_cEgaG9Yj';
 
 // SecureStore adapter for persisting auth tokens on mobile
 const ExpoSecureStoreAdapter = {
