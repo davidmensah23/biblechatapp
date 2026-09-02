@@ -90,13 +90,14 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ onAskApost
   };
 
   const handleNextChapter = () => {
-    if (!chapterData) return;
-    if (currentChapter < chapterData.totalChapters) {
+    const currentBookObj = ALL_BIBLE_BOOKS.find(b => b.name === currentBook);
+    const totalChapters = currentBookObj ? currentBookObj.chaptersCount : 1;
+    if (currentChapter < totalChapters) {
       setCurrentChapter(prev => prev + 1);
     } else {
-      const currentBookIndex = ALL_BIBLE_BOOKS.indexOf(currentBook);
+      const currentBookIndex = ALL_BIBLE_BOOKS.findIndex(b => b.name === currentBook);
       if (currentBookIndex < ALL_BIBLE_BOOKS.length - 1) {
-        setCurrentBook(ALL_BIBLE_BOOKS[currentBookIndex + 1]);
+        setCurrentBook(ALL_BIBLE_BOOKS[currentBookIndex + 1].name);
         setCurrentChapter(1);
       }
     }
@@ -106,10 +107,11 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ onAskApost
     if (currentChapter > 1) {
       setCurrentChapter(prev => prev - 1);
     } else {
-      const currentBookIndex = ALL_BIBLE_BOOKS.indexOf(currentBook);
+      const currentBookIndex = ALL_BIBLE_BOOKS.findIndex(b => b.name === currentBook);
       if (currentBookIndex > 0) {
-        setCurrentBook(ALL_BIBLE_BOOKS[currentBookIndex - 1]);
-        setCurrentChapter(1);
+        const prevBook = ALL_BIBLE_BOOKS[currentBookIndex - 1];
+        setCurrentBook(prevBook.name);
+        setCurrentChapter(prevBook.chaptersCount);
       }
     }
   };
@@ -400,7 +402,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ onAskApost
         currentBook={currentBook}
         currentChapter={currentChapter}
         onClose={() => setShowBookPicker(false)}
-        onSelectBookAndChapter={(book, chapter) => {
+        onSelect={(book: string, chapter: number) => {
           setCurrentBook(book);
           setCurrentChapter(chapter);
           setShowBookPicker(false);

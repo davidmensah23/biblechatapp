@@ -45,6 +45,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [growthProfile, setGrowthProfile] = useState<SpiritualGrowthProfile | null>(null);
   const [activeActivityFilter, setActiveActivityFilter] = useState<'all' | 'highlights' | 'notes' | 'plans' | 'badges'>('all');
   const [likedActivities, setLikedActivities] = useState<Record<string, boolean>>({ act_1: false });
+  const [userNotes, setUserNotes] = useState<VerseNote[]>([]);
+  const [userHighlights, setUserHighlights] = useState<VerseHighlight[]>([]);
   const [confirmModal, setConfirmModal] = useState<{
     visible: boolean;
     title: string;
