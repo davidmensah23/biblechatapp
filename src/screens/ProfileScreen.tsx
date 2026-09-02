@@ -22,6 +22,7 @@ import { MascotBadgeCard } from '../components/MascotBadgeCard';
 import { MascotAssets } from '../services/mascotAssets';
 import { CustomConfirmationModal } from '../components/CustomConfirmationModal';
 import { BadgeDetailModal } from '../components/BadgeDetailModal';
+import { ActivityListSkeleton } from '../components/SoftSkeleton';
 
 interface ProfileScreenProps {
   onLogout?: () => void;
@@ -63,42 +64,48 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     message: '',
     onConfirm: () => {},
   });
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
-    const bms = await fetchBookmarks();
-    setBookmarks(bms);
-
-    const growth = await getSpiritualGrowthProfile();
-    setGrowthProfile(growth);
-
-    const [notes, hls] = await Promise.all([
-      fetchAllVerseNotes(),
-      fetchAllHighlights()
-    ]);
-    setUserNotes(notes);
-    setUserHighlights(hls);
-
+    setIsLoadingData(true);
     try {
-      const auth = await getUserAuthProvider();
-      setAuthProvider(auth.provider);
+      const bms = await fetchBookmarks();
+      setBookmarks(bms);
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const remote = await fetchRemoteProfile(user.id);
-        if (remote) {
-          setProfile(remote);
-          await saveUserProfile(remote);
-          return;
+      const growth = await getSpiritualGrowthProfile();
+      setGrowthProfile(growth);
+
+      const [notes, hls] = await Promise.all([
+        fetchAllVerseNotes(),
+        fetchAllHighlights()
+      ]);
+      setUserNotes(notes);
+      setUserHighlights(hls);
+
+      try {
+        const auth = await getUserAuthProvider();
+        setAuthProvider(auth.provider);
+
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const remote = await fetchRemoteProfile(user.id);
+          if (remote) {
+            setProfile(remote);
+            await saveUserProfile(remote);
+            return;
+          }
         }
-      }
-    } catch (e) {}
+      } catch (e) {}
 
-    const p = await fetchUserProfile();
-    if (p) setProfile(p);
+      const p = await fetchUserProfile();
+      if (p) setProfile(p);
+    } finally {
+      setIsLoadingData(false);
+    }
   };
 
   const handleShareProfile = async () => {
@@ -332,9 +339,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </ScrollView>
 
           {/* DYNAMIC ACTIVITY FEED (Notes, Highlights, Badges) */}
-
-          {/* 1. NOTES FILTER */}
-          {activeActivityFilter === 'notes' && (
+          {isLoadingData ? (
+            <ActivityListSkeleton />
+          ) : (
+            <>
+              {/* 1. NOTES FILTER */}
+              {activeActivityFilter === 'notes' && (
             userNotes.length === 0 ? (
               <View style={styles.emptyActivityBox}>
                 <Ionicons name="document-text-outline" size={32} color="#9CA3AF" style={{ marginBottom: 8 }} />
@@ -509,6 +519,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </View>
               </TouchableOpacity>
             </View>
+          )}
+            </>
           )}
         </View>
       </ScrollView>

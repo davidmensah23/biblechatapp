@@ -31,6 +31,7 @@ import { playDeepgramSpeech, stopDeepgramSpeech } from '../services/deepgramVoic
 import { VerseActionSheet } from '../components/VerseActionSheet';
 import { VerseImageModal } from '../components/VerseImageModal';
 import { VerseNoteModal } from '../components/VerseNoteModal';
+import { BibleChapterSkeleton } from '../components/SoftSkeleton';
 
 interface BibleReaderScreenProps {
   onAskApostleWithVerse?: (verseText: string, reference: string) => void;
@@ -273,10 +274,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ onAskApost
         showsVerticalScrollIndicator={false}
       >
         {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={Colors.textPrimary} />
-            <Text style={styles.loadingText}>Opening Scripture...</Text>
-          </View>
+          <BibleChapterSkeleton />
         ) : chapterData ? (
           <View style={styles.chapterWrapper}>
             {/* Minimalist Hero Heading */}
