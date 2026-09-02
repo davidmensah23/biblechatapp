@@ -8,6 +8,7 @@ import { getPersonaById, APOSTLE_PERSONAS } from '../services/personas';
 import { ConversationThread, ApostlePersona } from '../types';
 import { GroupCouncilThread } from '../types/groupChat';
 import { CreateGroupCouncilModal } from '../components/CreateGroupCouncilModal';
+import { ChatListSkeleton } from '../components/SoftSkeleton';
 
 interface ChatListScreenProps {
   onSelectConversation: (apostle: ApostlePersona) => void;
@@ -26,16 +27,22 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchInput, setShowSearchInput] = useState(false);
   const [showCreateCouncilModal, setShowCreateCouncilModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
-    const list = await fetchConversations();
-    const groups = await fetchGroupThreads();
-    setConversations(list);
-    setGroupThreads(groups);
+    setIsLoading(true);
+    try {
+      const list = await fetchConversations();
+      const groups = await fetchGroupThreads();
+      setConversations(list);
+      setGroupThreads(groups);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const formatTimestamp = (time: number) => {
@@ -135,8 +142,13 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
         </View>
       )}
 
-      {/* 1-on-1 Apostles List */}
-      {activeSegment === 'apostles' && (
+      {/* Loading Skeleton */}
+      {isLoading ? (
+        <ChatListSkeleton />
+      ) : (
+        <>
+          {/* 1-on-1 Apostles List */}
+          {activeSegment === 'apostles' && (
         <FlatList
           data={filteredConversations}
           keyExtractor={(item) => item.id}
@@ -244,6 +256,8 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
             </View>
           }
         />
+      )}
+        </>
       )}
 
       {/* Create Council Modal */}

@@ -21,6 +21,7 @@ import { BadgeDetailModal } from '../components/BadgeDetailModal';
 import { CardStyles } from '../theme/cardStyles';
 import { SpringConfigs } from '../theme/animations';
 import { useTranslation } from '../services/localizationService';
+import { HomeSkeleton } from '../components/SoftSkeleton';
 
 interface HomeScreenProps {
   onSelectApostle: (apostle: ApostlePersona) => void;
@@ -36,6 +37,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
   const [selectedBadgeForDetail, setSelectedBadgeForDetail] = useState<FaithBadge | null>(null);
   const [shareBannerDismissed, setShareBannerDismissed] = useState(false);
   const [growthProfile, setGrowthProfile] = useState<SpiritualGrowthProfile | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   // Daily Kingdom Deed Challenge State
   const [todayDeed, setTodayDeed] = useState<KingdomDeed>(getTodayDeedForUser());
@@ -50,9 +52,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
   const tabIndicatorWidth = useSharedValue(68);
 
   useEffect(() => {
-    initDeedsDatabase().catch(console.error);
-    setTodayDeed(getTodayDeedForUser());
-    getSpiritualGrowthProfile().then(setGrowthProfile).catch(console.warn);
+    Promise.all([
+      initDeedsDatabase().catch(console.error),
+      getSpiritualGrowthProfile().then(setGrowthProfile).catch(console.warn)
+    ]).finally(() => {
+      setTodayDeed(getTodayDeedForUser());
+      setTimeout(() => setIsInitializing(false), 200);
+    });
   }, []);
 
   useEffect(() => {
@@ -134,7 +140,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
       </View>
 
       {/* Main Tab Content */}
-      {activeTab === 'forYou' ? (
+      {isInitializing ? (
+        <HomeSkeleton />
+      ) : activeTab === 'forYou' ? (
         <ScrollView
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
