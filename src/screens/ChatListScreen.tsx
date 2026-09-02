@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     overflow: 'hidden',
-    backgroundColor: Colors.surface,
+    backgroundColor: '#F3F4F6',
   },
   avatar: {
     width: '100%',
