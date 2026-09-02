@@ -32,6 +32,7 @@ import { VerseActionSheet } from '../components/VerseActionSheet';
 import { VerseImageModal } from '../components/VerseImageModal';
 import { VerseNoteModal } from '../components/VerseNoteModal';
 import { BibleChapterSkeleton } from '../components/SoftSkeleton';
+import { ScriptureMemoryModal } from '../components/ScriptureMemoryModal';
 
 interface BibleReaderScreenProps {
   onAskApostleWithVerse?: (verseText: string, reference: string) => void;
@@ -57,6 +58,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ onAskApost
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
+  const [showMemoryModal, setShowMemoryModal] = useState(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -378,6 +380,16 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ onAskApost
         }}
         onBookmark={handleBookmarkSelectedVerse}
         onCopy={handleCopyVerse}
+        onMemorize={() => setShowMemoryModal(true)}
+      />
+
+      {/* Scripture Memorization Modal */}
+      <ScriptureMemoryModal
+        visible={showMemoryModal}
+        reference={selectedCitation}
+        verseText={selectedVerseObj?.text || ''}
+        version={translation}
+        onClose={() => setShowMemoryModal(false)}
       />
 
       {/* Create Verse Image Modal */}

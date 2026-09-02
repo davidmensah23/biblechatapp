@@ -31,6 +31,7 @@ interface VerseActionSheetProps {
   onAskApostle: () => void;
   onBookmark: () => void;
   onCopy: () => void;
+  onMemorize?: () => void;
   hasNote?: boolean;
 }
 
@@ -46,6 +47,7 @@ export const VerseActionSheet: React.FC<VerseActionSheetProps> = ({
   onAskApostle,
   onBookmark,
   onCopy,
+  onMemorize,
   hasNote
 }) => {
   return (
@@ -191,6 +193,21 @@ export const VerseActionSheet: React.FC<VerseActionSheetProps> = ({
               <Ionicons name="copy-outline" size={20} color="#111111" />
             </View>
             <Text style={styles.actionLabel}>Copy</Text>
+          </TouchableOpacity>
+
+          {/* 6. Memorize */}
+          <TouchableOpacity
+            style={styles.actionPillBtn}
+            onPress={() => {
+              onClose();
+              if (onMemorize) onMemorize();
+            }}
+            activeOpacity={0.75}
+          >
+            <View style={[styles.actionIconCircle, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="sparkles" size={19} color="#D97706" />
+            </View>
+            <Text style={[styles.actionLabel, { color: '#B45309', fontWeight: '600' }]}>Memorize</Text>
           </TouchableOpacity>
         </View>
       </View>

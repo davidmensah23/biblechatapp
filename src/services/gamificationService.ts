@@ -63,7 +63,7 @@ let memoryActivityLog: Array<{ id: string; dateStr: string; activityType: string
  * Record a real user activity (App Open, Reading Bible, Chatting with Apostle, Completing Deed)
  */
 export const recordDailyActivity = async (
-  activityType: 'app_open' | 'scripture_read' | 'apostle_chat' | 'deed_completed' | 'sermon_prep',
+  activityType: 'app_open' | 'scripture_read' | 'apostle_chat' | 'deed_completed' | 'sermon_prep' | 'verse_memorized',
   xpEarned: number = 10
 ): Promise<void> => {
   const dateStr = getLocalDateString();

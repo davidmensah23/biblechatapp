@@ -12,7 +12,18 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
-import { fetchBookmarks, removeBookmark, fetchUserProfile, saveUserProfile, fetchAllVerseNotes, fetchAllHighlights, VerseNote, VerseHighlight } from '../services/database';
+import {
+  fetchBookmarks,
+  removeBookmark,
+  fetchUserProfile,
+  saveUserProfile,
+  fetchAllVerseNotes,
+  fetchAllHighlights,
+  VerseNote,
+  VerseHighlight,
+  fetchMemorizedVerses,
+  MemorizedVerse
+} from '../services/database';
 import { supabase, fetchRemoteProfile, updateRemoteProfile, getUserAuthProvider, DEFAULT_PROFILE } from '../services/supabase';
 import { SavedBookmark, UserProfile } from '../types';
 import { SettingsScreen } from './SettingsScreen';
@@ -44,10 +55,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [showBadgesModal, setShowBadgesModal] = useState(false);
   const [selectedBadgeForDetail, setSelectedBadgeForDetail] = useState<FaithBadge | null>(null);
   const [growthProfile, setGrowthProfile] = useState<SpiritualGrowthProfile | null>(null);
-  const [activeActivityFilter, setActiveActivityFilter] = useState<'all' | 'highlights' | 'notes' | 'plans' | 'badges'>('all');
+  const [activeActivityFilter, setActiveActivityFilter] = useState<'all' | 'highlights' | 'notes' | 'plans' | 'badges' | 'memorized'>('all');
   const [likedActivities, setLikedActivities] = useState<Record<string, boolean>>({ act_1: false });
   const [userNotes, setUserNotes] = useState<VerseNote[]>([]);
   const [userHighlights, setUserHighlights] = useState<VerseHighlight[]>([]);
+  const [memorizedVerses, setMemorizedVerses] = useState<MemorizedVerse[]>([]);
   const [confirmModal, setConfirmModal] = useState<{
     visible: boolean;
     title: string;
@@ -79,12 +91,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       const growth = await getSpiritualGrowthProfile();
       setGrowthProfile(growth);
 
-      const [notes, hls] = await Promise.all([
+      const [notes, hls, mems] = await Promise.all([
         fetchAllVerseNotes(),
-        fetchAllHighlights()
+        fetchAllHighlights(),
+        fetchMemorizedVerses()
       ]);
       setUserNotes(notes);
       setUserHighlights(hls);
+      setMemorizedVerses(mems);
 
       try {
         const auth = await getUserAuthProvider();
@@ -266,6 +280,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <Ionicons name="paper-plane-outline" size={22} color="#111111" />
         </View>
 
+        {/* Metric Card 3: Memorized Scriptures */}
+        <View style={styles.metricCard}>
+          <View>
+            <Text style={styles.metricValue}>{memorizedVerses.length}</Text>
+            <Text style={styles.metricLabel}>Verses in Heart 🧠</Text>
+          </View>
+          <Ionicons name="sparkles-outline" size={22} color="#D97706" />
+        </View>
+
         {/* Metric Card 3: Badges Showcase Card */}
         <TouchableOpacity
           style={styles.badgesSectionCard}
@@ -306,6 +329,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChipsRow}>
             {[
               { id: 'all', label: 'All', icon: undefined },
+              { id: 'memorized', label: 'Memorized', icon: 'sparkles-outline' },
               { id: 'highlights', label: 'Highlights', icon: 'create-outline' },
               { id: 'notes', label: 'Notes', icon: 'document-text-outline' },
               { id: 'plans', label: 'Plans', icon: 'checkbox-outline' },
@@ -377,6 +401,41 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   {/* User's Reflection */}
                   <View style={styles.userNoteBox}>
                     <Text style={styles.userNoteText}>{note.noteText}</Text>
+                  </View>
+                </View>
+              ))
+            )
+          )}
+
+          {/* 1b. MEMORIZED VERSES FILTER */}
+          {activeActivityFilter === 'memorized' && (
+            memorizedVerses.length === 0 ? (
+              <View style={styles.emptyActivityBox}>
+                <Ionicons name="sparkles-outline" size={32} color="#D97706" style={{ marginBottom: 8 }} />
+                <Text style={styles.emptyActivityTitle}>No Memorized Scriptures Yet</Text>
+                <Text style={styles.emptyActivitySub}>Tap any verse in the Bible reader and select "Memorize" to hide God's Word in your heart.</Text>
+              </View>
+            ) : (
+              memorizedVerses.map((mem) => (
+                <View key={mem.id} style={styles.activityCard}>
+                  <View style={styles.activityHeader}>
+                    <View style={[styles.activityAvatarSmall, { backgroundColor: '#FEF3C7' }]}>
+                      <Ionicons name="sparkles" size={14} color="#D97706" />
+                    </View>
+                    <View style={styles.activityMeta}>
+                      <Text style={styles.activityTitleText}>
+                        Memorized <Text style={{ fontFamily: Typography.fontSansBold }}>{mem.reference}</Text>
+                      </Text>
+                      <Text style={styles.activityTimeText}>Practiced {mem.practiceCount} {mem.practiceCount === 1 ? 'time' : 'times'}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.quoteBlock}>
+                    <View style={[styles.quoteAccentLine, { backgroundColor: '#D97706' }]} />
+                    <View style={styles.quoteContent}>
+                      <Text style={[styles.quoteText, { fontFamily: Typography.fontYouVersionSerif }]}>"{mem.verseText}"</Text>
+                      <Text style={styles.quoteRef}>{mem.reference} · {mem.version}</Text>
+                    </View>
                   </View>
                 </View>
               ))

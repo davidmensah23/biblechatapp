@@ -134,6 +134,15 @@ const initTables = async (db: SQLite.SQLiteDatabase) => {
         note_text TEXT NOT NULL,
         timestamp INTEGER NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS memorized_verses (
+        id TEXT PRIMARY KEY NOT NULL,
+        reference TEXT NOT NULL,
+        verse_text TEXT NOT NULL,
+        version TEXT NOT NULL,
+        mastered_at INTEGER NOT NULL,
+        practice_count INTEGER DEFAULT 1
+      );
     `);
 
     // Safe migration for existing tables
@@ -860,3 +869,94 @@ export const deleteVerseNote = async (id: string): Promise<void> => {
 
 
 
+
+export interface MemorizedVerse {
+  id: string;
+  reference: string;
+  verseText: string;
+  version: string;
+  masteredAt: number;
+  practiceCount: number;
+}
+
+const memoryMemorizedVerses: Record<string, MemorizedVerse> = {};
+
+export const saveMemorizedVerse = async (
+  reference: string,
+  verseText: string,
+  version: string = 'NIV'
+): Promise<void> => {
+  const id = `mem_${reference.replace(/[^a-zA-Z0-9]/g, '_')}`;
+  const now = Date.now();
+  const existing = memoryMemorizedVerses[id];
+  const count = existing ? existing.practiceCount + 1 : 1;
+
+  memoryMemorizedVerses[id] = {
+    id,
+    reference,
+    verseText,
+    version,
+    masteredAt: now,
+    practiceCount: count
+  };
+
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync(
+        `INSERT INTO memorized_verses (id, reference, verse_text, version, mastered_at, practice_count)
+         VALUES (?, ?, ?, ?, ?, 1)
+         ON CONFLICT(id) DO UPDATE SET
+           practice_count = practice_count + 1,
+           mastered_at = excluded.mastered_at;`,
+        [id, reference, verseText, version, now]
+      );
+    } catch (e) {
+      console.warn('saveMemorizedVerse SQLite error:', e);
+    }
+  }
+};
+
+export const fetchMemorizedVerses = async (): Promise<MemorizedVerse[]> => {
+  const db = await getDB();
+  if (db) {
+    try {
+      const rows = await db.getAllAsync<{
+        id: string;
+        reference: string;
+        verse_text: string;
+        version: string;
+        mastered_at: number;
+        practice_count: number;
+      }>('SELECT * FROM memorized_verses ORDER BY mastered_at DESC');
+      if (rows && rows.length > 0) {
+        return rows.map(r => ({
+          id: r.id,
+          reference: r.reference,
+          verseText: r.verse_text,
+          version: r.version,
+          masteredAt: r.mastered_at,
+          practiceCount: r.practice_count || 1
+        }));
+      }
+    } catch (e) {
+      console.warn('fetchMemorizedVerses SQLite error:', e);
+    }
+  }
+  return Object.values(memoryMemorizedVerses);
+};
+
+export const isVerseMemorized = async (reference: string): Promise<boolean> => {
+  const id = `mem_${reference.replace(/[^a-zA-Z0-9]/g, '_')}`;
+  if (memoryMemorizedVerses[id]) return true;
+  const db = await getDB();
+  if (db) {
+    try {
+      const row = await db.getFirstAsync<{ id: string }>('SELECT id FROM memorized_verses WHERE id = ?', [id]);
+      return !!row;
+    } catch (e) {
+      return false;
+    }
+  }
+  return false;
+};
