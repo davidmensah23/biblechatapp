@@ -98,7 +98,64 @@ CREATE POLICY "Users can only access their own chat messages"
   WITH CHECK (auth.uid() = user_id AND app_id = 'akorno');
 
 
--- 4. BOOKMARKS & SAVED REFLECTIONS TABLE
+-- 4. GROUP CONVERSATIONS TABLE (COUNCIL OF FAITH)
+CREATE TABLE IF NOT EXISTS public.group_conversations (
+  id TEXT PRIMARY KEY,
+  app_id TEXT NOT NULL DEFAULT 'akorno',
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  topic TEXT NOT NULL,
+  member_apostle_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+  last_message TEXT DEFAULT '',
+  last_message_sender_name TEXT DEFAULT '',
+  updated_at BIGINT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.group_conversations ENABLE ROW LEVEL SECURITY;
+
+CREATE INDEX IF NOT EXISTS idx_akorno_group_convos_user_updated ON public.group_conversations (user_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_akorno_group_convos_app_user ON public.group_conversations (app_id, user_id);
+
+DROP POLICY IF EXISTS "Users can only access their own group councils" ON public.group_conversations;
+CREATE POLICY "Users can only access their own group councils"
+  ON public.group_conversations FOR ALL
+  TO authenticated
+  USING (auth.uid() = user_id AND app_id = 'akorno')
+  WITH CHECK (auth.uid() = user_id AND app_id = 'akorno');
+
+
+-- 5. GROUP MESSAGES TABLE
+CREATE TABLE IF NOT EXISTS public.group_messages (
+  id TEXT PRIMARY KEY,
+  app_id TEXT NOT NULL DEFAULT 'akorno',
+  thread_id TEXT REFERENCES public.group_conversations(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  sender_type TEXT NOT NULL,
+  apostle_id TEXT,
+  apostle_name TEXT,
+  content TEXT NOT NULL,
+  timestamp BIGINT NOT NULL,
+  reply_to JSONB,
+  mentions JSONB,
+  bookmarked BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.group_messages ENABLE ROW LEVEL SECURITY;
+
+CREATE INDEX IF NOT EXISTS idx_akorno_group_messages_thread_ts ON public.group_messages (thread_id, timestamp ASC);
+CREATE INDEX IF NOT EXISTS idx_akorno_group_messages_user_ts ON public.group_messages (user_id, timestamp DESC);
+
+DROP POLICY IF EXISTS "Users can only access their own group messages" ON public.group_messages;
+CREATE POLICY "Users can only access their own group messages"
+  ON public.group_messages FOR ALL
+  TO authenticated
+  USING (auth.uid() = user_id AND app_id = 'akorno')
+  WITH CHECK (auth.uid() = user_id AND app_id = 'akorno');
+
+
+-- 6. BOOKMARKS & SAVED REFLECTIONS TABLE
 CREATE TABLE IF NOT EXISTS public.bookmarks (
   id TEXT PRIMARY KEY,
   app_id TEXT NOT NULL DEFAULT 'akorno',
@@ -124,7 +181,7 @@ CREATE POLICY "Users can only access their own bookmarks"
   WITH CHECK (auth.uid() = user_id AND app_id = 'akorno');
 
 
--- 5. GAMIFICATION & SPIRITUAL GROWTH PROFILE
+-- 7. GAMIFICATION & SPIRITUAL GROWTH PROFILE
 CREATE TABLE IF NOT EXISTS public.user_gamification (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   app_id TEXT NOT NULL DEFAULT 'akorno',
@@ -151,7 +208,7 @@ CREATE POLICY "Users can only access their own gamification profile"
   WITH CHECK (auth.uid() = user_id AND app_id = 'akorno');
 
 
--- 6. REFERRALS & FELLOWSHIP TABLE
+-- 8. REFERRALS & FELLOWSHIP TABLE
 CREATE TABLE IF NOT EXISTS public.referrals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   app_id TEXT NOT NULL DEFAULT 'akorno',
@@ -183,7 +240,7 @@ CREATE POLICY "Authenticated users can record referral join"
   WITH CHECK ((auth.uid() = referred_user_id OR referred_user_id IS NULL) AND app_id = 'akorno');
 
 
--- 7. PUSH NOTIFICATION DEVICE TOKENS
+-- 9. PUSH NOTIFICATION DEVICE TOKENS
 CREATE TABLE IF NOT EXISTS public.device_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   app_id TEXT NOT NULL DEFAULT 'akorno',
@@ -206,7 +263,7 @@ CREATE POLICY "Users can manage their own device tokens"
   WITH CHECK (auth.uid() = user_id AND app_id = 'akorno');
 
 
--- 8. AUTOMATIC PROFILE TRIGGER
+-- 10. AUTOMATIC PROFILE TRIGGER
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN

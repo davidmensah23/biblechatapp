@@ -2,6 +2,7 @@ import * as SQLite from 'expo-sqlite';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { ChatMessage, ConversationThread, SavedBookmark, UserProfile } from '../types';
+import { GroupCouncilThread, GroupCouncilMessage } from '../types/groupChat';
 import { DEFAULT_PROFILE } from './supabase';
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
@@ -87,6 +88,30 @@ const initTables = async (db: SQLite.SQLiteDatabase) => {
         location TEXT NOT NULL,
         date_of_birth TEXT NOT NULL,
         gender TEXT DEFAULT 'neutral'
+      );
+    `);
+
+      CREATE TABLE IF NOT EXISTS group_conversations (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        topic TEXT NOT NULL,
+        member_apostle_ids TEXT NOT NULL,
+        last_message TEXT DEFAULT '',
+        last_message_sender_name TEXT DEFAULT '',
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS group_messages (
+        id TEXT PRIMARY KEY NOT NULL,
+        thread_id TEXT NOT NULL,
+        sender_type TEXT NOT NULL,
+        apostle_id TEXT,
+        apostle_name TEXT,
+        content TEXT NOT NULL,
+        timestamp INTEGER NOT NULL,
+        reply_to TEXT,
+        mentions TEXT,
+        bookmarked INTEGER DEFAULT 0
       );
     `);
 
@@ -353,8 +378,207 @@ export const deleteAllUserData = async (): Promise<void> => {
       await db.runAsync('DELETE FROM conversations');
       await db.runAsync('DELETE FROM bookmarks');
       await db.runAsync('DELETE FROM user_profile');
+      await db.runAsync('DELETE FROM group_messages');
+      await db.runAsync('DELETE FROM group_conversations');
     } catch (e) {
       console.warn('deleteAllUserData SQLite error:', e);
+    }
+  }
+};
+
+// =========================================================================
+// COUNCIL OF FAITH (GROUP CHAT) DATABASE OPERATIONS
+// =========================================================================
+
+let memoryGroupThreads: GroupCouncilThread[] = [
+  {
+    id: 'council_inner_circle',
+    name: 'The Inner Circle',
+    topic: 'Walking through trials with unwavering faith & love',
+    memberApostleIds: ['peter', 'james', 'john'],
+    lastMessage: 'John: My beloved, perfect love casts out all fear.',
+    lastMessageSenderName: 'John',
+    updatedAt: Date.now() - 10 * 60 * 1000
+  },
+  {
+    id: 'council_epistle_writers',
+    name: 'The Epistle Writers',
+    topic: 'Grace, salvation, and persevering in holiness',
+    memberApostleIds: ['paul', 'peter', 'john', 'jude'],
+    lastMessage: 'Paul: For by grace you have been saved through faith.',
+    lastMessageSenderName: 'Paul',
+    updatedAt: Date.now() - 60 * 60 * 1000
+  }
+];
+
+let memoryGroupMessages: Record<string, GroupCouncilMessage[]> = {
+  council_inner_circle: [
+    {
+      id: 'gmsg_init_1',
+      threadId: 'council_inner_circle',
+      senderType: 'apostle',
+      apostleId: 'peter',
+      apostleName: 'Peter',
+      content: 'Peace to this fellowship. We are gathered in the Master’s name.',
+      timestamp: Date.now() - 12 * 60 * 1000
+    },
+    {
+      id: 'gmsg_init_2',
+      threadId: 'council_inner_circle',
+      senderType: 'apostle',
+      apostleId: 'john',
+      apostleName: 'John',
+      content: 'My beloved, perfect love casts out all fear. What is on your heart today?',
+      timestamp: Date.now() - 10 * 60 * 1000
+    }
+  ]
+};
+
+export const createGroupThread = async (
+  name: string,
+  topic: string,
+  memberApostleIds: string[]
+): Promise<GroupCouncilThread> => {
+  const newThread: GroupCouncilThread = {
+    id: `council_${Date.now()}`,
+    name,
+    topic,
+    memberApostleIds,
+    lastMessage: 'Fellowship opened. The Apostles have gathered.',
+    lastMessageSenderName: 'Council',
+    updatedAt: Date.now()
+  };
+
+  memoryGroupThreads.unshift(newThread);
+
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO group_conversations (id, name, topic, member_apostle_ids, last_message, last_message_sender_name, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [newThread.id, newThread.name, newThread.topic, JSON.stringify(newThread.memberApostleIds), newThread.lastMessage, newThread.lastMessageSenderName, newThread.updatedAt]
+      );
+    } catch (e) {
+      console.warn('createGroupThread SQLite error:', e);
+    }
+  }
+
+  return newThread;
+};
+
+export const fetchGroupThreads = async (): Promise<GroupCouncilThread[]> => {
+  const db = await getDB();
+  if (db) {
+    try {
+      const rows = await db.getAllAsync<any>('SELECT * FROM group_conversations ORDER BY updated_at DESC');
+      if (rows.length > 0) {
+        return rows.map(r => ({
+          id: r.id,
+          name: r.name,
+          topic: r.topic,
+          memberApostleIds: JSON.parse(r.member_apostle_ids || '[]'),
+          lastMessage: r.last_message || '',
+          lastMessageSenderName: r.last_message_sender_name || '',
+          updatedAt: r.updated_at
+        }));
+      }
+    } catch (e) {
+      console.warn('fetchGroupThreads SQLite error:', e);
+    }
+  }
+  return memoryGroupThreads;
+};
+
+export const fetchGroupMessages = async (threadId: string): Promise<GroupCouncilMessage[]> => {
+  const db = await getDB();
+  if (db) {
+    try {
+      const rows = await db.getAllAsync<any>(
+        'SELECT * FROM group_messages WHERE thread_id = ? ORDER BY timestamp ASC',
+        [threadId]
+      );
+      if (rows.length > 0) {
+        return rows.map(r => ({
+          id: r.id,
+          threadId: r.thread_id,
+          senderType: r.sender_type as 'user' | 'apostle',
+          apostleId: r.apostle_id || undefined,
+          apostleName: r.apostle_name || undefined,
+          content: r.content,
+          timestamp: r.timestamp,
+          replyTo: r.reply_to ? JSON.parse(r.reply_to) : undefined,
+          mentions: r.mentions ? JSON.parse(r.mentions) : undefined,
+          bookmarked: Boolean(r.bookmarked)
+        }));
+      }
+    } catch (e) {
+      console.warn('fetchGroupMessages SQLite error:', e);
+    }
+  }
+  return memoryGroupMessages[threadId] || [];
+};
+
+export const saveGroupMessage = async (
+  msg: GroupCouncilMessage,
+  threadName?: string
+): Promise<void> => {
+  if (!memoryGroupMessages[msg.threadId]) {
+    memoryGroupMessages[msg.threadId] = [];
+  }
+  memoryGroupMessages[msg.threadId].push(msg);
+
+  const senderLabel = msg.senderType === 'user' ? 'You' : msg.apostleName || 'Apostle';
+  const lastMsgSnippet = `${senderLabel}: ${msg.content.substring(0, 75)}`;
+
+  const threadIndex = memoryGroupThreads.findIndex(t => t.id === msg.threadId);
+  if (threadIndex >= 0) {
+    memoryGroupThreads[threadIndex].lastMessage = lastMsgSnippet;
+    memoryGroupThreads[threadIndex].lastMessageSenderName = senderLabel;
+    memoryGroupThreads[threadIndex].updatedAt = msg.timestamp;
+  }
+
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO group_messages (id, thread_id, sender_type, apostle_id, apostle_name, content, timestamp, reply_to, mentions, bookmarked)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          msg.id,
+          msg.threadId,
+          msg.senderType,
+          msg.apostleId || null,
+          msg.apostleName || null,
+          msg.content,
+          msg.timestamp,
+          msg.replyTo ? JSON.stringify(msg.replyTo) : null,
+          msg.mentions ? JSON.stringify(msg.mentions) : null,
+          msg.bookmarked ? 1 : 0
+        ]
+      );
+
+      await db.runAsync(
+        `UPDATE group_conversations SET last_message = ?, last_message_sender_name = ?, updated_at = ? WHERE id = ?`,
+        [lastMsgSnippet, senderLabel, msg.timestamp, msg.threadId]
+      );
+    } catch (e) {
+      console.warn('saveGroupMessage SQLite error:', e);
+    }
+  }
+};
+
+export const deleteGroupThread = async (threadId: string): Promise<void> => {
+  memoryGroupThreads = memoryGroupThreads.filter(t => t.id !== threadId);
+  delete memoryGroupMessages[threadId];
+
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync('DELETE FROM group_messages WHERE thread_id = ?', [threadId]);
+      await db.runAsync('DELETE FROM group_conversations WHERE id = ?', [threadId]);
+    } catch (e) {
+      console.warn('deleteGroupThread SQLite error:', e);
     }
   }
 };

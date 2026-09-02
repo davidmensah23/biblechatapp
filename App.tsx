@@ -13,11 +13,13 @@ import { AuthScreen } from './src/screens/AuthScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { ChatListScreen } from './src/screens/ChatListScreen';
 import { ChatDetailScreen } from './src/screens/ChatDetailScreen';
+import { GroupChatDetailScreen } from './src/screens/GroupChatDetailScreen';
 import { BibleReaderScreen } from './src/screens/BibleReaderScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { FloatingNavBar, NavTabType } from './src/components/FloatingNavBar';
 import { CircularRevealTransition } from './src/components/CircularRevealTransition';
 import { ApostlePersona } from './src/types';
+import { GroupCouncilThread } from './src/types/groupChat';
 import { getDB, saveUserProfile, migrateGuestDataToUser } from './src/services/database';
 import { supabase, fetchRemoteProfile, signOutUser, handleAuthDeepLink } from './src/services/supabase';
 import { initializePushNotifications } from './src/services/pushNotificationService';
@@ -50,8 +52,9 @@ export default function App() {
   });
 
   const [activeNavTab, setActiveNavTab] = useState<NavTabType>('home');
-  const [currentView, setCurrentView] = useState<'main' | 'chat'>('main');
+  const [currentView, setCurrentView] = useState<'main' | 'chat' | 'groupChat'>('main');
   const [selectedApostle, setSelectedApostle] = useState<ApostlePersona | null>(null);
+  const [selectedGroupCouncil, setSelectedGroupCouncil] = useState<GroupCouncilThread | null>(null);
   const [forceRender, setForceRender] = useState<boolean>(false);
   const [showPrivacyNotice, setShowPrivacyNotice] = useState<boolean>(false);
 
@@ -182,6 +185,15 @@ export default function App() {
             onBack={() => setCurrentView('main')}
           />
         </View>
+      ) : currentView === 'groupChat' && selectedGroupCouncil ? (
+        /* 3b. Group Council Detail View */
+        <View style={styles.flexOne}>
+          <StatusBar barStyle="dark-content" backgroundColor="#FAF9F6" />
+          <GroupChatDetailScreen
+            thread={selectedGroupCouncil}
+            onBack={() => setCurrentView('main')}
+          />
+        </View>
       ) : (
         /* 4. Main App (Home / Chats / Bible / Profile) with 4-Tab Floating Nav Bar */
         <View style={styles.mainContainer}>
@@ -201,6 +213,10 @@ export default function App() {
               onSelectConversation={(apostle) => {
                 setSelectedApostle(apostle);
                 setCurrentView('chat');
+              }}
+              onSelectGroupCouncil={(thread) => {
+                setSelectedGroupCouncil(thread);
+                setCurrentView('groupChat');
               }}
               onBack={() => setActiveNavTab('home')}
             />
