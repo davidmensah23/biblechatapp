@@ -346,6 +346,12 @@ export default function App() {
                   setChatInitialMessage(undefined);
                   setCurrentView('chat');
                 }}
+                onOpenBible={(book, chapter) => {
+                  if (book && chapter) {
+                    setBibleInitialTarget({ book, chapter });
+                  }
+                  setActiveNavTab('bible');
+                }}
               />
             )}
 
@@ -364,7 +370,12 @@ export default function App() {
               />
             )}
 
-            {activeNavTab === 'bible' && <BibleReaderScreen />}
+            {activeNavTab === 'bible' && (
+              <BibleReaderScreen
+                initialBook={bibleInitialTarget?.book}
+                initialChapter={bibleInitialTarget?.chapter}
+              />
+            )}
 
             {activeNavTab === 'community' && <CommunityScreen />}
 

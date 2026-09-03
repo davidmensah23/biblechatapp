@@ -25,10 +25,11 @@ import { HomeSkeleton } from '../components/SoftSkeleton';
 import { DailyLiturgyCard } from '../components/DailyLiturgyCard';
 import { DailyLiturgyModal } from '../components/DailyLiturgyModal';
 import { getTodayLiturgy, isLiturgyCompletedForToday, DailyLiturgy } from '../services/liturgyService';
+import { getLastReadPosition, LastReadProgress } from '../services/readingProgressService';
 
 interface HomeScreenProps {
   onSelectApostle: (apostle: ApostlePersona) => void;
-  onOpenBible?: () => void;
+  onOpenBible?: (book?: string, chapter?: number) => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenBible }) => {
@@ -45,6 +46,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
   // Daily Liturgy Guided Prayer State
   const [todayLiturgy, setTodayLiturgy] = useState<DailyLiturgy>(getTodayLiturgy());
   const [isLiturgyDone, setIsLiturgyDone] = useState(false);
+  const [lastRead, setLastRead] = useState<LastReadProgress | null>(null);
   const [showLiturgyModal, setShowLiturgyModal] = useState(false);
 
   // Daily Kingdom Deed Challenge State
@@ -63,7 +65,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
     Promise.all([
       initDeedsDatabase().catch(console.error),
       getSpiritualGrowthProfile().then(setGrowthProfile).catch(console.warn),
-      isLiturgyCompletedForToday().then(setIsLiturgyDone).catch(console.warn)
+      isLiturgyCompletedForToday().then(setIsLiturgyDone).catch(console.warn),
+      getLastReadPosition().then(setLastRead).catch(console.warn)
     ]).finally(() => {
       setTodayDeed(getTodayDeedForUser());
       setTodayLiturgy(getTodayLiturgy());
@@ -230,23 +233,34 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
             onPress={() => setShowLiturgyModal(true)}
           />
 
-          {/* 2. Daily Reading Plan Card */}
+          {/* 2. Resume Reading Card (Dynamic Last-Read Scripture Position) */}
           <TouchableOpacity
-            style={styles.planCard}
-            onPress={onOpenBible}
+            style={styles.resumeReadingCard}
+            onPress={() => onOpenBible && onOpenBible(lastRead?.book, lastRead?.chapter)}
             activeOpacity={0.85}
           >
-            <View style={styles.planCardContent}>
-              <View style={styles.planDayBadge}>
-                <Ionicons name="checkbox-outline" size={15} color="#111111" />
-                <Text style={styles.planDayText}>Day 5</Text>
+            <View style={styles.resumeContent}>
+              <View style={styles.resumeTagRow}>
+                <View style={styles.resumePill}>
+                  <Ionicons name="bookmark" size={11} color="#8B1E1E" style={{ marginRight: 4 }} />
+                  <Text style={styles.resumePillText}>CONTINUE READING</Text>
+                </View>
+                <Text style={styles.resumeEstTime}>
+                  {lastRead?.estimatedMinutesRemaining || 4} MIN REMAINING
+                </Text>
               </View>
-              <Text style={styles.planTitle}>The Ruthless Elimination Of Hurry</Text>
-              <Text style={styles.planSubtitle}>A 5-Day Reading Plan from John Mark Comer</Text>
+
+              <Text style={styles.resumePassageTitle}>
+                {lastRead ? `${lastRead.book} ${lastRead.chapter}` : 'Romans 8'}
+              </Text>
+
+              <Text style={styles.resumeSnippetText} numberOfLines={2}>
+                "{lastRead?.snippet || 'There is now no condemnation for those who are in Christ Jesus...'}"
+              </Text>
             </View>
 
-            <View style={styles.planThumbnailWrap}>
-              <Image source={MascotAssets.bread} style={styles.planThumbnailImage} resizeMode="contain" />
+            <View style={styles.resumeActionCircle}>
+              <Ionicons name="arrow-forward" size={18} color="#111111" />
             </View>
           </TouchableOpacity>
 
@@ -603,6 +617,68 @@ const styles = StyleSheet.create({
     color: '#111111',
     marginTop: 20,
     marginBottom: 12,
+  },
+  resumeReadingCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    marginBottom: 16,
+  },
+  resumeContent: {
+    flex: 1,
+    paddingRight: 14,
+  },
+  resumeTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  resumePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  resumePillText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 10,
+    color: '#8B1E1E',
+    letterSpacing: 0.5,
+  },
+  resumeEstTime: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 10.5,
+    color: '#6B7280',
+    letterSpacing: 0.3,
+  },
+  resumePassageTitle: {
+    fontFamily: Typography.fontSerifBold,
+    fontSize: 19,
+    color: '#111111',
+    marginBottom: 4,
+    letterSpacing: -0.3,
+  },
+  resumeSnippetText: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: '#4B5563',
+  },
+  resumeActionCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   planCard: {
     backgroundColor: '#FFFFFF',

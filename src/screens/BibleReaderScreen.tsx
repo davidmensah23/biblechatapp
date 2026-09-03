@@ -33,14 +33,21 @@ import { VerseImageModal } from '../components/VerseImageModal';
 import { VerseNoteModal } from '../components/VerseNoteModal';
 import { BibleChapterSkeleton } from '../components/SoftSkeleton';
 import { ScriptureMemoryModal } from '../components/ScriptureMemoryModal';
+import { getLastReadPosition, saveLastReadPosition } from '../services/readingProgressService';
 
 interface BibleReaderScreenProps {
   onAskApostleWithVerse?: (verseText: string, reference: string) => void;
+  initialBook?: string;
+  initialChapter?: number;
 }
 
-export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ onAskApostleWithVerse }) => {
-  const [currentBook, setCurrentBook] = useState('2 Samuel');
-  const [currentChapter, setCurrentChapter] = useState(23);
+export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ 
+  onAskApostleWithVerse,
+  initialBook,
+  initialChapter 
+}) => {
+  const [currentBook, setCurrentBook] = useState(initialBook || 'Romans');
+  const [currentChapter, setCurrentChapter] = useState(initialChapter || 8);
   const [translation, setTranslation] = useState<string>('NIV');
   const [chapterData, setChapterData] = useState<BibleChapterData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -63,6 +70,23 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ onAskApost
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
+    if (initialBook && initialBook !== currentBook) setCurrentBook(initialBook);
+    if (initialChapter && initialChapter !== currentChapter) setCurrentChapter(initialChapter);
+  }, [initialBook, initialChapter]);
+
+  useEffect(() => {
+    if (!initialBook && !initialChapter) {
+      getLastReadPosition().then((pos) => {
+        if (pos && pos.book && pos.chapter) {
+          setCurrentBook(pos.book);
+          setCurrentChapter(pos.chapter);
+          if (pos.translation) setTranslation(pos.translation);
+        }
+      });
+    }
+  }, []);
+
+  useEffect(() => {
     loadChapterData(currentBook, currentChapter, translation);
     return () => {
       stopDeepgramSpeech();
@@ -76,6 +100,12 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ onAskApost
     try {
       const data = await fetchChapter(b, c, t);
       setChapterData(data);
+
+      if (data && data.verses && data.verses.length > 0) {
+        const firstVerse = data.verses[0].text;
+        const estMins = Math.max(2, Math.round(data.verses.length / 7));
+        saveLastReadPosition(b, c, t, 1, firstVerse, estMins);
+      }
 
       // Load saved highlights and notes for this chapter from SQLite
       const [hlMap, noteMap] = await Promise.all([
