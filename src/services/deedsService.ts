@@ -36,10 +36,10 @@ export const DEED_CATALOG: KingdomDeed[] = [
   {
     id: 'seed_encouragement_01',
     tier: 'seed',
-    tierLabel: 'SEED TIER',
+    tierLabel: 'DAILY KINDNESS',
     tierIcon: '🕊️',
-    title: 'A Word in Season to the Weary',
-    subtitle: 'Speak life to someone carrying a quiet burden',
+    title: 'Encourage a Friend Today',
+    subtitle: 'Send a kind message to someone on your mind',
     description: 'Reach out with a heartfelt message of sincere prayer, gratitude, or encouragement to an old friend or family member who has been on your mind.',
     checkpoints: [
       'Pause and pray for discernment',
@@ -54,10 +54,10 @@ export const DEED_CATALOG: KingdomDeed[] = [
   {
     id: 'seed_secret_generosity_02',
     tier: 'seed',
-    tierLabel: 'SEED TIER',
+    tierLabel: 'DAILY KINDNESS',
     tierIcon: '🕊️',
-    title: 'The Hidden Cup of Grace',
-    subtitle: 'Do good in secret where only the Father sees',
+    title: 'Do a Quiet Act of Kindness',
+    subtitle: 'Help someone quietly without asking for thanks',
     description: 'Quietly cover a small cost for someone (pay for a coffee, leave a generous tip, or bless someone anonymously) without seeking recognition.',
     checkpoints: [
       'Find an opportunity for quiet kindness',
@@ -72,10 +72,10 @@ export const DEED_CATALOG: KingdomDeed[] = [
   {
     id: 'seed_patience_tongue_03',
     tier: 'seed',
-    tierLabel: 'SEED TIER',
+    tierLabel: 'DAILY KINDNESS',
     tierIcon: '🕊️',
-    title: 'The Bridle of Peace',
-    subtitle: 'Choose gracious silence over a sharp response',
+    title: 'Choose Patience When Angry',
+    subtitle: 'Take a deep breath and speak with kindness',
     description: 'In a moment of tension or irritation today, choose patience and answer with gentle grace instead of defensiveness.',
     checkpoints: [
       'Take three slow breaths before speaking',
@@ -92,9 +92,9 @@ export const DEED_CATALOG: KingdomDeed[] = [
   {
     id: 'branch_table_fellowship_01',
     tier: 'branch',
-    tierLabel: 'BRANCH TIER',
+    tierLabel: 'LOVE IN ACTION',
     tierIcon: '🌿',
-    title: 'Breaking Bread in Kindness',
+    title: 'Share a Meal with Someone',
     subtitle: 'Share physical sustenance with someone in need',
     description: 'Share or buy a warm meal for a person on the street, an overburdened worker, or a neighbor going through a trial.',
     checkpoints: [
@@ -110,9 +110,9 @@ export const DEED_CATALOG: KingdomDeed[] = [
   {
     id: 'branch_visit_lonely_02',
     tier: 'branch',
-    tierLabel: 'BRANCH TIER',
+    tierLabel: 'LOVE IN ACTION',
     tierIcon: '🌿',
-    title: 'The Visit to the Forgotten',
+    title: 'Call Someone Who Is Alone',
     subtitle: 'Reach into the quiet corners of loneliness',
     description: 'Call or visit an elderly person, an isolated neighbor, or a sick friend and spend unhurried time listening to their heart.',
     checkpoints: [
@@ -130,9 +130,9 @@ export const DEED_CATALOG: KingdomDeed[] = [
   {
     id: 'fruit_share_gospel_01',
     tier: 'fruit',
-    tierLabel: 'FRUIT TIER',
+    tierLabel: 'STEP OF FAITH',
     tierIcon: '🌳',
-    title: 'The Sower’s Open Hand',
+    title: 'Share a Bible Verse Today',
     subtitle: 'Share a verse of hope and your faith journey',
     description: 'Have an authentic spiritual conversation with a friend or seeker, sharing what Christ has done in your life and a comforting Bible verse.',
     checkpoints: [
@@ -148,11 +148,11 @@ export const DEED_CATALOG: KingdomDeed[] = [
   {
     id: 'fruit_forgiveness_02',
     tier: 'fruit',
-    tierLabel: 'FRUIT TIER',
+    tierLabel: 'STEP OF FAITH',
     tierIcon: '🌳',
-    title: 'The Release of the Debt',
-    subtitle: 'Forgive someone who has caused you grief',
-    description: 'Make a deliberate choice in prayer to release a grudge or offense against someone, choosing to bless them in the name of Jesus.',
+    title: 'Forgive Someone Today',
+    subtitle: 'Let go of anger and choose peace',
+    description: 'Think of someone who hurt you or made you angry. Choose in your heart to forgive them today and ask God to give you peace.',
     checkpoints: [
       'Name the grievance before God in prayer',
       'Declare forgiveness out loud by faith',

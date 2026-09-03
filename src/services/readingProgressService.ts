@@ -1,5 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import { saveDatabaseReadingProgress, fetchDatabaseReadingProgress } from './database';
 
 export interface LastReadProgress {
   book: string;
@@ -27,6 +28,14 @@ let memoryProgress: LastReadProgress = { ...DEFAULT_PROGRESS };
 
 export const getLastReadPosition = async (): Promise<LastReadProgress> => {
   try {
+    // 1. First check SQLite database query
+    const dbRow = await fetchDatabaseReadingProgress();
+    if (dbRow && dbRow.book && dbRow.chapter) {
+      memoryProgress = dbRow;
+      return dbRow;
+    }
+
+    // 2. Fallback to SecureStore
     let saved: string | null = null;
     if (Platform.OS === 'web') {
       if (typeof localStorage !== 'undefined') {
@@ -70,6 +79,17 @@ export const saveLastReadPosition = async (
   memoryProgress = newProgress;
 
   try {
+    // Save to SQLite via real SQL query
+    await saveDatabaseReadingProgress(
+      book,
+      chapter,
+      translation,
+      verse,
+      newProgress.snippet,
+      newProgress.estimatedMinutesRemaining
+    );
+
+    // Save to SecureStore
     const serialized = JSON.stringify(newProgress);
     if (Platform.OS === 'web') {
       if (typeof localStorage !== 'undefined') {

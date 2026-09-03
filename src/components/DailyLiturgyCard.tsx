@@ -40,37 +40,30 @@ export const DailyLiturgyCard: React.FC<DailyLiturgyCardProps> = ({
               style={{ marginRight: 4 }}
             />
             <Text style={[styles.periodPillText, isMorning ? styles.periodPillTextMorning : styles.periodPillTextEvening]}>
-              {isMorning ? 'MORNING LITURGY' : 'EVENING LITURGY'} • 2 MIN
+              {isMorning ? 'MORNING PRAYER' : 'EVENING PRAYER'} • 2 MIN
             </Text>
           </View>
-
-          {isCompleted && (
-            <View style={styles.completedBadge}>
-              <Ionicons name="checkmark-circle" size={13} color="#059669" style={{ marginRight: 3 }} />
-              <Text style={styles.completedText}>Done Today</Text>
-            </View>
-          )}
         </View>
 
         {/* Title & Theme */}
         <Text style={styles.titleText}>{liturgy.theme}</Text>
         <Text style={styles.subText}>
-          Guided prayer & reflection with Apostle {liturgy.apostle.name}
+          Prayer with Apostle {liturgy.apostle.name}
         </Text>
 
-        {/* Bottom Action Pill */}
+        {/* Bottom Action: Done pill if completed, or Listen & Pray button if not */}
         <View style={styles.bottomRow}>
-          <View style={[styles.listenPill, isCompleted && styles.listenPillDone]}>
-            <Ionicons
-              name={isCompleted ? 'checkmark' : 'play'}
-              size={13}
-              color={isCompleted ? '#059669' : '#111111'}
-              style={{ marginRight: 5 }}
-            />
-            <Text style={[styles.listenText, isCompleted && styles.listenTextDone]}>
-              {isCompleted ? 'Review Reflection' : 'Listen & Pray'}
-            </Text>
-          </View>
+          {isCompleted ? (
+            <View style={styles.donePill}>
+              <Ionicons name="checkmark" size={13} color="#059669" style={{ marginRight: 4 }} />
+              <Text style={styles.doneText}>Done</Text>
+            </View>
+          ) : (
+            <View style={styles.listenPill}>
+              <Ionicons name="play" size={13} color="#111111" style={{ marginRight: 5 }} />
+              <Text style={styles.listenText}>Listen & Pray</Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -166,6 +159,22 @@ const styles = StyleSheet.create({
   bottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  donePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    alignSelf: 'flex-start',
+  },
+  doneText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 12,
+    color: '#047857',
   },
   listenPill: {
     flexDirection: 'row',

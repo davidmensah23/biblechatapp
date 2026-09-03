@@ -52,20 +52,39 @@ export const initializePushNotifications = async (): Promise<boolean> => {
       });
     }
 
-    // 3. Schedule Recurring Morning Scripture Devotion (7:30 AM)
+    // 3. Schedule Recurring Morning Prayer (7:00 AM) & Evening Prayer (8:00 PM)
     try {
       await Notifications.cancelAllScheduledNotificationsAsync();
+
+      // 🌅 Morning Prayer (7:00 AM)
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: '☀️ Daily Morning Bread',
-          body: '“Trust in the LORD with all your heart...” Open today\'s Scripture & reflect with Peter.',
-          data: { type: 'daily_scripture' },
+          title: '🌅 Morning Prayer',
+          body: 'Start your day with peace. Tap for your 2-minute prayer.',
+          data: { type: 'daily_prayer', period: 'morning' },
           sound: true,
           badge: 1
         },
         trigger: {
           hour: 7,
-          minute: 30,
+          minute: 0,
+          repeats: true,
+          channelId: 'daily-devotion'
+        } as any
+      });
+
+      // 🌙 Evening Prayer (8:00 PM)
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '🌙 Evening Prayer',
+          body: 'Let go of your worries tonight. Tap to pray and rest in God’s peace.',
+          data: { type: 'daily_prayer', period: 'evening' },
+          sound: true,
+          badge: 1
+        },
+        trigger: {
+          hour: 20,
+          minute: 0,
           repeats: true,
           channelId: 'daily-devotion'
         } as any

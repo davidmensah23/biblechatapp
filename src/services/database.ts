@@ -81,6 +81,17 @@ const initTables = async (db: SQLite.SQLiteDatabase) => {
         timestamp INTEGER NOT NULL
       );
 
+      CREATE TABLE IF NOT EXISTS user_reading_progress (
+        id TEXT PRIMARY KEY NOT NULL,
+        book TEXT NOT NULL,
+        chapter INTEGER NOT NULL,
+        verse INTEGER,
+        translation TEXT NOT NULL,
+        snippet TEXT,
+        estimated_minutes INTEGER,
+        updated_at INTEGER NOT NULL
+      );
+
       CREATE TABLE IF NOT EXISTS user_profile (
         id TEXT PRIMARY KEY NOT NULL,
         full_name TEXT NOT NULL,
@@ -959,4 +970,52 @@ export const isVerseMemorized = async (reference: string): Promise<boolean> => {
     }
   }
   return false;
+};
+
+export const saveDatabaseReadingProgress = async (
+  book: string,
+  chapter: number,
+  translation: string,
+  verse?: number,
+  snippet?: string,
+  estimatedMinutes?: number
+): Promise<void> => {
+  const db = await getDB();
+  const now = Date.now();
+  if (db) {
+    try {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO user_reading_progress (id, book, chapter, verse, translation, snippet, estimated_minutes, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        ['current', book, chapter, verse || 1, translation, snippet || '', estimatedMinutes || 3, now]
+      );
+    } catch (e) {
+      console.warn('Error saving user_reading_progress to SQLite:', e);
+    }
+  }
+};
+
+export const fetchDatabaseReadingProgress = async (): Promise<any | null> => {
+  const db = await getDB();
+  if (db) {
+    try {
+      const row = await db.getFirstAsync<any>(
+        `SELECT * FROM user_reading_progress WHERE id = 'current' LIMIT 1;`
+      );
+      if (row) {
+        return {
+          book: row.book,
+          chapter: row.chapter,
+          verse: row.verse,
+          translation: row.translation,
+          snippet: row.snippet,
+          estimatedMinutesRemaining: row.estimated_minutes,
+          updatedAt: row.updated_at
+        };
+      }
+    } catch (e) {
+      console.warn('Error fetching user_reading_progress from SQLite:', e);
+    }
+  }
+  return null;
 };
