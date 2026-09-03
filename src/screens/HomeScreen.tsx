@@ -126,7 +126,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
             activeOpacity={0.7}
           >
             <Text style={[styles.tabText, activeTab === 'disciples' ? styles.tabTextActive : styles.tabTextInactive]}>
-              'AI Companions'
+              AI Companions
             </Text>
           </TouchableOpacity>
         </View>

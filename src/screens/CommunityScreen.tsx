@@ -11,7 +11,8 @@ import {
   Share,
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  SafeAreaView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -189,7 +190,7 @@ export const CommunityScreen: React.FC = () => {
   ];
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -575,7 +576,7 @@ export const CommunityScreen: React.FC = () => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -585,7 +586,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F6F6F6',
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 45,
+    paddingTop: Platform.OS === 'ios' ? 10 : 16,
     paddingHorizontal: 20,
     paddingBottom: 16,
     flexDirection: 'row',
@@ -620,7 +621,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: 120,
   },
   statsBanner: {
     flexDirection: 'row',
