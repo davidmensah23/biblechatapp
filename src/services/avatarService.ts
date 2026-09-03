@@ -1,4 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import { supabase } from './supabase';
 import { saveUserProfile, fetchUserProfile } from './database';
 
@@ -23,7 +24,7 @@ export const SACRED_AVATAR_EMBLEMS: SacredAvatarEmblem[] = [
   { id: 'cross', name: 'Sacred Cross', emoji: '✝️', meaning: 'Redemption & Hope', bgColor: '#FEE2E2', textColor: '#991B1B' },
 ];
 
-const AVATAR_STORAGE_KEY = '@biblechat_user_avatar_emblem';
+const AVATAR_STORAGE_KEY = 'biblechat_avatar_emblem';
 
 export const getAvatarEmblem = (emblemId?: string): SacredAvatarEmblem => {
   if (!emblemId) return SACRED_AVATAR_EMBLEMS[0];
@@ -33,10 +34,17 @@ export const getAvatarEmblem = (emblemId?: string): SacredAvatarEmblem => {
 
 export const getUserAvatarEmblem = async (): Promise<SacredAvatarEmblem> => {
   try {
-    const saved = await AsyncStorage.getItem(AVATAR_STORAGE_KEY);
+    let saved: string | null = null;
+    if (Platform.OS === 'web') {
+      try {
+        saved = typeof localStorage !== 'undefined' ? localStorage.getItem(AVATAR_STORAGE_KEY) : null;
+      } catch (e) {}
+    } else {
+      saved = await SecureStore.getItemAsync(AVATAR_STORAGE_KEY);
+    }
     if (saved) return getAvatarEmblem(saved);
 
-    // Fallback check database
+    // Fallback check SQLite database
     const profile = await fetchUserProfile();
     if (profile?.avatarUrl && profile.avatarUrl.startsWith('emblem:')) {
       const emblemId = profile.avatarUrl.replace('emblem:', '');
@@ -50,7 +58,13 @@ export const getUserAvatarEmblem = async (): Promise<SacredAvatarEmblem> => {
 
 export const setUserAvatarEmblem = async (emblemId: string): Promise<void> => {
   try {
-    await AsyncStorage.setItem(AVATAR_STORAGE_KEY, emblemId);
+    if (Platform.OS === 'web') {
+      try {
+        if (typeof localStorage !== 'undefined') localStorage.setItem(AVATAR_STORAGE_KEY, emblemId);
+      } catch (e) {}
+    } else {
+      await SecureStore.setItemAsync(AVATAR_STORAGE_KEY, emblemId);
+    }
 
     // Save to local SQLite
     const profile = await fetchUserProfile();
