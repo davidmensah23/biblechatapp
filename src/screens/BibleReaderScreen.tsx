@@ -7,7 +7,6 @@ import {
   ScrollView,
   TouchableOpacity,
   PanResponder,
-  Alert,
   ActivityIndicator,
   Share,
   Clipboard
@@ -35,9 +34,12 @@ import { BibleChapterSkeleton } from '../components/SoftSkeleton';
 import { ScriptureMemoryModal } from '../components/ScriptureMemoryModal';
 import { getChapterHeading } from '../services/chapterHeadings';
 import { getLastReadPosition, saveLastReadPosition } from '../services/readingProgressService';
+import { ApostleSelectSheet } from '../components/ApostleSelectSheet';
+import { ToastBanner } from '../components/ToastBanner';
+import { ApostlePersona } from '../types';
 
 interface BibleReaderScreenProps {
-  onAskApostleWithVerse?: (verseText: string, reference: string) => void;
+  onAskApostleWithVerse?: (verseText: string, reference: string, apostle?: ApostlePersona) => void;
   initialBook?: string;
   initialChapter?: number;
 }
@@ -49,36 +51,53 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
 }) => {
   const [currentBook, setCurrentBook] = useState(initialBook || 'Romans');
   const [currentChapter, setCurrentChapter] = useState(initialChapter || 8);
-  const [translation, setTranslation] = useState<string>('NIV');
+  const [translation, setTranslation] = useState('NIV');
   const [chapterData, setChapterData] = useState<BibleChapterData | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedVerseNumber, setSelectedVerseNumber] = useState<number | null>(null);
-  const [showBookPicker, setShowBookPicker] = useState(false);
-  const [showVersionsModal, setShowVersionsModal] = useState(false);
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [fontSize, setFontSize] = useState(17.5);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Real SQLite persistent highlights & notes for the current chapter
+  // Verse Interaction Sheet State
+  const [selectedVerseNumber, setSelectedVerseNumber] = useState<number | null>(null);
+  const [showActionSheet, setShowActionSheet] = useState(false);
+
+  // Highlights & Notes state
   const [chapterHighlights, setChapterHighlights] = useState<Record<number, string>>({});
   const [chapterNotes, setChapterNotes] = useState<Record<number, string>>({});
 
-  // Modals
-  const [showActionSheet, setShowActionSheet] = useState(false);
+  // Audio Narration & Sequential Queue State
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [activeReadingVerse, setActiveReadingVerse] = useState<number | null>(null);
+  const isAudioCancelledRef = useRef(false);
+  const verseLayouts = useRef<Record<number, number>>({});
+
+  // Sub-Modals
+  const [showBookPicker, setShowBookPicker] = useState(false);
+  const [showVersionsModal, setShowVersionsModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [showMemoryModal, setShowMemoryModal] = useState(false);
+  const [showApostleSelectSheet, setShowApostleSelectSheet] = useState(false);
+
+  // Custom Toast Banner State
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastIcon, setToastIcon] = useState<keyof typeof Ionicons.glyphMap>('checkmark-circle');
+  const [toastVisible, setToastVisible] = useState(false);
+
+  // Font Size
+  const [fontSize, setFontSize] = useState(18);
 
   const scrollViewRef = useRef<ScrollView>(null);
 
-  useEffect(() => {
-    if (initialBook && initialBook !== currentBook) setCurrentBook(initialBook);
-    if (initialChapter && initialChapter !== currentChapter) setCurrentChapter(initialChapter);
-  }, [initialBook, initialChapter]);
+  const showToast = (message: string, icon: keyof typeof Ionicons.glyphMap = 'checkmark-circle') => {
+    setToastMessage(message);
+    setToastIcon(icon);
+    setToastVisible(true);
+  };
 
+  // Restore Last Read Position on mount if no initial target was given
   useEffect(() => {
-    if (!initialBook && !initialChapter) {
+    if (!initialBook || !initialChapter) {
       getLastReadPosition().then((pos) => {
-        if (pos && pos.book && pos.chapter) {
+        if (pos) {
           setCurrentBook(pos.book);
           setCurrentChapter(pos.chapter);
           if (pos.translation) setTranslation(pos.translation);
@@ -87,17 +106,23 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
     }
   }, []);
 
+  // When initialBook/Chapter prop changes, navigate to it
   useEffect(() => {
-    loadChapterData(currentBook, currentChapter, translation);
-    return () => {
-      stopDeepgramSpeech();
-    };
+    if (initialBook && initialChapter) {
+      setCurrentBook(initialBook);
+      setCurrentChapter(initialChapter);
+    }
+  }, [initialBook, initialChapter]);
+
+  // Load Chapter Data whenever Book, Chapter, or Translation changes
+  useEffect(() => {
+    // Stop any ongoing audio narration when navigating chapters
+    handleStopAudio();
+    loadChapter(currentBook, currentChapter, translation);
   }, [currentBook, currentChapter, translation]);
 
-  const loadChapterData = async (b: string, c: number, t: string) => {
+  const loadChapter = async (b: string, c: number, t: string) => {
     setIsLoading(true);
-    setSelectedVerseNumber(null);
-    setShowActionSheet(false);
     try {
       const data = await fetchChapter(b, c, t);
       setChapterData(data);
@@ -156,10 +181,16 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
     }
   };
 
-  // Handle Verse Tap: Open soft action sheet
+  // Handle Verse Tap
   const handleVerseTap = (verseNum: number) => {
     setSelectedVerseNumber(verseNum);
-    setShowActionSheet(true);
+
+    // If audio is currently playing, seek narration to this tapped verse!
+    if (isPlayingAudio) {
+      handleSeekAudioToVerse(verseNum);
+    } else {
+      setShowActionSheet(true);
+    }
   };
 
   // 1. Color Highlight selection
@@ -181,7 +212,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
     }
   };
 
-  // 2. Bookmark Verse
+  // 2. Bookmark Verse with Custom Toast
   const handleBookmarkSelectedVerse = async () => {
     if (!chapterData || selectedVerseNumber === null) return;
     const verseObj = chapterData.verses.find(v => v.verseNumber === selectedVerseNumber);
@@ -196,23 +227,23 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
       timestamp: Date.now()
     });
 
-    Alert.alert('Saved to Profile', `Bookmarked ${chapterData.book} ${chapterData.chapter}:${selectedVerseNumber}!`);
+    showToast('Saved to Bookmarks ✓ Find it in your Profile', 'bookmark');
   };
 
-  // 3. Copy Verse
+  // 3. Copy Verse with App Download Link
   const handleCopyVerse = () => {
     if (!chapterData || selectedVerseNumber === null) return;
     const verseObj = chapterData.verses.find(v => v.verseNumber === selectedVerseNumber);
     if (!verseObj) return;
 
-    const copyText = `“${verseObj.text}” — ${chapterData.book} ${chapterData.chapter}:${selectedVerseNumber} (${translation})`;
+    const copyText = `“${verseObj.text}”\n— ${chapterData.book} ${chapterData.chapter}:${selectedVerseNumber} (${translation})\n\nRead on BibleChat App: https://biblechatapp.com`;
     try {
       Clipboard.setString(copyText);
+      showToast('Verse copied with app download link ✓', 'copy-outline');
     } catch (e) {}
-    Alert.alert('Copied', 'Verse copied to clipboard.');
   };
 
-  // 4. Save Note
+  // 4. Save Note with Custom Toast
   const handleSaveNote = async (noteText: string) => {
     if (!chapterData || selectedVerseNumber === null) return;
     const verseObj = chapterData.verses.find(v => v.verseNumber === selectedVerseNumber);
@@ -221,7 +252,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
     const ref = `${chapterData.book} ${chapterData.chapter}:${selectedVerseNumber}`;
     setChapterNotes(prev => ({ ...prev, [selectedVerseNumber]: noteText }));
     await saveVerseNote(currentBook, currentChapter, selectedVerseNumber, ref, verseObj.text, noteText);
-    Alert.alert('Note Saved', 'Your reflection is saved under Profile > Notes.');
+    showToast('Reflection saved to Profile ✓', 'document-text-outline');
   };
 
   // 5. Delete Note
@@ -233,25 +264,69 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
       return copy;
     });
     await deleteVerseNote(`note_${currentBook}_${currentChapter}_${selectedVerseNumber}`);
+    showToast('Note deleted', 'trash-outline');
   };
 
-  // 6. Audio Narration
+  // 6. Sequential Audio Narration Queue Engine
+  const playVerseQueue = async (startVerseNum: number) => {
+    if (!chapterData?.verses || chapterData.verses.length === 0) return;
+    const verseIndex = chapterData.verses.findIndex(v => v.verseNumber === startVerseNum);
+    if (verseIndex === -1) return;
+
+    const currentVerse = chapterData.verses[verseIndex];
+    setActiveReadingVerse(currentVerse.verseNumber);
+    setIsPlayingAudio(true);
+
+    // Auto-scroll reader to center active verse smoothly
+    const yOffset = verseLayouts.current[currentVerse.verseNumber];
+    if (typeof yOffset === 'number') {
+      scrollViewRef.current?.scrollTo({ y: Math.max(0, yOffset - 90), animated: true });
+    }
+
+    const verseAudioKey = `bible_${currentBook}_${currentChapter}_${translation}_v${currentVerse.verseNumber}`;
+    const textToRead = `Verse ${currentVerse.verseNumber}. ${currentVerse.text}`;
+
+    await playDeepgramSpeech(
+      verseAudioKey,
+      textToRead,
+      'narrator',
+      () => {
+        setActiveReadingVerse(currentVerse.verseNumber);
+        setIsPlayingAudio(true);
+      },
+      async () => {
+        if (!isAudioCancelledRef.current && verseIndex + 1 < chapterData.verses.length) {
+          const nextVerse = chapterData.verses[verseIndex + 1];
+          playVerseQueue(nextVerse.verseNumber);
+        } else {
+          setIsPlayingAudio(false);
+          setActiveReadingVerse(null);
+        }
+      }
+    );
+  };
+
+  const handleSeekAudioToVerse = async (verseNum: number) => {
+    isAudioCancelledRef.current = true;
+    await stopDeepgramSpeech();
+    isAudioCancelledRef.current = false;
+    playVerseQueue(verseNum);
+  };
+
+  const handleStopAudio = async () => {
+    isAudioCancelledRef.current = true;
+    await stopDeepgramSpeech();
+    setIsPlayingAudio(false);
+    setActiveReadingVerse(null);
+  };
+
   const handleToggleAudioNarration = async () => {
     if (isPlayingAudio) {
-      await stopDeepgramSpeech();
-      setIsPlayingAudio(false);
+      await handleStopAudio();
     } else {
-      if (!chapterData || !chapterData.verses || chapterData.verses.length === 0) return;
-      const fullChapterText = `${chapterData.book} Chapter ${chapterData.chapter}. ` +
-        chapterData.verses.map(v => `${v.verseNumber}. ${v.text}`).join(' ');
-      setIsPlayingAudio(true);
-      await playDeepgramSpeech(
-        `bible_${chapterData.book}_${chapterData.chapter}_${translation}`,
-        fullChapterText,
-        'narrator',
-        () => setIsPlayingAudio(true),
-        () => setIsPlayingAudio(false)
-      );
+      isAudioCancelledRef.current = false;
+      const startFrom = selectedVerseNumber || activeReadingVerse || 1;
+      playVerseQueue(startFrom);
     }
   };
 
@@ -260,18 +335,26 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Custom Non-blocking Toast Banner */}
+      <ToastBanner
+        visible={toastVisible}
+        message={toastMessage}
+        iconName={toastIcon}
+        onDismiss={() => setToastVisible(false)}
+      />
+
       {/* Top Header Bar */}
       <View style={styles.topHeader}>
         <View style={styles.topHeaderLeft}>
           <TouchableOpacity
-            style={styles.headerIconBtn}
+            style={[styles.headerIconBtn, isPlayingAudio && styles.headerIconBtnAudioActive]}
             onPress={handleToggleAudioNarration}
             activeOpacity={0.7}
           >
             <Ionicons
               name={isPlayingAudio ? 'volume-high' : 'volume-medium-outline'}
-              size={23}
-              color={isPlayingAudio ? '#8B1E1E' : Colors.textPrimary}
+              size={22}
+              color={isPlayingAudio ? '#D97706' : Colors.textPrimary}
             />
           </TouchableOpacity>
 
@@ -333,31 +416,59 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
                 const isSelected = selectedVerseNumber === v.verseNumber;
                 const highlightColor = chapterHighlights[v.verseNumber];
                 const hasNote = Boolean(chapterNotes[v.verseNumber]);
+                const isReadingThisVerse = activeReadingVerse === v.verseNumber;
 
                 return (
-                  <TouchableOpacity
+                  <View
                     key={v.verseNumber}
-                    style={[
-                      styles.verseParagraph,
-                      highlightColor && { backgroundColor: highlightColor },
-                      isSelected && !highlightColor && styles.verseParagraphSelected
-                    ]}
-                    onPress={() => handleVerseTap(v.verseNumber)}
-                    activeOpacity={0.8}
+                    onLayout={(e) => {
+                      verseLayouts.current[v.verseNumber] = e.nativeEvent.layout.y;
+                    }}
                   >
-                    <Text
+                    <TouchableOpacity
                       style={[
-                        styles.verseContentText,
-                        { fontSize, lineHeight: fontSize * 1.65 },
+                        styles.verseParagraph,
+                        highlightColor && { backgroundColor: highlightColor },
+                        isSelected && !highlightColor && styles.verseParagraphSelected,
+                        isReadingThisVerse && styles.verseReadingActive
                       ]}
+                      onPress={() => handleVerseTap(v.verseNumber)}
+                      activeOpacity={0.8}
                     >
-                      <Text style={styles.superscriptVerseNumber}>{v.verseNumber} </Text>
-                      {hasNote && (
-                        <Ionicons name="document-text" size={11} color="#8B1E1E" style={{ marginRight: 3 }} />
-                      )}
-                      {v.text}
-                    </Text>
-                  </TouchableOpacity>
+                      <Text
+                        style={[
+                          styles.verseContentText,
+                          { fontSize, lineHeight: fontSize * 1.68 },
+                        ]}
+                      >
+                        <Text style={styles.superscriptVerseNumber}>{v.verseNumber} </Text>
+                        {isReadingThisVerse && (
+                          <Ionicons name="volume-medium" size={13} color="#D97706" style={{ marginRight: 4 }} />
+                        )}
+                        {v.text}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Inline Note Reflection Callout */}
+                    {hasNote && (
+                      <TouchableOpacity
+                        style={styles.inlineNoteCallout}
+                        onPress={() => {
+                          setSelectedVerseNumber(v.verseNumber);
+                          setShowNoteModal(true);
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <View style={styles.inlineNoteHeader}>
+                          <Ionicons name="document-text" size={12} color="#8B1E1E" style={{ marginRight: 5 }} />
+                          <Text style={styles.inlineNoteLabel}>My Reflection</Text>
+                        </View>
+                        <Text style={styles.inlineNoteText} numberOfLines={2}>
+                          {chapterNotes[v.verseNumber]}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 );
               })}
             </View>
@@ -368,11 +479,15 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
       {/* Floating Bottom Audio & Chapter Controls */}
       <View style={styles.floatingControlsWrapper}>
         <TouchableOpacity
-          style={styles.floatingAudioBtn}
+          style={[styles.floatingAudioBtn, isPlayingAudio && styles.floatingAudioBtnActive]}
           onPress={handleToggleAudioNarration}
           activeOpacity={0.85}
         >
-          <Ionicons name={isPlayingAudio ? 'pause' : 'play'} size={20} color={Colors.textPrimary} />
+          <Ionicons
+            name={isPlayingAudio ? 'pause' : 'play'}
+            size={20}
+            color={isPlayingAudio ? '#D97706' : Colors.textPrimary}
+          />
         </TouchableOpacity>
 
         <View style={styles.floatingChapterPill}>
@@ -392,7 +507,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
         </View>
       </View>
 
-      {/* Soft UI Verse Action Sheet (Replacing Buggy Floating Bar) */}
+      {/* Soft UI Verse Action Sheet with Multi-Version Comparison */}
       <VerseActionSheet
         visible={showActionSheet}
         onClose={() => {
@@ -401,19 +516,33 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
         }}
         verseCitation={selectedCitation}
         verseText={selectedVerseObj?.text || ''}
+        book={currentBook}
+        chapter={currentChapter}
+        verseNumber={selectedVerseNumber || undefined}
+        currentTranslation={translation}
         currentColor={selectedVerseNumber ? chapterHighlights[selectedVerseNumber] : undefined}
         hasNote={Boolean(selectedVerseNumber && chapterNotes[selectedVerseNumber])}
         onSelectHighlight={handleSelectHighlight}
         onOpenCreateImage={() => setShowImageModal(true)}
         onOpenAddNote={() => setShowNoteModal(true)}
-        onAskApostle={() => {
-          if (selectedVerseObj && onAskApostleWithVerse) {
-            onAskApostleWithVerse(selectedVerseObj.text, selectedCitation);
-          }
-        }}
+        onAskApostle={() => setShowApostleSelectSheet(true)}
         onBookmark={handleBookmarkSelectedVerse}
         onCopy={handleCopyVerse}
         onMemorize={() => setShowMemoryModal(true)}
+      />
+
+      {/* Apostle Select Sheet */}
+      <ApostleSelectSheet
+        visible={showApostleSelectSheet}
+        onClose={() => setShowApostleSelectSheet(false)}
+        verseCitation={selectedCitation}
+        verseText={selectedVerseObj?.text || ''}
+        onSelectApostle={(apostle) => {
+          setShowApostleSelectSheet(false);
+          if (selectedVerseObj && onAskApostleWithVerse) {
+            onAskApostleWithVerse(selectedVerseObj.text, selectedCitation, apostle);
+          }
+        }}
       />
 
       {/* Scripture Memorization Modal */}
@@ -425,7 +554,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
         onClose={() => setShowMemoryModal(false)}
       />
 
-      {/* Create Verse Image Modal */}
+      {/* Create Verse Image Modal with AI & Presets */}
       <VerseImageModal
         visible={showImageModal}
         onClose={() => setShowImageModal(false)}
@@ -434,13 +563,13 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
         translation={translation}
       />
 
-      {/* Add / Edit Verse Note Modal */}
+      {/* Verse Note Modal */}
       <VerseNoteModal
         visible={showNoteModal}
         onClose={() => setShowNoteModal(false)}
         verseCitation={selectedCitation}
         verseText={selectedVerseObj?.text || ''}
-        existingNote={selectedVerseNumber ? chapterNotes[selectedVerseNumber] : ''}
+        existingNote={selectedVerseNumber ? chapterNotes[selectedVerseNumber] : undefined}
         onSaveNote={handleSaveNote}
         onDeleteNote={handleDeleteNote}
       />
@@ -448,23 +577,23 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
       {/* Book & Chapter Picker */}
       <BibleBookPickerModal
         visible={showBookPicker}
+        onClose={() => setShowBookPicker(false)}
         currentBook={currentBook}
         currentChapter={currentChapter}
-        onClose={() => setShowBookPicker(false)}
-        onSelect={(book: string, chapter: number) => {
+        onSelect={(book, chapter) => {
           setCurrentBook(book);
           setCurrentChapter(chapter);
           setShowBookPicker(false);
         }}
       />
 
-      {/* Translation Picker */}
+      {/* Bible Versions Modal */}
       <BibleVersionsModal
         visible={showVersionsModal}
         onClose={() => setShowVersionsModal(false)}
         currentVersion={translation}
-        onSelectVersion={(v) => {
-          setTranslation(v as any);
+        onSelectVersion={(versionCode) => {
+          setTranslation(versionCode);
           setShowVersionsModal(false);
         }}
       />
@@ -475,7 +604,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAF9F6',
+    backgroundColor: '#FAFAF7',
   },
   topHeader: {
     flexDirection: 'row',
@@ -483,9 +612,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
+    backgroundColor: '#FAFAF7',
     borderBottomWidth: 1,
     borderBottomColor: '#EFEFEA',
-    backgroundColor: '#FAF9F6',
   },
   topHeaderLeft: {
     flexDirection: 'row',
@@ -495,6 +624,7 @@ const styles = StyleSheet.create({
   topHeaderRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   headerIconBtn: {
     width: 36,
@@ -503,6 +633,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#F2F2EE',
+  },
+  headerIconBtnAudioActive: {
+    backgroundColor: '#FEF3C7',
   },
   versionSelectorPill: {
     flexDirection: 'row',
@@ -550,17 +683,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 160,
   },
-  loadingContainer: {
-    paddingTop: 120,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 14,
-    color: Colors.textMuted,
-    marginTop: 12,
-  },
   chapterWrapper: {
     maxWidth: 680,
     alignSelf: 'center',
@@ -592,13 +714,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   verseParagraph: {
-    paddingVertical: 4,
+    paddingVertical: 5,
     paddingHorizontal: 6,
-    borderRadius: 6,
+    borderRadius: 8,
   },
-  // Soft, warm, non-AI selection wash
   verseParagraphSelected: {
     backgroundColor: '#FEF3C755',
+  },
+  verseReadingActive: {
+    backgroundColor: '#FEF3C7',
+    borderLeftWidth: 3.5,
+    borderLeftColor: '#D97706',
+    paddingLeft: 8,
   },
   superscriptVerseNumber: {
     fontFamily: Typography.fontSansSemiBold,
@@ -611,6 +738,32 @@ const styles = StyleSheet.create({
     color: '#111827',
     letterSpacing: 0.1,
   },
+  inlineNoteCallout: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    padding: 10,
+    marginHorizontal: 6,
+    marginTop: 4,
+    marginBottom: 6,
+    borderLeftWidth: 3,
+    borderLeftColor: '#8B1E1E',
+  },
+  inlineNoteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 3,
+  },
+  inlineNoteLabel: {
+    fontFamily: Typography.fontSansBold,
+    fontSize: 11,
+    color: '#8B1E1E',
+  },
+  inlineNoteText: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 12.5,
+    color: '#1F2937',
+    lineHeight: 17,
+  },
   floatingControlsWrapper: {
     position: 'absolute',
     bottom: 86,
@@ -622,49 +775,49 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   floatingAudioBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowRadius: 8,
+    elevation: 4,
     borderWidth: 1,
-    borderColor: '#EBEBE6',
+    borderColor: '#EFEFEA',
+  },
+  floatingAudioBtnActive: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#FCD34D',
   },
   floatingChapterPill: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowRadius: 8,
+    elevation: 4,
     borderWidth: 1,
-    borderColor: '#EBEBE6',
+    borderColor: '#EFEFEA',
   },
   chapterNavArrow: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 6,
   },
   chapterNavCenter: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
   },
   floatingChapterText: {
     fontFamily: Typography.fontSansSemiBold,
-    fontSize: 13.5,
+    fontSize: 14,
     color: Colors.textPrimary,
-  }
+  },
 });

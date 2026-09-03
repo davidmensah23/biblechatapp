@@ -36,6 +36,7 @@ import { BadgeDetailModal } from '../components/BadgeDetailModal';
 import { ActivityListSkeleton } from '../components/SoftSkeleton';
 import { AvatarPickerModal } from '../components/AvatarPickerModal';
 import { getUserAvatarEmblem, SacredAvatarEmblem, SACRED_AVATAR_EMBLEMS } from '../services/avatarService';
+import { SavedItemsModal } from '../components/SavedItemsModal';
 
 interface ProfileScreenProps {
   onLogout?: () => void;
@@ -54,6 +55,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [authProvider, setAuthProvider] = useState<'google' | 'email' | 'guest'>('guest');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showSavedModal, setShowSavedModal] = useState(false);
   const [showBadgesModal, setShowBadgesModal] = useState(false);
   const [selectedBadgeForDetail, setSelectedBadgeForDetail] = useState<FaithBadge | null>(null);
   const [growthProfile, setGrowthProfile] = useState<SpiritualGrowthProfile | null>(null);
@@ -230,7 +232,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         <View style={styles.actionCardsRow}>
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={onOpenBible}
+            onPress={() => setShowSavedModal(true)}
             activeOpacity={0.75}
           >
             <Ionicons name="bookmark-outline" size={22} color="#111111" style={{ marginBottom: 6 }} />
@@ -640,6 +642,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           }}
         />
       )}
+
+      {/* Saved Bookmarks and Notes Modal */}
+      <SavedItemsModal
+        visible={showSavedModal}
+        onClose={() => setShowSavedModal(false)}
+        onOpenVerseInBible={() => {
+          setShowSavedModal(false);
+          onOpenBible?.();
+        }}
+      />
     </SafeAreaView>
  );
 };

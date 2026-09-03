@@ -33,6 +33,7 @@ import { YouVersionProvider } from './src/components/youversion';
 import { FloatingNavBar, NavTabType } from './src/components/FloatingNavBar';
 import { CircularRevealTransition } from './src/components/CircularRevealTransition';
 import { ApostlePersona } from './src/types';
+import { APOSTLE_PERSONAS } from './src/services/personas';
 import { GroupCouncilThread } from './src/types/groupChat';
 import { getDB, saveUserProfile, migrateGuestDataToUser } from './src/services/database';
 import {
@@ -381,6 +382,13 @@ export default function App() {
               <BibleReaderScreen
                 initialBook={bibleInitialTarget?.book}
                 initialChapter={bibleInitialTarget?.chapter}
+                onAskApostleWithVerse={(verseText, citation, apostle) => {
+                  const targetApostle = apostle || APOSTLE_PERSONAS[0];
+                  setSelectedApostle(targetApostle);
+                  setChatInitialMessage(`Peace be with you, ${targetApostle.name}. I am reflecting on ${citation} and would value your biblical counsel and prayer.`);
+                  setChatContextQuote({ text: verseText, reference: citation });
+                  setCurrentView('chat');
+                }}
               />
             )}
 
