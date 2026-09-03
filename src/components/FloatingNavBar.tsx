@@ -16,6 +16,7 @@ export type NavTabType = 'home' | 'chats' | 'bible' | 'community' | 'profile';
 interface FloatingNavBarProps {
   activeTab: NavTabType;
   onTabChange: (tab: NavTabType) => void;
+  visible?: boolean;
 }
 
 const TAB_BTN_SIZE = 46;
@@ -283,8 +284,14 @@ const AnimatedCommunityIcon: React.FC<{ active: boolean }> = ({ active }) => {
 
 // MAIN FLOATING NAVIGATION BAR
 // =========================================================================
-export const FloatingNavBar: React.FC<FloatingNavBarProps> = ({ activeTab, onTabChange }) => {
+export const FloatingNavBar: React.FC<FloatingNavBarProps> = ({
+  activeTab,
+  onTabChange,
+  visible = true
+}) => {
   const indicatorOffset = useSharedValue(0);
+  const barTranslateY = useSharedValue(0);
+  const barOpacity = useSharedValue(1);
 
   useEffect(() => {
     if (activeTab === 'home') {
@@ -300,12 +307,30 @@ export const FloatingNavBar: React.FC<FloatingNavBarProps> = ({ activeTab, onTab
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    if (visible) {
+      barTranslateY.value = withSpring(0, { damping: 22, stiffness: 260 });
+      barOpacity.value = withTiming(1, { duration: 180 });
+    } else {
+      barTranslateY.value = withTiming(85, { duration: 220, easing: Easing.in(Easing.cubic) });
+      barOpacity.value = withTiming(0, { duration: 160 });
+    }
+  }, [visible]);
+
   const indicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: indicatorOffset.value }],
   }));
 
+  const barAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: barTranslateY.value }],
+    opacity: barOpacity.value,
+  }));
+
   return (
-    <View style={styles.wrapper}>
+    <Animated.View
+      style={[styles.wrapper, barAnimatedStyle]}
+      pointerEvents={visible ? 'auto' : 'none'}
+    >
       <View style={styles.container}>
         {/* Solid Pure White Sliding Active Circle */}
         <Animated.View style={[styles.activeWhiteCircle, indicatorStyle]} />
@@ -355,7 +380,7 @@ export const FloatingNavBar: React.FC<FloatingNavBarProps> = ({ activeTab, onTab
           <AnimatedProfileIcon active={activeTab === 'profile'} />
         </TouchableOpacity>
       </View>
-    </View>
+    </Animated.View>
   );
 };
 

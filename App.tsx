@@ -93,6 +93,7 @@ export default function App() {
   const [chatContextQuote, setChatContextQuote] = useState<{ text: string; reference: string } | undefined>(undefined);
   const [chatMinistryObjective, setChatMinistryObjective] = useState<'sermon_prep' | 'small_group' | 'personal_reflection' | 'seeker_explore' | undefined>(undefined);
   const [forceRender, setForceRender] = useState<boolean>(false);
+  const [isNavBarVisible, setIsNavBarVisible] = useState<boolean>(true);
   const [showPrivacyNotice, setShowPrivacyNotice] = useState<boolean>(false);
 
   useEffect(() => {
@@ -372,6 +373,7 @@ export default function App() {
                   setCurrentView('groupChat');
                 }}
                 onBack={() => setActiveNavTab('home')}
+                onSetNavBarVisible={setIsNavBarVisible}
               />
             )}
 
@@ -397,7 +399,11 @@ export default function App() {
           {/* Floating Bottom Nav Bar */}
           <FloatingNavBar
             activeTab={activeNavTab}
-            onTabChange={(tab) => setActiveNavTab(tab)}
+            onTabChange={(tab) => {
+              setIsNavBarVisible(true);
+              setActiveNavTab(tab);
+            }}
+            visible={isNavBarVisible}
           />
 
           {/* Auth Modal for Guests upgrading from Profile */}

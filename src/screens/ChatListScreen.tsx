@@ -1,5 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Image, TextInput } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  FlatList,
+  TouchableOpacity,
+  Image,
+  TextInput,
+  Dimensions,
+  ScrollView,
+  NativeSyntheticEvent,
+  NativeScrollEvent
+} from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
@@ -13,16 +31,20 @@ import { PastoralGuidesRow } from '../components/PastoralGuidesRow';
 import { PastoralGuideModal } from '../components/PastoralGuideModal';
 import { PastoralGuide } from '../services/pastoralGuidesService';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 interface ChatListScreenProps {
   onSelectConversation: (apostle: ApostlePersona, initialMessage?: string) => void;
   onSelectGroupCouncil: (thread: GroupCouncilThread) => void;
   onBack: () => void;
+  onSetNavBarVisible?: (visible: boolean) => void;
 }
 
 export const ChatListScreen: React.FC<ChatListScreenProps> = ({
   onSelectConversation,
   onSelectGroupCouncil,
-  onBack
+  onBack,
+  onSetNavBarVisible
 }) => {
   const [activeSegment, setActiveSegment] = useState<'apostles' | 'councils'>('apostles');
   const [conversations, setConversations] = useState<ConversationThread[]>([]);
@@ -33,8 +55,20 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
   const [selectedPastoralGuide, setSelectedPastoralGuide] = useState<PastoralGuide | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const pagerRef = useRef<ScrollView>(null);
+  const lastScrollY = useRef(0);
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Tab indicator slide animation
+  const tabIndicatorOffset = useSharedValue(0);
+  const SEGMENT_WIDTH = (SCREEN_WIDTH - 32 - 8) / 2;
+
   useEffect(() => {
     loadData();
+    return () => {
+      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+      if (onSetNavBarVisible) onSetNavBarVisible(true);
+    };
   }, []);
 
   const loadData = async () => {
@@ -47,6 +81,53 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const switchSegment = (seg: 'apostles' | 'councils') => {
+    setActiveSegment(seg);
+    tabIndicatorOffset.value = withSpring(seg === 'apostles' ? 0 : SEGMENT_WIDTH + 4, {
+      damping: 22,
+      stiffness: 260
+    });
+    pagerRef.current?.scrollTo({
+      x: seg === 'apostles' ? 0 : SCREEN_WIDTH,
+      animated: true
+    });
+  };
+
+  const handlePagerScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = e.nativeEvent.contentOffset.x;
+    const page = Math.round(offsetX / SCREEN_WIDTH);
+    const newSeg = page === 0 ? 'apostles' : 'councils';
+    if (newSeg !== activeSegment) {
+      setActiveSegment(newSeg);
+      tabIndicatorOffset.value = withSpring(page === 0 ? 0 : SEGMENT_WIDTH + 4, {
+        damping: 22,
+        stiffness: 260
+      });
+    }
+  };
+
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const currentY = event.nativeEvent.contentOffset.y;
+    const diff = currentY - lastScrollY.current;
+
+    if (diff > 8 && currentY > 25) {
+      // User is scrolling down: hide floating nav bar
+      if (onSetNavBarVisible) onSetNavBarVisible(false);
+
+      // Reset auto-restore timer
+      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = setTimeout(() => {
+        if (onSetNavBarVisible) onSetNavBarVisible(true);
+      }, 950);
+    } else if (diff < -8) {
+      // User scrolling up: immediately show nav bar
+      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+      if (onSetNavBarVisible) onSetNavBarVisible(true);
+    }
+
+    lastScrollY.current = currentY;
   };
 
   const formatTimestamp = (time: number) => {
@@ -70,15 +151,19 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
     g.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const indicatorAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: tabIndicatorOffset.value }]
+  }));
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
+      {/* Header with Title "Chats" */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+          <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
             <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Fellowship</Text>
+          <Text style={styles.headerTitle}>Chats</Text>
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -103,11 +188,19 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
         </View>
       </View>
 
-      {/* Segmented Switcher */}
+      {/* Segmented Switcher with Sliding Pill Indicator */}
       <View style={styles.segmentedRow}>
+        <Animated.View
+          style={[
+            styles.activeSegmentPill,
+            { width: SEGMENT_WIDTH },
+            indicatorAnimatedStyle
+          ]}
+        />
+
         <TouchableOpacity
-          style={[styles.segmentBtn, activeSegment === 'apostles' && styles.segmentBtnActive]}
-          onPress={() => setActiveSegment('apostles')}
+          style={styles.segmentBtn}
+          onPress={() => switchSegment('apostles')}
           activeOpacity={0.8}
         >
           <Text style={[styles.segmentText, activeSegment === 'apostles' && styles.segmentTextActive]}>
@@ -116,8 +209,8 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.segmentBtn, activeSegment === 'councils' && styles.segmentBtnActive]}
-          onPress={() => setActiveSegment('councils')}
+          style={styles.segmentBtn}
+          onPress={() => switchSegment('councils')}
           activeOpacity={0.8}
         >
           <Text style={[styles.segmentText, activeSegment === 'councils' && styles.segmentTextActive]}>
@@ -146,145 +239,156 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
         </View>
       )}
 
-      {/* Loading Skeleton */}
+      {/* Loading Skeleton or Swipeable Pager */}
       {isLoading ? (
         <ChatListSkeleton />
       ) : (
-        <>
-          {/* 1-on-1 Apostles List with Walk Me Through Horizontal Cards */}
-          {activeSegment === 'apostles' && (
-        <FlatList
-          data={filteredConversations}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={
-            <PastoralGuidesRow onSelectGuide={(g) => setSelectedPastoralGuide(g)} />
-          }
-          renderItem={({ item }) => {
-            const persona = getPersonaById(item.personaId);
-            return (
-              <TouchableOpacity
-                style={styles.chatRow}
-                onPress={() => onSelectConversation(persona)}
-                activeOpacity={0.75}
-              >
-                <View style={styles.avatarContainer}>
-                  <Image source={persona.avatar} style={styles.avatar} resizeMode="cover" />
-                </View>
-
-                <View style={styles.chatInfo}>
-                  <View style={styles.chatHeader}>
-                    <Text style={styles.personaName}>{item.personaName}</Text>
-                    <Text style={styles.timestamp}>{formatTimestamp(item.updatedAt)}</Text>
-                  </View>
-                  <Text style={styles.lastMessage} numberOfLines={1}>
-                    {item.lastMessage}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          }}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Ionicons name="chatbubble-ellipses-outline" size={48} color={Colors.textLight} />
-              <Text style={styles.emptyText}>No conversations found</Text>
-            </View>
-          }
-        />
-      )}
-
-      {/* Councils & Group Chats List */}
-      {activeSegment === 'councils' && (
-        <FlatList
-          data={filteredGroupThreads}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => {
-            const memberApostles = APOSTLE_PERSONAS.filter(a => item.memberApostleIds.includes(a.id));
-            return (
-              <TouchableOpacity
-                style={styles.councilCard}
-                onPress={() => onSelectGroupCouncil(item)}
-                activeOpacity={0.75}
-              >
-                <View style={styles.councilCardTop}>
-                  <View style={styles.councilAvatarStack}>
-                    {memberApostles.slice(0, 3).map((a, i) => (
-                      <Image
-                        key={a.id}
-                        source={a.avatar}
-                        style={[
-                          styles.councilStackAvatar,
-                          { marginLeft: i === 0 ? 0 : -8, zIndex: 10 - i }
-                        ]}
-                      />
-                    ))}
-                    {memberApostles.length > 3 && (
-                      <View style={[styles.councilStackAvatarMore, { marginLeft: -8, zIndex: 1 }]}>
-                        <Text style={styles.councilStackAvatarMoreText}>+{memberApostles.length - 3}</Text>
-                      </View>
-                    )}
-                  </View>
-
-                  <View style={styles.councilInfo}>
-                    <View style={styles.chatHeader}>
-                      <Text style={styles.councilName}>{item.name}</Text>
-                      <Text style={styles.timestamp}>{formatTimestamp(item.updatedAt)}</Text>
+        <ScrollView
+          ref={pagerRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={handlePagerScroll}
+          style={{ flex: 1 }}
+        >
+          {/* Page 1: 1-on-1 Apostles List */}
+          <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+            <FlatList
+              data={filteredConversations}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={[styles.listContainer, { paddingBottom: 120 }]}
+              showsVerticalScrollIndicator={false}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              ListHeaderComponent={
+                <PastoralGuidesRow onSelectGuide={(g) => setSelectedPastoralGuide(g)} />
+              }
+              renderItem={({ item }) => {
+                const persona = getPersonaById(item.personaId);
+                return (
+                  <TouchableOpacity
+                    style={styles.chatRow}
+                    onPress={() => onSelectConversation(persona)}
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.avatarContainer}>
+                      <Image source={persona.avatar} style={styles.avatar} resizeMode="cover" />
                     </View>
-                    <Text style={styles.councilTopic} numberOfLines={1}>
-                      {item.topic}
-                    </Text>
-                  </View>
+
+                    <View style={styles.chatInfo}>
+                      <View style={styles.chatHeader}>
+                        <Text style={styles.personaName}>{item.personaName}</Text>
+                        <Text style={styles.timestamp}>{formatTimestamp(item.updatedAt)}</Text>
+                      </View>
+                      <Text style={styles.lastMessage} numberOfLines={1}>
+                        {item.lastMessage}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              }}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={48} color={Colors.textLight} />
+                  <Text style={styles.emptyText}>No conversations found</Text>
                 </View>
+              }
+            />
+          </View>
 
-                <View style={styles.councilDivider} />
+          {/* Page 2: Councils & Group Chats List */}
+          <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+            <FlatList
+              data={filteredGroupThreads}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={[styles.listContainer, { paddingBottom: 120 }]}
+              showsVerticalScrollIndicator={false}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              renderItem={({ item }) => {
+                const memberApostles = APOSTLE_PERSONAS.filter(a => item.memberApostleIds.includes(a.id));
+                return (
+                  <TouchableOpacity
+                    style={styles.councilCard}
+                    onPress={() => onSelectGroupCouncil(item)}
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.councilCardTop}>
+                      <View style={styles.councilAvatarStack}>
+                        {memberApostles.slice(0, 3).map((a, i) => (
+                          <Image
+                            key={a.id}
+                            source={a.avatar}
+                            style={[
+                              styles.councilStackAvatar,
+                              { marginLeft: i === 0 ? 0 : -8, zIndex: 10 - i }
+                            ]}
+                          />
+                        ))}
+                      </View>
 
-                <View style={styles.councilBottom}>
-                  <Ionicons name="chatbubbles-outline" size={14} color="#6B7280" style={{ marginRight: 6 }} />
-                  <Text style={styles.councilLastMsg} numberOfLines={1}>
-                    {item.lastMessage}
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={styles.councilName} numberOfLines={1}>{item.name}</Text>
+                        <Text style={styles.councilTopic} numberOfLines={1}>{item.topic}</Text>
+                      </View>
+
+                      <Text style={styles.councilTime}>{formatTimestamp(item.updatedAt)}</Text>
+                    </View>
+
+                    {item.lastMessage ? (
+                      <View style={styles.councilLastMsgRow}>
+                        <Text style={styles.councilSpeakerName}>Council:</Text>
+                        <Text style={styles.councilLastMsg} numberOfLines={1}>
+                          {item.lastMessage}
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.councilEmptyMsg}>No messages yet. Tap to start council discussion.</Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Ionicons name="people-outline" size={48} color={Colors.textLight} />
+                  <Text style={styles.emptyText}>No Council Discussions</Text>
+                  <Text style={styles.emptySubtext}>
+                    Bring multiple Apostles together to discuss theology, life, or Scripture.
                   </Text>
+                  <TouchableOpacity
+                    style={styles.emptyCreateBtn}
+                    onPress={() => setShowCreateCouncilModal(true)}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="add" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.emptyCreateBtnText}>Create First Council</Text>
+                  </TouchableOpacity>
                 </View>
-              </TouchableOpacity>
-            );
-          }}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Ionicons name="people-outline" size={48} color={Colors.textLight} />
-              <Text style={styles.emptyText}>No Council rooms open yet</Text>
-              <TouchableOpacity
-                style={[styles.newCouncilHeaderBtn, { marginTop: 12 }]}
-                onPress={() => setShowCreateCouncilModal(true)}
-              >
-                <Text style={styles.newCouncilHeaderBtnText}>+ Open First Council</Text>
-              </TouchableOpacity>
-            </View>
-          }
-        />
-      )}
-        </>
+              }
+            />
+          </View>
+        </ScrollView>
       )}
 
-      {/* Create Council Modal */}
+      {/* Create New Group Council Modal */}
       <CreateGroupCouncilModal
         visible={showCreateCouncilModal}
         onClose={() => setShowCreateCouncilModal(false)}
-        onCouncilCreated={(thread) => {
-          setGroupThreads(prev => [thread, ...prev]);
-          onSelectGroupCouncil(thread);
+        onCouncilCreated={(newThread: GroupCouncilThread) => {
+          setShowCreateCouncilModal(false);
+          setGroupThreads(prev => [newThread, ...prev]);
+          onSelectGroupCouncil(newThread);
         }}
       />
 
-      {/* Walk Me Through Pastoral Guide Modal */}
+      {/* Pastoral Guide Modal */}
       <PastoralGuideModal
-        visible={!!selectedPastoralGuide}
+        visible={Boolean(selectedPastoralGuide)}
         guide={selectedPastoralGuide}
         onClose={() => setSelectedPastoralGuide(null)}
-        onStartChat={(apostle, topic) => {
+        onStartChat={(apostle: ApostlePersona, topicIntro: string) => {
           setSelectedPastoralGuide(null);
-          onSelectConversation(apostle, topic);
+          onSelectConversation(apostle, topicIntro);
         }}
       />
     </SafeAreaView>
@@ -294,40 +398,40 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#F8F9FA',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 10,
+    paddingTop: 12,
+    paddingBottom: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
+    padding: 4,
   },
   headerTitle: {
-    fontFamily: Typography.fontSerif,
-    fontSize: 26,
+    fontFamily: Typography.fontSansBold,
+    fontSize: 22,
+    letterSpacing: -0.4,
     color: Colors.textPrimary,
   },
   newCouncilHeaderBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111111',
+    backgroundColor: '#1E293B',
     paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingVertical: 6,
+    borderRadius: 16,
     gap: 4,
   },
   newCouncilHeaderBtnText: {
@@ -336,47 +440,58 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   searchBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 6,
   },
   segmentedRow: {
     flexDirection: 'row',
-    backgroundColor: '#ECECEC',
-    borderRadius: 14,
-    marginHorizontal: 20,
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginVertical: 10,
+    backgroundColor: '#EFEFEF',
+    borderRadius: 20,
     padding: 3,
-    marginBottom: 12,
+    position: 'relative',
+  },
+  activeSegmentPill: {
+    position: 'absolute',
+    top: 3,
+    left: 3,
+    bottom: 3,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 17,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   segmentBtn: {
     flex: 1,
     paddingVertical: 8,
     alignItems: 'center',
-    borderRadius: 11,
-  },
-  segmentBtnActive: {
-    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    zIndex: 1,
   },
   segmentText: {
     fontFamily: Typography.fontSansMedium,
-    fontSize: 12.5,
-    color: '#777777',
+    fontSize: 13,
+    color: '#6B7280',
   },
   segmentTextActive: {
     fontFamily: Typography.fontSansSemiBold,
-    color: '#111111',
+    color: '#111827',
   },
   searchBarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 20,
-    marginBottom: 12,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginBottom: 8,
     paddingHorizontal: 12,
-    height: 40,
-    backgroundColor: '#ECECEC',
-    borderRadius: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   searchIcon: {
     marginRight: 8,
@@ -386,12 +501,10 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontSansRegular,
     fontSize: 14,
     color: Colors.textPrimary,
-    paddingVertical: 0,
   },
   listContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    gap: 10,
+    paddingTop: 4,
+    paddingHorizontal: 16,
   },
   chatRow: {
     flexDirection: 'row',
@@ -399,57 +512,57 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 14,
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    borderRadius: 16,
+    marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#E2E2E2',
+    borderColor: '#F0F0F0',
   },
   avatarContainer: {
+    marginRight: 14,
+  },
+  avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    overflow: 'hidden',
-    backgroundColor: '#ECECEC',
-  },
-  avatar: {
-    width: '100%',
-    height: '100%',
+    backgroundColor: '#F3F4F6',
   },
   chatInfo: {
     flex: 1,
-    marginLeft: 14,
   },
   chatHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'baseline',
     marginBottom: 4,
   },
   personaName: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 16,
+    fontFamily: Typography.fontSansBold,
+    fontSize: 15,
     color: Colors.textPrimary,
   },
   timestamp: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 12,
-    color: Colors.textLight,
+    fontSize: 11.5,
+    color: Colors.textMuted,
   },
   lastMessage: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 14.5,
-    color: Colors.textMuted,
-    lineHeight: 19,
+    fontSize: 13,
+    color: Colors.textSecondary,
+    lineHeight: 18,
   },
   councilCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    borderRadius: 16,
     padding: 14,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#E2E2E2',
+    borderColor: '#F0F0F0',
   },
   councilCardTop: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 8,
   },
   councilAvatarStack: {
     flexDirection: 'row',
@@ -459,64 +572,83 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: '#FFFFFF',
-  },
-  councilStackAvatarMore: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#ECECEC',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  councilStackAvatarMoreText: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 10,
-    color: '#777777',
-  },
-  councilInfo: {
-    flex: 1,
-    marginLeft: 12,
+    backgroundColor: '#E5E7EB',
   },
   councilName: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 16,
+    fontFamily: Typography.fontSansBold,
+    fontSize: 15,
     color: '#111827',
   },
   councilTopic: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 13.5,
+    fontSize: 12,
     color: '#6B7280',
-    marginTop: 1,
   },
-  councilDivider: {
-    height: 1,
-    backgroundColor: '#F3F4F6',
-    marginVertical: 10,
+  councilTime: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 11.5,
+    color: '#9CA3AF',
   },
-  councilBottom: {
+  councilLastMsgRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    gap: 6,
+  },
+  councilSpeakerName: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 12,
+    color: '#374151',
   },
   councilLastMsg: {
     flex: 1,
     fontFamily: Typography.fontSansRegular,
-    fontSize: 14,
-    color: '#4B5563',
-    lineHeight: 19,
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  councilEmptyMsg: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 60,
+    paddingHorizontal: 20,
   },
   emptyText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 14,
-    color: Colors.textMuted,
-    marginTop: 12,
+    fontFamily: Typography.fontSansBold,
+    fontSize: 16,
+    color: Colors.textPrimary,
+    marginTop: 14,
+    marginBottom: 4,
+  },
+  emptySubtext: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 13,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: 20,
+  },
+  emptyCreateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  emptyCreateBtnText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 13,
+    color: '#FFFFFF',
   },
 });

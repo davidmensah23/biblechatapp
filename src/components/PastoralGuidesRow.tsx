@@ -21,13 +21,13 @@ export const PastoralGuidesRow: React.FC<PastoralGuidesRowProps> = ({ onSelectGu
     <View style={styles.container}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Walk Me Through...</Text>
-        <Text style={styles.sectionSubtitle}>Biblical pastoral guidance for right now</Text>
       </View>
 
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        style={styles.scrollStyle}
         decelerationRate="fast"
       >
         {PASTORAL_GUIDES.map((guide) => {
@@ -35,7 +35,7 @@ export const PastoralGuidesRow: React.FC<PastoralGuidesRowProps> = ({ onSelectGu
           return (
             <TouchableOpacity
               key={guide.id}
-              style={[styles.card, { borderColor: '#E5E7EB' }]}
+              style={[styles.card, { borderColor: '#EBEBEB' }]}
               onPress={() => onSelectGuide(guide)}
               activeOpacity={0.82}
             >
@@ -76,85 +76,88 @@ export const PastoralGuidesRow: React.FC<PastoralGuidesRowProps> = ({ onSelectGu
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 10,
+    marginVertical: 8,
+    overflow: 'visible',
   },
   sectionHeader: {
     paddingHorizontal: 16,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   sectionTitle: {
     fontFamily: Typography.fontSansBold,
-    fontSize: 15,
+    fontSize: 14.5,
     color: '#111827',
     letterSpacing: -0.2,
   },
-  sectionSubtitle: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 1,
+  scrollStyle: {
+    overflow: 'visible',
   },
   scrollContent: {
     paddingHorizontal: 16,
-    gap: 12,
-    paddingBottom: 6,
+    gap: 10,
+    paddingBottom: 4,
   },
   card: {
-    width: 204,
+    width: 154,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 14,
+    padding: 11,
     borderWidth: 1,
+    borderColor: '#ECECEC',
     justifyContent: 'space-between',
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
   },
   tagRow: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3.5,
-    borderRadius: 8,
-    gap: 5,
-    marginBottom: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+    gap: 4,
+    marginBottom: 6,
   },
   emojiText: {
-    fontSize: 12,
+    fontSize: 11,
   },
   tagLabel: {
     fontFamily: Typography.fontSansSemiBold,
-    fontSize: 11,
+    fontSize: 10,
     letterSpacing: 0.2,
   },
   cardTitle: {
     fontFamily: Typography.fontSansBold,
-    fontSize: 14,
-    lineHeight: 19,
+    fontSize: 12.5,
+    lineHeight: 16.5,
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   cardSubtitle: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 11.5,
-    lineHeight: 16,
+    fontSize: 10.5,
+    lineHeight: 14,
     color: '#6B7280',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   apostleFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
+    gap: 6,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
-    paddingTop: 8,
+    paddingTop: 6,
   },
   apostleAvatar: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
   },
   apostleNameText: {
     fontFamily: Typography.fontSansMedium,
-    fontSize: 11,
+    fontSize: 10.5,
     color: '#4B5563',
   },
 });
