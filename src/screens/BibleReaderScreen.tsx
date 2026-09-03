@@ -33,6 +33,7 @@ import { VerseImageModal } from '../components/VerseImageModal';
 import { VerseNoteModal } from '../components/VerseNoteModal';
 import { BibleChapterSkeleton } from '../components/SoftSkeleton';
 import { ScriptureMemoryModal } from '../components/ScriptureMemoryModal';
+import { getChapterHeading } from '../services/chapterHeadings';
 import { getLastReadPosition, saveLastReadPosition } from '../services/readingProgressService';
 
 interface BibleReaderScreenProps {
@@ -315,13 +316,15 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
           <BibleChapterSkeleton />
         ) : chapterData ? (
           <View style={styles.chapterWrapper}>
-            {/* Minimalist Hero Heading */}
+            {/* Left-Aligned Clean Hero Heading (No Redundant Text) */}
             <View style={styles.heroHeader}>
-              <Text style={styles.heroBookName}>{chapterData.book}</Text>
               <Text style={styles.heroChapterNumber}>{chapterData.chapter}</Text>
-              {chapterData.sectionTitle ? (
-                <Text style={styles.heroSectionTitle}>{chapterData.sectionTitle}</Text>
-              ) : null}
+              {(() => {
+                const heading = getChapterHeading(chapterData.book, chapterData.chapter, chapterData.sectionTitle);
+                return heading ? (
+                  <Text style={styles.heroSectionTitle}>{heading}</Text>
+                ) : null;
+              })()}
             </View>
 
             {/* Verses List */}
@@ -564,29 +567,26 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   heroHeader: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  heroBookName: {
-    fontFamily: Typography.fontSerif,
-    fontSize: 26,
-    color: '#666666',
-    letterSpacing: 0.5,
+    alignItems: 'flex-start',
+    marginBottom: 20,
+    paddingHorizontal: 6,
   },
   heroChapterNumber: {
     fontFamily: Typography.fontYouVersionSerifBold,
-    fontSize: 76,
-    color: Colors.textPrimary,
-    lineHeight: 84,
-    marginVertical: 2,
+    fontSize: 58,
+    color: '#111827',
+    lineHeight: 66,
+    marginBottom: 2,
+    textAlign: 'left',
   },
   heroSectionTitle: {
     fontFamily: Typography.fontYouVersionSerifItalic,
-    fontSize: 22,
-    color: Colors.textPrimary,
-    textAlign: 'center',
-    marginTop: 8,
-    paddingHorizontal: 16,
+    fontSize: 21,
+    lineHeight: 28,
+    color: '#1F2937',
+    textAlign: 'left',
+    marginTop: 2,
+    marginBottom: 8,
   },
   versesContainer: {
     gap: 8,
@@ -602,13 +602,14 @@ const styles = StyleSheet.create({
   },
   superscriptVerseNumber: {
     fontFamily: Typography.fontSansSemiBold,
-    fontSize: 11,
-    color: '#9CA3AF',
+    fontSize: 11.5,
+    color: '#6B7280',
+    marginRight: 4,
   },
   verseContentText: {
-    fontFamily: Typography.fontYouVersionSerif,
-    color: '#1F2937',
-    letterSpacing: 0.15,
+    fontFamily: Typography.fontSerifMedium,
+    color: '#111827',
+    letterSpacing: 0.1,
   },
   floatingControlsWrapper: {
     position: 'absolute',

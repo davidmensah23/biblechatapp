@@ -7,6 +7,7 @@ export const Typography = {
   // YouVersion Editorial Scripture Reading Serif (Literata)
   fontSerif: 'Literata_600SemiBold',
   fontSerifBold: 'Literata_700Bold',
+  fontSerifMedium: 'Literata_500Medium',
   fontSerifRegular: 'Literata_400Regular',
   fontSerifItalic: 'Literata_400Regular_Italic',
 
