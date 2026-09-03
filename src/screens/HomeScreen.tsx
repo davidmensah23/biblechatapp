@@ -28,7 +28,11 @@ import { getTodayLiturgy, isLiturgyCompletedForToday, DailyLiturgy } from '../se
 import { getLastReadPosition, LastReadProgress } from '../services/readingProgressService';
 
 interface HomeScreenProps {
-  onSelectApostle: (apostle: ApostlePersona) => void;
+  onSelectApostle: (
+    apostle: ApostlePersona,
+    initialMessage?: string,
+    contextQuote?: { text: string; reference: string }
+  ) => void;
   onOpenBible?: (book?: string, chapter?: number) => void;
 }
 
@@ -101,7 +105,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
 
   const handleOpenApostleFromQuote = () => {
     const apostle = APOSTLE_PERSONAS.find(a => a.id === todayApostleQuote.apostleId) || APOSTLE_PERSONAS[0];
-    onSelectApostle(apostle);
+    onSelectApostle(
+      apostle,
+      undefined,
+      { text: todayApostleQuote.quote, reference: todayApostleQuote.scriptureReference }
+    );
   };
 
   return (

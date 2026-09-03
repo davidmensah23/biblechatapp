@@ -43,6 +43,7 @@ interface ChatDetailScreenProps {
   apostle: ApostlePersona;
   onBack: () => void;
   initialMessage?: string;
+  contextQuote?: { text: string; reference: string };
 }
 
 const BouncingDots: React.FC = () => {
@@ -96,7 +97,7 @@ const BouncingDots: React.FC = () => {
   );
 };
 
-export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onBack, initialMessage }) => {
+export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onBack, initialMessage, contextQuote }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState(initialMessage || '');
   const [isLoading, setIsLoading] = useState(false);
@@ -133,7 +134,25 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
 
   const loadChatHistory = async () => {
     const history = await fetchMessages(conversationId);
-    if (history.length === 0) {
+    let updatedHistory = [...history];
+
+    if (contextQuote) {
+      const quoteId = `quote_${apostle.id}_${new Date().toISOString().slice(0, 10)}`;
+      const alreadyHasQuote = updatedHistory.some(m => m.id === quoteId || m.content.includes(contextQuote.reference));
+      if (!alreadyHasQuote) {
+        const quoteGreeting: ChatMessage = {
+          id: quoteId,
+          conversationId: conversationId,
+          sender: 'assistant',
+          content: `\"${contextQuote.text}\" — ${contextQuote.reference}\n\nI was reflecting on this today. What thoughts or questions do you have about this?`,
+          timestamp: Date.now() - 30000
+        };
+        await saveMessage(quoteGreeting, apostle.title, apostle.id);
+        initialLoadedIdsRef.current.add(quoteGreeting.id);
+        updatedHistory.push(quoteGreeting);
+      }
+      setMessages(updatedHistory);
+    } else if (updatedHistory.length === 0) {
       const nameGreeting = userProfile?.fullName ? `, ${userProfile.fullName}` : '';
       const greeting: ChatMessage = {
         id: `msg_${Date.now()}`,

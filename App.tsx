@@ -90,6 +90,7 @@ export default function App() {
   const [selectedGroupCouncil, setSelectedGroupCouncil] = useState<GroupCouncilThread | null>(null);
   const [bibleInitialTarget, setBibleInitialTarget] = useState<{ book?: string; chapter?: number } | undefined>(undefined);
   const [chatInitialMessage, setChatInitialMessage] = useState<string | undefined>(undefined);
+  const [chatContextQuote, setChatContextQuote] = useState<{ text: string; reference: string } | undefined>(undefined);
   const [forceRender, setForceRender] = useState<boolean>(false);
   const [showPrivacyNotice, setShowPrivacyNotice] = useState<boolean>(false);
 
@@ -342,9 +343,10 @@ export default function App() {
           <ScreenTransition transitionKey={activeNavTab}>
             {activeNavTab === 'home' && (
               <HomeScreen
-                onSelectApostle={(apostle) => {
+                onSelectApostle={(apostle, initialMessage, contextQuote) => {
                   setSelectedApostle(apostle);
-                  setChatInitialMessage(undefined);
+                  setChatInitialMessage(initialMessage);
+                  setChatContextQuote(contextQuote);
                   setCurrentView('chat');
                 }}
                 onOpenBible={(book, chapter) => {
