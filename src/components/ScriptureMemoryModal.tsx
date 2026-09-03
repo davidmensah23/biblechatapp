@@ -8,19 +8,16 @@ import {
   Image,
   Share,
   Dimensions,
-  ActivityIndicator
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { InteractiveGestureSheet } from './InteractiveGestureSheet';
 import { Typography } from '../theme/typography';
-import { Colors } from '../theme/colors';
 import { MascotAssets } from '../services/mascotAssets';
 import { saveMemorizedVerse } from '../services/database';
 import { recordDailyActivity } from '../services/gamificationService';
 import { playDeepgramSpeech, stopDeepgramSpeech } from '../services/deepgramVoices';
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export interface ScriptureMemoryModalProps {
   visible: boolean;
@@ -34,10 +31,21 @@ export interface ScriptureMemoryModalProps {
 type Stage = 1 | 2 | 3 | 4 | 5;
 
 interface WordToken {
+  id: string;
   original: string;
   clean: string;
+  prefix: string;
+  suffix: string;
   isBlank: boolean;
   isFilled: boolean;
+  filledWord?: string;
+  filledTileId?: string;
+}
+
+interface WordTile {
+  id: string;
+  word: string;
+  used: boolean;
 }
 
 export const ScriptureMemoryModal: React.FC<ScriptureMemoryModalProps> = ({
@@ -50,110 +58,220 @@ export const ScriptureMemoryModal: React.FC<ScriptureMemoryModalProps> = ({
 }) => {
   const [stage, setStage] = useState<Stage>(1);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [activeBlankIndex, setActiveBlankIndex] = useState<number>(0);
+  const [selectedBlankIdx, setSelectedBlankIdx] = useState<number>(0);
   const [tokens, setTokens] = useState<WordToken[]>([]);
-  const [wordBank, setWordBank] = useState<{ id: string; word: string; used: boolean }[]>([]);
+  const [wordBank, setWordBank] = useState<WordTile[]>([]);
   const [errorWordId, setErrorWordId] = useState<string | null>(null);
 
-  // Parse and reset whenever modal opens or verse changes
+  // Parse raw text into tokens preserving international Unicode characters (\p{L}) and punctuation
+  const parseRawTokens = (text: string): { tokens: WordToken[] } => {
+    // Split by whitespace
+    const rawWords = text.trim().split(/\s+/);
+    const parsedTokens: WordToken[] = rawWords.map((raw, idx) => {
+      // Extract prefix (leading non-letters/numbers), clean (Unicode letters & numbers), suffix (trailing punctuation)
+      const match = raw.match(/^([^\p{L}\p{N}]*)([\p{L}\p{N}]+(?:['’\-][\p{L}\p{N}]+)*)([^\p{L}\p{N}]*)$/u);
+      if (match) {
+        return {
+          id: `t_${idx}`,
+          original: raw,
+          prefix: match[1] || '',
+          clean: match[2],
+          suffix: match[3] || '',
+          isBlank: false,
+          isFilled: false,
+        };
+      }
+      return {
+        id: `t_${idx}`,
+        original: raw,
+        prefix: '',
+        clean: raw.replace(/[^\p{L}\p{N}]/gu, ''),
+        suffix: '',
+        isBlank: false,
+        isFilled: false,
+      };
+    });
+    return { tokens: parsedTokens };
+  };
+
+  // Reset state on open
   useEffect(() => {
     if (visible) {
       setStage(1);
       setIsPlayingAudio(false);
+      setErrorWordId(null);
     } else {
       stopDeepgramSpeech();
       setIsPlayingAudio(false);
     }
   }, [visible, verseText]);
 
-  // Generate tokens for Stage 2 (25% blanks) and Stage 3 (50% blanks)
-  const setupGameStage = (currentStage: 2 | 3) => {
-    const rawWords = verseText.trim().split(/\s+/);
-    const blankRatio = currentStage === 2 ? 4 : 2; // every 4th or 2nd word
+  // Setup Stage 2 (25% hidden) and Stage 3 (50% hidden)
+  const setupGameStage = (targetStage: 2 | 3) => {
+    const { tokens: baseTokens } = parseRawTokens(verseText);
+    const eligibleIndices: number[] = [];
 
-    let blankIdxCounter = 0;
-    const missingWords: { id: string; word: string; used: boolean }[] = [];
-
-    const newTokens: WordToken[] = rawWords.map((word, idx) => {
-      const clean = word.replace(/[^a-zA-Z0-9]/g, '');
-      const shouldBeBlank = clean.length > 2 && idx % blankRatio === 0;
-
-      if (shouldBeBlank) {
-        missingWords.push({
-          id: `word_${idx}_${clean}`,
-          word: clean,
-          used: false
-        });
+    baseTokens.forEach((t, i) => {
+      if (t.clean.length >= 2) {
+        eligibleIndices.push(i);
       }
-
-      return {
-        original: word,
-        clean,
-        isBlank: shouldBeBlank,
-        isFilled: false
-      };
     });
 
-    // Scramble missing words for the word bank
-    const scrambled = [...missingWords].sort(() => Math.random() - 0.5);
+    // Determine target blank count
+    const totalWords = eligibleIndices.length;
+    let targetBlankCount = targetStage === 2
+      ? Math.max(2, Math.round(totalWords * 0.28))
+      : Math.max(4, Math.round(totalWords * 0.52));
 
-    setTokens(newTokens);
+    if (targetBlankCount > totalWords) {
+      targetBlankCount = Math.max(1, totalWords - 1);
+    }
+
+    // Pick evenly spaced indices
+    const step = Math.max(1, Math.floor(totalWords / targetBlankCount));
+    const chosenBlankIndices = new Set<number>();
+    for (let i = 0; i < totalWords && chosenBlankIndices.size < targetBlankCount; i += step) {
+      chosenBlankIndices.add(eligibleIndices[i]);
+    }
+
+    // If still need more, fill remaining
+    for (let i = 0; i < totalWords && chosenBlankIndices.size < targetBlankCount; i++) {
+      chosenBlankIndices.add(eligibleIndices[i]);
+    }
+
+    const missingTiles: WordTile[] = [];
+    const gameTokens: WordToken[] = baseTokens.map((t, i) => {
+      if (chosenBlankIndices.has(i)) {
+        const tileId = `tile_${i}_${t.clean}`;
+        missingTiles.push({
+          id: tileId,
+          word: t.clean,
+          used: false,
+        });
+        return {
+          ...t,
+          isBlank: true,
+          isFilled: false,
+        };
+      }
+      return t;
+    });
+
+    // Scramble word bank
+    const scrambled = [...missingTiles].sort(() => Math.random() - 0.5);
+
+    // Find first blank index
+    const firstBlank = gameTokens.findIndex(t => t.isBlank);
+    setSelectedBlankIdx(firstBlank !== -1 ? firstBlank : 0);
+    setTokens(gameTokens);
     setWordBank(scrambled);
-    setActiveBlankIndex(0);
-    setStage(currentStage);
+    setStage(targetStage);
   };
 
-  // Words that are blanks in current tokens
-  const blankTokensIndices = useMemo(() => {
-    const indices: number[] = [];
-    tokens.forEach((t, idx) => {
-      if (t.isBlank) indices.push(idx);
-    });
-    return indices;
-  }, [tokens]);
-
-  const handleTilePress = (tile: { id: string; word: string; used: boolean }) => {
+  // User taps a tile in the Word Bank
+  const handleTilePress = (tile: WordTile) => {
     if (tile.used) return;
 
-    if (activeBlankIndex >= blankTokensIndices.length) return;
-    const currentTokenIndex = blankTokensIndices[activeBlankIndex];
-    const targetToken = tokens[currentTokenIndex];
+    // 1. Check if it matches currently selected blank
+    const currentToken = tokens[selectedBlankIdx];
+    let matchedTokenIdx = -1;
 
-    if (tile.word.toLowerCase() === targetToken.clean.toLowerCase()) {
+    if (
+      currentToken &&
+      currentToken.isBlank &&
+      !currentToken.isFilled &&
+      currentToken.clean.toLowerCase() === tile.word.toLowerCase()
+    ) {
+      matchedTokenIdx = selectedBlankIdx;
+    } else {
+      // 2. Smart Match: check if it matches ANY other unfilled blank
+      matchedTokenIdx = tokens.findIndex(
+        (t) => t.isBlank && !t.isFilled && t.clean.toLowerCase() === tile.word.toLowerCase()
+      );
+    }
+
+    if (matchedTokenIdx !== -1) {
       // Correct Match!
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch (e) {}
       setErrorWordId(null);
 
-      // Mark token filled
+      // Fill token
       const updatedTokens = [...tokens];
-      updatedTokens[currentTokenIndex] = {
-        ...targetToken,
-        isFilled: true
+      updatedTokens[matchedTokenIdx] = {
+        ...updatedTokens[matchedTokenIdx],
+        isFilled: true,
+        filledWord: tile.word,
+        filledTileId: tile.id,
       };
       setTokens(updatedTokens);
 
-      // Mark tile used
+      // Mark tile as used
       setWordBank(prev => prev.map(w => w.id === tile.id ? { ...w, used: true } : w));
 
-      const nextBlank = activeBlankIndex + 1;
-      setActiveBlankIndex(nextBlank);
+      // Advance selected blank to next unfilled blank
+      const nextUnfilled = updatedTokens.findIndex((t, i) => i > matchedTokenIdx && t.isBlank && !t.isFilled);
+      if (nextUnfilled !== -1) {
+        setSelectedBlankIdx(nextUnfilled);
+      } else {
+        const wrapUnfilled = updatedTokens.findIndex(t => t.isBlank && !t.isFilled);
+        setSelectedBlankIdx(wrapUnfilled !== -1 ? wrapUnfilled : matchedTokenIdx);
+      }
 
-      // Check if all blanks filled
-      if (nextBlank >= blankTokensIndices.length) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Check if ALL blanks are filled
+      const remainingUnfilled = updatedTokens.filter(t => t.isBlank && !t.isFilled).length;
+      if (remainingUnfilled === 0) {
+        try {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } catch (e) {}
         setTimeout(() => {
           if (stage === 2) {
             setupGameStage(3); // Advance to 50%
           } else if (stage === 3) {
             setStage(4); // Advance to Master mode
           }
-        }, 650);
+        }, 600);
       }
     } else {
       // Incorrect Match
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      try {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      } catch (e) {}
       setErrorWordId(tile.id);
-      setTimeout(() => setErrorWordId(null), 500);
+      setTimeout(() => setErrorWordId(null), 450);
+    }
+  };
+
+  // User taps a blank directly (either to select it or to UNDO a filled blank)
+  const handleBlankPress = (tokenIndex: number) => {
+    const token = tokens[tokenIndex];
+    if (!token.isBlank) return;
+
+    if (token.isFilled && token.filledTileId) {
+      // UNDO ACTION: return word to word bank
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } catch (e) {}
+
+      const tileIdToReturn = token.filledTileId;
+      setWordBank(prev => prev.map(w => w.id === tileIdToReturn ? { ...w, used: false } : w));
+
+      const updatedTokens = [...tokens];
+      updatedTokens[tokenIndex] = {
+        ...token,
+        isFilled: false,
+        filledWord: undefined,
+        filledTileId: undefined,
+      };
+      setTokens(updatedTokens);
+      setSelectedBlankIdx(tokenIndex);
+    } else {
+      // Select this blank as the active target
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch (e) {}
+      setSelectedBlankIdx(tokenIndex);
     }
   };
 
@@ -167,7 +285,7 @@ export const ScriptureMemoryModal: React.FC<ScriptureMemoryModalProps> = ({
       await playDeepgramSpeech(
         `mem_${reference}`,
         verseText,
-        'paul',
+        'narrator',
         () => setIsPlayingAudio(true),
         () => setIsPlayingAudio(false)
       );
@@ -176,12 +294,14 @@ export const ScriptureMemoryModal: React.FC<ScriptureMemoryModalProps> = ({
 
   // Master Mode Completion
   const handleMasterModeComplete = async () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (e) {}
     setStage(5);
 
     // Save to Database and award XP
     await saveMemorizedVerse(reference, verseText, version);
-    await recordDailyActivity('verse_memorized', 15);
+    await recordDailyActivity('verse_memorized', 25);
     if (onMastered) onMastered();
   };
 
@@ -201,7 +321,7 @@ export const ScriptureMemoryModal: React.FC<ScriptureMemoryModalProps> = ({
         onClose();
       }}
       initialSnap="full"
-      fullHeightRatio={0.92}
+      fullHeightRatio={0.94}
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -210,7 +330,7 @@ export const ScriptureMemoryModal: React.FC<ScriptureMemoryModalProps> = ({
         {/* Top Header Row with Progress Tracker */}
         <View style={styles.topHeader}>
           <View style={styles.badgePill}>
-            <Ionicons name="sparkles" size={14} color="#D97706" />
+            <Ionicons name="sparkles" size={13} color="#92400E" />
             <Text style={styles.badgePillText}>HIDE GOD'S WORD</Text>
           </View>
           <View style={styles.stageIndicatorRow}>
@@ -283,17 +403,17 @@ export const ScriptureMemoryModal: React.FC<ScriptureMemoryModalProps> = ({
           <View style={styles.stageContainer}>
             <Text style={styles.instructionText}>
               {stage === 2
-                ? "Stage 2: 25% Hidden. Tap the matching word tiles below in sequence to complete the blanks!"
-                : "Stage 3: 50% Hidden. Deeper recall! Reconstruct the passage from memory."}
+                ? "Stage 2: 25% Hidden. Tap the matching word tiles below. Tap any filled word to undo."
+                : "Stage 3: 50% Hidden. Deeper recall! Tap word tiles to reconstruct the scripture."}
             </Text>
 
-            {/* Verse with Interactive Blanks */}
+            {/* Verse with Interactive Clickable Blanks */}
             <View style={styles.verseCard}>
               <View style={styles.tokensFlowWrap}>
                 {tokens.map((token, idx) => {
                   if (!token.isBlank) {
                     return (
-                      <Text key={idx} style={styles.tokenPlainText}>
+                      <Text key={token.id} style={styles.tokenPlainText}>
                         {token.original}{' '}
                       </Text>
                     );
@@ -301,25 +421,36 @@ export const ScriptureMemoryModal: React.FC<ScriptureMemoryModalProps> = ({
 
                   if (token.isFilled) {
                     return (
-                      <View key={idx} style={styles.filledBlankPill}>
-                        <Text style={styles.filledBlankText}>{token.clean}</Text>
-                      </View>
+                      <TouchableOpacity
+                        key={token.id}
+                        onPress={() => handleBlankPress(idx)}
+                        activeOpacity={0.7}
+                        style={styles.filledBlankPill}
+                      >
+                        <Text style={styles.tokenPrefixText}>{token.prefix}</Text>
+                        <Text style={styles.filledBlankText}>{token.filledWord || token.clean}</Text>
+                        <Text style={styles.tokenSuffixText}>{token.suffix}</Text>
+                      </TouchableOpacity>
                     );
                   }
 
-                  const isCurrentBlank = blankTokensIndices[activeBlankIndex] === idx;
+                  const isSelected = selectedBlankIdx === idx;
                   return (
-                    <View
-                      key={idx}
+                    <TouchableOpacity
+                      key={token.id}
+                      onPress={() => handleBlankPress(idx)}
+                      activeOpacity={0.7}
                       style={[
                         styles.emptyBlankPill,
-                        isCurrentBlank && styles.currentBlankPill
+                        isSelected && styles.currentBlankPill
                       ]}
                     >
-                      <Text style={[styles.emptyBlankText, isCurrentBlank && styles.currentBlankText]}>
-                        _____
+                      <Text style={styles.tokenPrefixText}>{token.prefix}</Text>
+                      <Text style={[styles.emptyBlankText, isSelected && styles.currentBlankText]}>
+                        {'___'}
                       </Text>
-                    </View>
+                      <Text style={styles.tokenSuffixText}>{token.suffix}</Text>
+                    </TouchableOpacity>
                   );
                 })}
               </View>
@@ -327,7 +458,10 @@ export const ScriptureMemoryModal: React.FC<ScriptureMemoryModalProps> = ({
 
             {/* Word Bank Scrambled Tiles */}
             <View style={styles.wordBankContainer}>
-              <Text style={styles.wordBankLabel}>WORD BANK</Text>
+              <View style={styles.wordBankHeader}>
+                <Text style={styles.wordBankLabel}>WORD BANK</Text>
+                <Text style={styles.wordBankSub}>Tap a word to fill the blank</Text>
+              </View>
               <View style={styles.tilesGrid}>
                 {wordBank.map((tile) => (
                   <TouchableOpacity
@@ -339,7 +473,7 @@ export const ScriptureMemoryModal: React.FC<ScriptureMemoryModalProps> = ({
                     ]}
                     onPress={() => handleTilePress(tile)}
                     disabled={tile.used}
-                    activeOpacity={0.7}
+                    activeOpacity={0.75}
                   >
                     <Text
                       style={[
@@ -368,12 +502,12 @@ export const ScriptureMemoryModal: React.FC<ScriptureMemoryModalProps> = ({
 
             <View style={styles.verseCard}>
               <View style={styles.tokensFlowWrap}>
-                {verseText.trim().split(/\s+/).map((word, idx) => {
-                  const firstChar = word.charAt(0);
-                  const dots = '_'.repeat(Math.min(3, Math.max(1, word.length - 1)));
+                {parseRawTokens(verseText).tokens.map((token, idx) => {
+                  const firstChar = token.clean.charAt(0).toUpperCase();
+                  const dots = '_'.repeat(Math.min(3, Math.max(1, token.clean.length - 1)));
                   return (
                     <Text key={idx} style={styles.masterLetterText}>
-                      {firstChar}{dots}{' '}
+                      {token.prefix}{firstChar}{dots}{token.suffix}{' '}
                     </Text>
                   );
                 })}
@@ -381,11 +515,11 @@ export const ScriptureMemoryModal: React.FC<ScriptureMemoryModalProps> = ({
             </View>
 
             <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: '#8B1E1E' }]}
+              style={[styles.primaryBtn, { backgroundColor: '#111827' }]}
               onPress={handleMasterModeComplete}
               activeOpacity={0.85}
             >
-              <Ionicons name="trophy" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Ionicons name="trophy" size={19} color="#FFFFFF" style={{ marginRight: 8 }} />
               <Text style={styles.primaryBtnText}>I Recited It from Memory! 🏆</Text>
             </TouchableOpacity>
           </View>
@@ -396,17 +530,16 @@ export const ScriptureMemoryModal: React.FC<ScriptureMemoryModalProps> = ({
         {/* ========================================================= */}
         {stage === 5 && (
           <View style={[styles.stageContainer, styles.victoryContainer]}>
-            {/* Mascot Trophy Celebration */}
             <View style={styles.mascotSealWrap}>
               <Image source={MascotAssets.bread} style={styles.mascotSealImg} resizeMode="contain" />
               <View style={styles.rewardXpPill}>
-                <Text style={styles.rewardXpText}>+15 XP</Text>
+                <Text style={styles.rewardXpText}>+25 XP</Text>
               </View>
             </View>
 
             <Text style={styles.victoryTitle}>Hidden in Your Heart!</Text>
             <Text style={styles.victorySubtitle}>
-              "I have hidden your word in my heart that I might not sin against you." — Psalm 119:11
+              “I have hidden your word in my heart that I might not sin against you.” — Psalm 119:11
             </Text>
 
             <View style={styles.memorizedSummaryCard}>
@@ -524,12 +657,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-    marginBottom: 20,
+    marginBottom: 18,
     minHeight: 140,
     justifyContent: 'center',
   },
@@ -546,55 +674,69 @@ const styles = StyleSheet.create({
   },
   tokenPlainText: {
     fontFamily: Typography.fontYouVersionSerif,
-    fontSize: 18,
+    fontSize: 17.5,
     lineHeight: 32,
     color: '#1F2937',
   },
+  tokenPrefixText: {
+    fontFamily: Typography.fontYouVersionSerif,
+    fontSize: 16,
+    color: '#1F2937',
+  },
+  tokenSuffixText: {
+    fontFamily: Typography.fontYouVersionSerif,
+    fontSize: 16,
+    color: '#1F2937',
+  },
   filledBlankPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#D1FAE5',
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingVertical: 3,
+    borderRadius: 8,
     marginHorizontal: 3,
-    marginVertical: 2,
+    marginVertical: 3,
     borderWidth: 1,
     borderColor: '#6EE7B7',
   },
   filledBlankText: {
     fontFamily: Typography.fontSansBold,
-    fontSize: 15,
+    fontSize: 14.5,
     color: '#065F46',
   },
   emptyBlankPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#F3F4F6',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 8,
     marginHorizontal: 3,
-    marginVertical: 2,
-    borderWidth: 1,
+    marginVertical: 3,
+    borderWidth: 1.5,
     borderColor: '#D1D5DB',
   },
   currentBlankPill: {
     backgroundColor: '#FEF3C7',
-    borderColor: '#F59E0B',
+    borderColor: '#D97706',
     borderWidth: 1.5,
   },
   emptyBlankText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 14,
+    fontFamily: Typography.fontSansBold,
+    fontSize: 13,
     color: '#9CA3AF',
+    letterSpacing: 1.5,
   },
   currentBlankText: {
     color: '#B45309',
-    fontWeight: '700',
   },
   masterLetterText: {
     fontFamily: Typography.fontSansBold,
-    fontSize: 18,
+    fontSize: 17,
     lineHeight: 32,
     color: '#111827',
-    letterSpacing: 1,
+    letterSpacing: 0.8,
   },
   audioBtn: {
     flexDirection: 'row',
@@ -622,33 +764,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#111827',
-    paddingVertical: 16,
-    borderRadius: 16,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 3,
+    paddingVertical: 15,
+    borderRadius: 14,
   },
   primaryBtnText: {
     fontFamily: Typography.fontSansBold,
-    fontSize: 15,
+    fontSize: 14.5,
     color: '#FFFFFF',
   },
   wordBankContainer: {
-    marginTop: 6,
+    marginTop: 4,
     padding: 16,
     backgroundColor: '#F9FAFB',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
+  wordBankHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
   wordBankLabel: {
     fontFamily: Typography.fontSansBold,
     fontSize: 11,
     letterSpacing: 0.8,
     color: '#6B7280',
-    marginBottom: 12,
+  },
+  wordBankSub: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 11,
+    color: '#9CA3AF',
   },
   tilesGrid: {
     flexDirection: 'row',
@@ -662,16 +809,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#D1D5DB',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
   },
   wordTileUsed: {
     backgroundColor: '#E5E7EB',
     borderColor: '#E5E7EB',
-    opacity: 0.4,
+    opacity: 0.35,
   },
   wordTileError: {
     borderColor: '#EF4444',
