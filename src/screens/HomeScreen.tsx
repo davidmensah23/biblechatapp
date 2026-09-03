@@ -246,10 +246,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
             </View>
 
             <View style={styles.planThumbnailWrap}>
-              <Image source={MascotAssets.bread} style={styles.planThumbnailImage} />
-              <View style={styles.planThumbnailOverlay}>
-                <Text style={styles.planThumbTitle}>The Ruthless Elimination</Text>
-              </View>
+              <Image source={MascotAssets.bread} style={styles.planThumbnailImage} resizeMode="contain" />
             </View>
           </TouchableOpacity>
 
@@ -288,28 +285,34 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
             </View>
           )}
 
-          {/* 3. Badges Spotlight Card */}
+          {/* 3. Badges Spotlight Card (Compact Horizontal Editorial Style) */}
           <View style={styles.badgesSpotlightCard}>
-            <Text style={styles.badgesSpotlightHeading}>Badges</Text>
-            <View style={styles.badgesSpotlightContent}>
-              <View style={styles.badgeEmblemSeal}>
-                <Image source={MascotAssets.bread} style={styles.badgeSealImg} />
-                <View style={styles.badgeCountBadge}>
-                  <Text style={styles.badgeCountText}>{growthProfile?.badges?.find(b => b.id === 'sower')?.level || 0}</Text>
-                </View>
-              </View>
-              <Text style={styles.badgeSpotlightTitle}>Sower</Text>
-              <TouchableOpacity onPress={() => setBadgesModalOpen(true)} activeOpacity={0.7}>
-                <Text style={styles.badgeSpotlightLearnMore}>Learn More</Text>
+            <View style={styles.badgesSpotlightHeaderRow}>
+              <Text style={styles.badgesSpotlightHeading}>Badges</Text>
+              <TouchableOpacity
+                onPress={() => setBadgesModalOpen(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.viewAllBadgesInline}>View all ({growthProfile?.badges?.length || 8})</Text>
               </TouchableOpacity>
             </View>
 
             <TouchableOpacity
-              style={styles.viewAllBadgesBtn}
+              style={styles.badgesSpotlightContentRow}
               onPress={() => setBadgesModalOpen(true)}
               activeOpacity={0.8}
             >
-              <Text style={styles.viewAllBadgesText}>View All</Text>
+              <View style={styles.badgeEmblemSeal}>
+                <Image source={MascotAssets.bread} style={styles.badgeSealImg} resizeMode="contain" />
+                <View style={styles.badgeCountBadge}>
+                  <Text style={styles.badgeCountText}>{growthProfile?.badges?.find(b => b.id === 'sower')?.level || 0}</Text>
+                </View>
+              </View>
+              <View style={styles.badgeInfoCol}>
+                <Text style={styles.badgeSpotlightTitle}>Sower of the Word</Text>
+                <Text style={styles.badgeSpotlightSub}>Keep reading God's Word to earn sacred milestones</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
             </TouchableOpacity>
           </View>
 
@@ -639,29 +642,20 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   planThumbnailWrap: {
-    width: 80,
-    height: 80,
+    width: 72,
+    height: 72,
     borderRadius: 14,
     overflow: 'hidden',
-    position: 'relative',
-    backgroundColor: '#C53030',
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 6,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
   },
   planThumbnailImage: {
     width: '100%',
     height: '100%',
-    opacity: 0.85,
-  },
-  planThumbnailOverlay: {
-    position: 'absolute',
-    bottom: 4,
-    left: 4,
-    right: 4,
-  },
-  planThumbTitle: {
-    fontFamily: Typography.fontSansBold,
-    fontSize: 8.5,
-    color: '#FFFFFF',
-    textAlign: 'center',
   },
   shareBannerCard: {
     backgroundColor: '#FFFFFF',
@@ -719,75 +713,76 @@ const styles = StyleSheet.create({
   },
   badgesSpotlightCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    padding: 18,
+    borderRadius: 20,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#E5E5EA',
     marginBottom: 16,
   },
-  badgesSpotlightHeading: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 16,
-    color: '#111111',
+  badgesSpotlightHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 12,
   },
-  badgesSpotlightContent: {
+  badgesSpotlightHeading: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 15,
+    color: '#111111',
+  },
+  viewAllBadgesInline: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 12.5,
+    color: '#6B7280',
+  },
+  badgesSpotlightContentRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
   },
   badgeEmblemSeal: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 3,
-    borderColor: '#3A7D63',
-    backgroundColor: '#F3F4F6',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 1.5,
+    borderColor: '#059669',
+    backgroundColor: '#ECFDF5',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    marginBottom: 8,
+    marginRight: 12,
   },
   badgeSealImg: {
     width: '100%',
     height: '100%',
-    borderRadius: 40,
+    borderRadius: 23,
   },
   badgeCountBadge: {
     position: 'absolute',
     bottom: -2,
+    right: -2,
     backgroundColor: '#111111',
-    paddingHorizontal: 8,
+    paddingHorizontal: 5,
     paddingVertical: 1,
-    borderRadius: 10,
+    borderRadius: 8,
   },
   badgeCountText: {
     fontFamily: Typography.fontSansSemiBold,
-    fontSize: 11,
+    fontSize: 9,
     color: '#FFFFFF',
+  },
+  badgeInfoCol: {
+    flex: 1,
   },
   badgeSpotlightTitle: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 14,
     color: '#111111',
-    marginBottom: 3,
+    marginBottom: 2,
   },
-  badgeSpotlightLearnMore: {
+  badgeSpotlightSub: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 12,
+    fontSize: 11.5,
     color: '#6B7280',
-    marginBottom: 14,
-  },
-  viewAllBadgesBtn: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 16,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  viewAllBadgesText: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 13,
-    color: '#111111',
   },
   apostleQuoteCard: {
     ...CardStyles.smoothCard,
@@ -914,19 +909,21 @@ const styles = StyleSheet.create({
     color: '#111111',
   },
   faithCompanionsSection: {
+    marginHorizontal: -16,
     marginBottom: 20,
     marginTop: 6,
+    overflow: 'visible',
   },
   sectionHeadingRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'space-between',
-    paddingHorizontal: 4,
+    paddingHorizontal: 16,
     marginBottom: 12,
   },
   sectionHeading: {
     fontFamily: Typography.fontSerif,
-    fontSize: 26,
+    fontSize: 24,
     color: '#111111',
   },
   sectionSubheading: {
@@ -936,7 +933,7 @@ const styles = StyleSheet.create({
   },
   mascotsScroll: {
     gap: 12,
-    paddingHorizontal: 4,
+    paddingHorizontal: 16,
     paddingVertical: 4,
   },
   mascotCompanionCard: {
@@ -987,14 +984,16 @@ const styles = StyleSheet.create({
     paddingBottom: 110,
   },
   companionsSectionWrap: {
+    marginHorizontal: -16,
     marginTop: 20,
     marginBottom: 8,
+    overflow: 'visible',
   },
   companionsHeadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     marginBottom: 12,
   },
   companionsHeading: {
@@ -1008,7 +1007,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   companionsScrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     gap: 12,
   },
   companionMiniCard: {
@@ -1019,11 +1018,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
   },
   companionAvatarContainer: {
     position: 'relative',

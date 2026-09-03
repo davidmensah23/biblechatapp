@@ -5,7 +5,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
 import { SpringConfigs } from '../theme/animations';
-import { CardStyles } from '../theme/cardStyles';
 
 interface DailyScriptureCardProps {
   quote: string;
@@ -48,46 +47,54 @@ export const DailyScriptureCard: React.FC<DailyScriptureCardProps> = ({
 
   return (
     <View style={styles.card}>
-      {/* Painting Artwork Header with Online Scripture Image Database Support */}
-      <View style={styles.imageContainer}>
-        <Image
-          source={
-            imageUrl && !imageError
-              ? { uri: imageUrl }
-              : require('../../assets/images/daily_scripture_banner.png')
-          }
-          onError={() => setImageError(true)}
-          style={styles.bannerImage}
-          resizeMode="cover"
-        />
-        {theme && (
+      {/* Full-bleed background image */}
+      <Image
+        source={
+          imageUrl && !imageError
+            ? { uri: imageUrl }
+            : require('../../assets/images/daily_scripture_banner.png')
+        }
+        onError={() => setImageError(true)}
+        style={StyleSheet.absoluteFillObject}
+        resizeMode="cover"
+      />
+
+      {/* Dark Scrim Overlay for guaranteed legibility */}
+      <View style={styles.scrimOverlay} />
+
+      {/* Top Header / Theme Badge */}
+      <View style={styles.topRow}>
+        {theme ? (
           <View style={styles.themeBadge}>
-            <Text style={styles.themeBadgeText}>{theme}</Text>
+            <Text style={styles.themeBadgeText}>{theme.toUpperCase()}</Text>
           </View>
-        )}
+        ) : <View />}
       </View>
 
-      {/* Quote Body */}
-      <View style={styles.content}>
+      {/* Scripture Quote in White Serif directly on top */}
+      <View style={styles.quoteBody}>
         <Text style={styles.verseText}>
-          {quote} - <Text style={styles.referenceText}>{reference}</Text>
+          "{quote}"
         </Text>
+        <Text style={styles.referenceText}>— {reference}</Text>
+      </View>
 
-        <View style={styles.footerRow}>
-          <TouchableOpacity onPress={onReadMore} activeOpacity={0.7}>
-            <Text style={styles.readMoreText}>Read more</Text>
-          </TouchableOpacity>
+      {/* Footer Actions */}
+      <View style={styles.footerRow}>
+        <TouchableOpacity onPress={onReadMore} activeOpacity={0.75} style={styles.readMoreBtn}>
+          <Text style={styles.readMoreText}>Read more</Text>
+          <Ionicons name="arrow-forward" size={13} color="#FFFFFF" style={{ marginLeft: 4 }} />
+        </TouchableOpacity>
 
-          <Pressable onPress={handleBookmark} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Animated.View style={heartAnimatedStyle}>
-              <Ionicons
-                name={bookmarked ? 'heart' : 'heart-outline'}
-                size={22}
-                color={bookmarked ? Colors.heartActive : '#444444'}
-              />
-            </Animated.View>
-          </Pressable>
-        </View>
+        <Pressable onPress={handleBookmark} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={styles.heartBtn}>
+          <Animated.View style={heartAnimatedStyle}>
+            <Ionicons
+              name={bookmarked ? 'heart' : 'heart-outline'}
+              size={22}
+              color={bookmarked ? '#EF4444' : '#FFFFFF'}
+            />
+          </Animated.View>
+        </Pressable>
       </View>
     </View>
   );
@@ -95,59 +102,86 @@ export const DailyScriptureCard: React.FC<DailyScriptureCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    ...CardStyles.heroCard,
+    minHeight: 280,
+    borderRadius: 24,
     overflow: 'hidden',
-    marginBottom: 22,
-    backgroundColor: '#FFFFFF',
+    marginBottom: 20,
+    backgroundColor: '#1E1E1E',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    padding: 20,
+    justifyContent: 'space-between',
+    position: 'relative',
   },
-  imageContainer: {
-    width: '100%',
-    height: 145,
-    backgroundColor: '#222222',
-    overflow: 'hidden',
+  scrimOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.48)',
   },
-  bannerImage: {
-    width: '100%',
-    height: '100%',
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  content: {
-    padding: 18,
+  themeBadge: {
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  themeBadgeText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 10.5,
+    color: '#FFFFFF',
+    letterSpacing: 0.8,
+  },
+  quoteBody: {
+    marginVertical: 14,
   },
   verseText: {
-    fontFamily: Typography.fontSerifBold,
+    fontFamily: Typography.fontYouVersionSerifBold,
     fontSize: 22,
-    lineHeight: 29,
-    letterSpacing: -0.5,
-    color: '#111111',
-    marginBottom: 14,
+    lineHeight: 31,
+    letterSpacing: -0.3,
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   referenceText: {
-    fontFamily: Typography.fontSansRegular,
-    color: '#111111',
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 13.5,
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginTop: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   footerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingTop: 8,
+  },
+  readMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   readMoreText: {
     fontFamily: Typography.fontSerifItalic,
-    fontSize: 18,
-    color: '#111111',
+    fontSize: 17,
+    color: '#FFFFFF',
     textDecorationLine: 'underline',
   },
-  themeBadge: {
-    position: 'absolute',
-    bottom: 10,
-    left: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+  heartBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
-  themeBadgeText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 11.5,
-    color: '#FFFFFF',
-  }
 });

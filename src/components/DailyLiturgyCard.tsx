@@ -91,11 +91,6 @@ const styles = StyleSheet.create({
     padding: 18,
     marginBottom: 14,
     borderWidth: 1,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
   },
   cardMorning: {
     backgroundColor: '#FFFBEB',
@@ -201,11 +196,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: '#FFFFFF',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
     backgroundColor: '#E5E7EB',
   },
   avatarImg: {

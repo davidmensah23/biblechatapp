@@ -95,8 +95,8 @@ const styles = StyleSheet.create({
   cardContainer: {
     ...CardStyles.heroCard,
     padding: 24,
-    marginHorizontal: 20,
-    marginVertical: 14,
+    marginHorizontal: 0,
+    marginBottom: 16,
     backgroundColor: '#FFFFFF',
   },
   badgeRow: {

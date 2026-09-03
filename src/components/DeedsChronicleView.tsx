@@ -342,12 +342,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   waypointDotActive: {
-    backgroundColor: '#2563EB',
-    shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 4,
+    backgroundColor: '#8B1E1E',
   },
   waypointDetails: {
     flex: 1,

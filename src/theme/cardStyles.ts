@@ -1,60 +1,40 @@
 import { ViewStyle } from 'react-native';
 
 export const CardStyles = {
-  // Ultra-smooth Continuous G2 Squircle Card (Apple Design Standard)
+  // Ultra-smooth Flat Card (Clean Apple / YouVersion Editorial Standard)
   smoothCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 30,
+    borderRadius: 24,
     borderCurve: 'continuous',
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.04)',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.04,
-    shadowRadius: 20,
-    elevation: 4,
+    borderColor: '#E5E7EB',
   } as ViewStyle,
 
-  // Floating Hero / Featured Card (Extra soft diffused glow)
+  // Floating Hero / Featured Card (Clean Flat)
   heroCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 34,
+    borderRadius: 24,
     borderCurve: 'continuous',
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.06,
-    shadowRadius: 28,
-    elevation: 6,
+    borderColor: '#E5E7EB',
   } as ViewStyle,
 
-  // Compact List Item Card
+  // Compact List Item Card (Clean Flat)
   compactCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 22,
+    borderRadius: 20,
     borderCurve: 'continuous',
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.04)',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.03,
-    shadowRadius: 14,
-    elevation: 2,
+    borderColor: '#E5E7EB',
   } as ViewStyle,
 
-  // Dark Luxury Card for Call / Modals
+  // Dark Luxury Card for Call / Modals (Clean Flat)
   darkSmoothCard: {
     backgroundColor: '#171717',
-    borderRadius: 30,
+    borderRadius: 24,
     borderCurve: 'continuous',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.3,
-    shadowRadius: 24,
-    elevation: 8,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   } as ViewStyle,
 
   // Velvet Obsidian Primary Pill Button
