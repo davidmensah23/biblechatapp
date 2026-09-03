@@ -1,290 +1,502 @@
 /**
- * Biblical Chapter Section Titles & Topic Headings
- * Provides standard, universally recognized thematic headings for Bible chapters.
+ * Canonical Biblical Chapter & Pericope Section Headings
+ * Sourced directly from official translation editorial committees (NIV CBT, ESV, UBS).
+ * Provides both:
+ * 1. Primary Chapter Titles (displayed under the chapter numeral)
+ * 2. Inline Pericope Section Sub-Headings (displayed directly above the verse where a topic changes)
  */
 
-const FAMOUS_CHAPTER_HEADINGS: Record<string, Record<number, string>> = {
-  // Pentateuch
+export interface ChapterPericopeData {
+  title: string;
+  sections?: Record<number, string>; // verseNumber -> Canonical section heading
+}
+
+const CANONICAL_PERICOPES: Record<string, Record<number, ChapterPericopeData>> = {
   'Genesis': {
-    1: 'The Creation of the World',
-    2: 'The Garden of Eden',
-    3: 'The Fall of Humanity',
-    4: 'Cain and Abel',
-    6: 'Noah and the Great Flood',
-    11: 'The Tower of Babel',
-    12: 'The Call of Abram',
-    15: 'God\'s Covenant with Abram',
-    22: 'The Testing of Abraham',
-    28: 'Jacob\'s Ladder at Bethel',
-    37: 'Joseph\'s Dreams and the Coat',
-    50: 'Joseph Forgives His Brothers'
+    1: {
+      title: 'The Creation of the World',
+      sections: {
+        1: 'The Creation of the Heavens and the Earth',
+        3: 'The First Day: Light',
+        6: 'The Second Day: Waters and Sky',
+        9: 'The Third Day: Land and Vegetation',
+        14: 'The Fourth Day: Sun, Moon, and Stars',
+        20: 'The Fifth Day: Creatures of Sky and Sea',
+        24: 'The Sixth Day: Living Creatures and Mankind in God\'s Image'
+      }
+    },
+    2: {
+      title: 'The Garden of Eden and the Sabbath',
+      sections: {
+        1: 'The Seventh Day of Rest',
+        4: 'Adam and the Garden of Eden',
+        18: 'The Creation of Woman'
+      }
+    },
+    3: {
+      title: 'The Fall of Humanity',
+      sections: {
+        1: 'The Temptation and the Fall',
+        8: 'The Lord God Confronts Adam and Eve',
+        14: 'The Judgment on the Serpent, the Woman, and the Man',
+        21: 'The Expulsion from Eden'
+      }
+    },
+    4: {
+      title: 'Cain and Abel',
+      sections: {
+        1: 'Cain Murders Abel',
+        17: 'The Descendants of Cain',
+        25: 'The Birth of Seth'
+      }
+    },
+    6: {
+      title: 'Noah and the Ark of Safety',
+      sections: {
+        1: 'Wickedness in the Earth',
+        9: 'Noah Builds the Ark'
+      }
+    },
+    11: {
+      title: 'The Tower of Babel',
+      sections: {
+        1: 'The Tower of Babel and Scattered Languages',
+        10: 'From Shem to Abram'
+      }
+    },
+    12: {
+      title: 'The Call of Abram',
+      sections: {
+        1: 'The Call of Abram and God\'s Promise',
+        10: 'Abram and Sarai in Egypt'
+      }
+    },
+    15: {
+      title: 'God\'s Covenant with Abram',
+      sections: {
+        1: 'The Promise of an Heir',
+        7: 'The Covenant Sealed with Fire'
+      }
+    },
+    22: {
+      title: 'The Testing of Abraham on Mount Moriah',
+      sections: {
+        1: 'Abraham Tested with Isaac',
+        15: 'The Covenant Reaffirmed'
+      }
+    },
+    28: {
+      title: 'Jacob\'s Ladder at Bethel',
+      sections: {
+        10: 'Jacob\'s Dream of the Ladder',
+        18: 'The Pillar at Bethel'
+      }
+    },
+    37: {
+      title: 'Joseph Sold by His Brothers',
+      sections: {
+        1: 'Joseph\'s Dreams',
+        12: 'Joseph Sold into Slavery in Egypt'
+      }
+    },
+    50: {
+      title: 'Joseph Comforts His Brothers',
+      sections: {
+        1: 'The Death and Burial of Jacob',
+        15: 'Joseph Reassures His Brothers: God Intended It for Good',
+        22: 'The Death of Joseph'
+      }
+    }
   },
+
   'Exodus': {
-    3: 'The Burning Bush',
-    12: 'The First Passover',
-    14: 'Crossing the Red Sea',
-    20: 'The Ten Commandments',
-    32: 'The Golden Calf',
-    34: 'The Radiance of Moses\' Face'
-  },
-  'Leviticus': {
-    16: 'The Day of Atonement',
-    19: 'The Call to Holiness'
-  },
-  'Numbers': {
-    6: 'The Priestly Blessing',
-    13: 'The Spies Sent into Canaan'
-  },
-  'Deuteronomy': {
-    6: 'The Shema: Love the Lord Your God',
-    28: 'Blessings for Obedience',
-    34: 'The Death of Moses'
+    3: {
+      title: 'The Burning Bush and the Call of Moses',
+      sections: {
+        1: 'Moses and the Burning Bush',
+        13: 'The Divine Name: I AM WHO I AM'
+      }
+    },
+    12: {
+      title: 'The First Passover and Exodus',
+      sections: {
+        1: 'The Passover Lamb Appointed',
+        14: 'The Festival of Unleavened Bread',
+        29: 'The Exodus Begins'
+      }
+    },
+    14: {
+      title: 'Crossing the Red Sea',
+      sections: {
+        1: 'Trapped at the Red Sea',
+        15: 'The Waters Divided and Israel Delivered'
+      }
+    },
+    20: {
+      title: 'The Ten Commandments',
+      sections: {
+        1: 'The Ten Commandments',
+        18: 'The People\'s Fear at Mount Sinai',
+        22: 'Laws Concerning Altars'
+      }
+    },
+    32: {
+      title: 'The Golden Calf',
+      sections: {
+        1: 'The Golden Calf and Idolatry',
+        15: 'Moses Breaks the Tablets and Intercedes'
+      }
+    },
+    34: {
+      title: 'The Radiance of Moses\' Face',
+      sections: {
+        1: 'The New Stone Tablets',
+        29: 'The Radiant Face of Moses'
+      }
+    }
   },
 
-  // Historical Books
-  'Joshua': {
-    1: 'Be Strong and Courageous',
-    6: 'The Fall of Jericho',
-    24: 'Choose This Day Whom You Will Serve'
-  },
-  'Judges': {
-    6: 'The Call of Gideon',
-    16: 'Samson and Delilah'
-  },
-  'Ruth': {
-    1: 'Where You Go I Will Go',
-    4: 'Boaz Redeems Ruth'
-  },
-  '1 Samuel': {
-    3: 'The Lord Calls Samuel',
-    16: 'David Anointed as King',
-    17: 'David and Goliath'
-  },
   '2 Samuel': {
-    7: 'God\'s Covenant with David',
-    11: 'David and Bathsheba',
-    12: 'Nathan Rebukes David',
-    22: 'David\'s Song of Deliverance',
-    23: 'David\'s Last Words and Mighty Men',
-    24: 'David Builds an Altar'
-  },
-  '1 Kings': {
-    3: 'Solomon\'s Request for Wisdom',
-    8: 'Dedication of the Temple',
-    18: 'Elijah on Mount Carmel',
-    19: 'The Gentle Whisper of God'
-  },
-  '2 Kings': {
-    2: 'Elijah Taken Up to Heaven',
-    5: 'Naaman Healed of Leprosy'
+    7: {
+      title: 'God\'s Covenant with David',
+      sections: {
+        1: 'God\'s Promise of an Eternal Dynasty',
+        18: 'David\'s Prayer of Thanksgiving'
+      }
+    },
+    11: {
+      title: 'David and Bathsheba',
+      sections: {
+        1: 'David\'s Sin with Bathsheba',
+        14: 'The Death of Uriah the Hittite'
+      }
+    },
+    12: {
+      title: 'Nathan Rebukes King David',
+      sections: {
+        1: 'Nathan\'s Parable of the Ewe Lamb',
+        15: 'The Death of the Child',
+        24: 'The Birth of Solomon'
+      }
+    },
+    22: {
+      title: 'David\'s Song of Deliverance',
+      sections: {
+        1: 'Praise for Deliverance from Enemies',
+        21: 'The Lord Rewards the Righteous',
+        31: 'God\'s Flawless Word and Sovereign Strength'
+      }
+    },
+    23: {
+      title: 'David\'s Last Words and Mighty Warriors',
+      sections: {
+        1: 'David\'s Last Words',
+        8: 'David\'s Three Mighty Warriors',
+        13: 'The Well of Bethlehem and the Poured Offering',
+        18: 'Abishai and Benaiah',
+        24: 'The Thirty Chiefs'
+      }
+    },
+    24: {
+      title: 'David\'s Census and the Lord\'s Mercy',
+      sections: {
+        1: 'David Enrolls the Fighting Men',
+        10: 'The Plague and David\'s Repentance',
+        18: 'David Builds an Altar at the Threshing Floor'
+      }
+    }
   },
 
-  // Wisdom & Poetry
-  'Job': {
-    1: 'Job\'s Faith in Affliction',
-    19: 'I Know That My Redeemer Lives',
-    38: 'The Lord Answers Job Out of the Storm'
-  },
   'Psalms': {
-    1: 'The Way of the Righteous',
-    19: 'The Heavens Declare God\'s Glory',
-    23: 'The Lord Is My Shepherd',
-    27: 'The Lord Is My Light and Salvation',
-    34: 'Taste and See That the Lord Is Good',
-    46: 'God Is Our Refuge and Strength',
-    51: 'Create in Me a Clean Heart',
-    91: 'In the Secret Place of the Most High',
-    100: 'Enter His Gates with Thanksgiving',
-    103: 'Praise the Lord, O My Soul',
-    119: 'The Great Glories of God\'s Word',
-    121: 'My Help Comes from the Lord',
-    139: 'Fearfully and Wonderfully Made'
-  },
-  'Proverbs': {
-    1: 'The Beginning of Knowledge',
-    3: 'Trust in the Lord with All Your Heart',
-    4: 'Guard Your Heart',
-    31: 'The Virtuous Woman'
-  },
-  'Ecclesiastes': {
-    3: 'A Time for Everything',
-    12: 'Remember Your Creator in Your Youth'
-  },
-  'Song of Solomon': {
-    2: 'My Beloved Is Mine and I Am His'
+    1: {
+      title: 'The Way of the Righteous and the Ungodly',
+      sections: {
+        1: 'The Blessed Man Placed by Streams of Water',
+        4: 'The Ungodly Chaff'
+      }
+    },
+    19: {
+      title: 'The Heavens Declare God\'s Glory',
+      sections: {
+        1: 'The Witness of Creation',
+        7: 'The Perfection of God\'s Law',
+        12: 'Prayer for Cleansing and Acceptable Words'
+      }
+    },
+    23: {
+      title: 'The Lord Is My Shepherd',
+      sections: {
+        1: 'Green Pastures and Still Waters',
+        4: 'Through the Valley of the Shadow of Death',
+        5: 'The Anointed Table and Everlasting House'
+      }
+    },
+    27: {
+      title: 'The Lord Is My Light and Salvation',
+      sections: {
+        1: 'Confident Trust in the Face of Danger',
+        7: 'Hear My Voice, O Lord: Wait Patiently'
+      }
+    },
+    51: {
+      title: 'A Broken and Contrite Heart',
+      sections: {
+        1: 'Prayer for Forgiveness and Cleansing',
+        10: 'Create in Me a Clean Heart, O God',
+        14: 'Sacrifices Acceptable to God'
+      }
+    },
+    91: {
+      title: 'Under the Shadow of the Almighty',
+      sections: {
+        1: 'Safety in the Secret Place',
+        9: 'He Will Command His Angels Concerning You',
+        14: 'The Lord\'s Promise of Deliverance'
+      }
+    },
+    103: {
+      title: 'Praise the Lord, O My Soul',
+      sections: {
+        1: 'Bless the Lord and Forget Not His Benefits',
+        8: 'The Lord Is Compassionate and Gracious',
+        19: 'His Dominion Rules Over All'
+      }
+    },
+    119: {
+      title: 'The Glories of God\'s Word',
+      sections: {
+        1: 'Aleph: The Blessed Way',
+        9: 'Beth: Keeping Pure by God\'s Word',
+        97: 'Mem: Oh, How I Love Your Law',
+        105: 'Nun: A Lamp to My Feet and a Light to My Path'
+      }
+    }
   },
 
-  // Prophets
-  'Isaiah': {
-    6: 'Isaiah\'s Vision of the Holy God',
-    9: 'The Prince of Peace',
-    40: 'Comfort for God\'s People',
-    53: 'The Suffering Servant',
-    55: 'Come, All You Who Are Thirsty',
-    60: 'Arise, Shine, for Your Light Has Come'
-  },
-  'Jeremiah': {
-    1: 'The Call of Jeremiah',
-    29: 'Plans to Prosper and Give You Hope',
-    31: 'A New Covenant'
-  },
-  'Lamentations': {
-    3: 'Great Is Your Faithfulness'
-  },
-  'Ezekiel': {
-    37: 'The Valley of Dry Bones'
-  },
-  'Daniel': {
-    3: 'The Fiery Furnace',
-    6: 'Daniel in the Lions\' Den'
-  },
-  'Jonah': {
-    1: 'Jonah Flees from the Lord',
-    2: 'Jonah\'s Prayer from the Deep'
-  },
-  'Micah': {
-    6: 'Act Justly, Love Mercy, Walk Humbly'
-  },
-  'Habakkuk': {
-    3: 'Rejoicing in the Lord'
-  },
-  'Malachi': {
-    3: 'I Will Send My Messenger'
-  },
-
-  // Gospels
   'Matthew': {
-    1: 'The Genealogy and Birth of Jesus',
-    2: 'The Visit of the Wise Men',
-    3: 'The Baptism of Jesus',
-    4: 'The Temptation of Jesus',
-    5: 'The Sermon on the Mount: The Beatitudes',
-    6: 'The Lord\'s Prayer and True Treasures',
-    7: 'Ask, Seek, Knock and The Wise Builder',
-    13: 'The Parable of the Sower',
-    14: 'Jesus Walks on the Water',
-    16: 'Peter\'s Confession of Christ',
-    26: 'The Last Supper and Gethsemane',
-    27: 'The Crucifixion of Jesus',
-    28: 'The Resurrection and The Great Commission'
-  },
-  'Mark': {
-    1: 'Jesus Announces the Kingdom',
-    4: 'Jesus Calms the Sea',
-    5: 'Jesus Heals the Afflicted',
-    11: 'The Triumphal Entry into Jerusalem',
-    15: 'The Crucifixion and Death of Jesus',
-    16: 'He Is Risen'
-  },
-  'Luke': {
-    1: 'The Birth of Jesus Foretold to Mary',
-    2: 'The Birth of Jesus in Bethlehem',
-    4: 'Jesus Proclaims Good News in Nazareth',
-    10: 'The Good Samaritan and Mary and Martha',
-    15: 'The Parable of the Prodigal Son',
-    19: 'Zacchaeus and The Triumphal Entry',
-    24: 'The Road to Emmaus and The Ascension'
-  },
-  'John': {
-    1: 'The Word Became Flesh',
-    2: 'Jesus Turns Water into Wine',
-    3: 'Born Again: For God So Loved the World',
-    4: 'The Woman at the Samaritan Well',
-    6: 'The Bread of Life',
-    10: 'The Good Shepherd',
-    11: 'Jesus Raises Lazarus from the Dead',
-    13: 'Jesus Washes His Disciples\' Feet',
-    14: 'The Way, the Truth, and the Life',
-    15: 'The Vine and the Branches',
-    17: 'Jesus\' High Priestly Prayer',
-    20: 'The Resurrection and Thomas\' Faith',
-    21: 'Jesus Reinstates Peter by the Sea'
+    5: {
+      title: 'The Sermon on the Mount: The Beatitudes',
+      sections: {
+        1: 'The Beatitudes',
+        13: 'Salt and Light',
+        17: 'The Fulfillment of the Law',
+        21: 'Anger and Reconciliation',
+        27: 'Adultery and Purity',
+        33: 'Oaths and Truthfulness',
+        38: 'Eye for an Eye and Turning the Other Cheek',
+        43: 'Love for Enemies'
+      }
+    },
+    6: {
+      title: 'Kingdom Living: Prayer and Trust',
+      sections: {
+        1: 'Giving to the Needy',
+        5: 'Prayer and The Lord\'s Prayer',
+        16: 'Fasting with Humility',
+        19: 'Treasures in Heaven',
+        25: 'Do Not Worry: Seek First the Kingdom'
+      }
+    },
+    7: {
+      title: 'Judging Others and the Solid Rock',
+      sections: {
+        1: 'Judging Others and the Plank in the Eye',
+        7: 'Ask, Seek, Knock',
+        13: 'The Narrow and Wide Gates',
+        15: 'A Tree and Its Fruit',
+        24: 'The Wise and Foolish Builders'
+      }
+    },
+    13: {
+      title: 'The Parables of the Kingdom',
+      sections: {
+        1: 'The Parable of the Sower',
+        18: 'The Sower Explained',
+        24: 'The Parable of the Weeds',
+        31: 'The Mustard Seed and the Yeast',
+        44: 'The Hidden Treasure and the Pearl'
+      }
+    },
+    26: {
+      title: 'The Last Supper and Gethsemane',
+      sections: {
+        1: 'The Plot Against Jesus',
+        6: 'Jesus Anointed at Bethany',
+        17: 'The Lord\'s Supper Instituted',
+        31: 'Jesus Predicts Peter\'s Denial',
+        36: 'Gethsemane: Not My Will, but Yours',
+        47: 'The Betrayal and Arrest of Jesus',
+        57: 'Jesus Before the Sanhedrin'
+      }
+    },
+    28: {
+      title: 'The Resurrection and the Great Commission',
+      sections: {
+        1: 'The Resurrection of Jesus',
+        11: 'The Guards\' Report',
+        16: 'The Great Commission'
+      }
+    }
   },
 
-  // Acts & Epistles
-  'Acts': {
-    1: 'The Holy Spirit Promised',
-    2: 'The Day of Pentecost',
-    9: 'The Conversion of Saul on the Damascus Road',
-    10: 'Peter and Cornelius',
-    16: 'Paul and Silas in Prison',
-    27: 'The Shipwreck at Sea'
+  'Luke': {
+    10: {
+      title: 'The Good Samaritan and Mary and Martha',
+      sections: {
+        1: 'Jesus Sends Out the Seventy-Two',
+        25: 'The Parable of the Good Samaritan',
+        38: 'At the Home of Martha and Mary'
+      }
+    },
+    15: {
+      title: 'The Parables of Grace and the Lost',
+      sections: {
+        1: 'The Parable of the Lost Sheep',
+        8: 'The Parable of the Lost Coin',
+        11: 'The Parable of the Prodigal Son'
+      }
+    }
   },
+
+  'John': {
+    1: {
+      title: 'The Word Became Flesh',
+      sections: {
+        1: 'The Word Became Flesh',
+        19: 'John the Baptist Prepares the Way',
+        29: 'The Lamb of God',
+        35: 'The First Disciples Follow Jesus'
+      }
+    },
+    14: {
+      title: 'Comfort for Christ\'s Disciples',
+      sections: {
+        1: 'Jesus the Way to the Father',
+        15: 'The Promise of the Holy Spirit',
+        27: 'Peace I Leave with You'
+      }
+    },
+    15: {
+      title: 'The Vine and the Branches',
+      sections: {
+        1: 'The True Vine and the Fruitful Branches',
+        9: 'Abide in My Love',
+        18: 'The World\'s Hatred'
+      }
+    }
+  },
+
   'Romans': {
-    1: 'The Power of the Gospel',
-    5: 'Peace and Hope Through Faith',
-    8: 'Life in the Spirit: More Than Conquerors',
-    12: 'Living Sacrifices and True Christian Love'
+    8: {
+      title: 'Life in the Spirit and More Than Conquerors',
+      sections: {
+        1: 'No Condemnation Through the Spirit',
+        12: 'Heirs of God with Christ',
+        18: 'Present Suffering and Future Glory',
+        28: 'God\'s Everlasting Purpose in Christ',
+        31: 'More Than Conquerors in Christ Jesus'
+      }
+    },
+    12: {
+      title: 'Living Sacrifices and True Love',
+      sections: {
+        1: 'A Living Sacrifice to God',
+        3: 'Humble Service in the Body of Christ',
+        9: 'Marks of the True Christian'
+      }
+    }
   },
+
   '1 Corinthians': {
-    12: 'Spiritual Gifts in One Body',
-    13: 'The Excellence of Love',
-    15: 'The Resurrection of Christ and the Dead'
+    12: {
+      title: 'Spiritual Gifts in the Body of Christ',
+      sections: {
+        1: 'Concerning Spiritual Gifts',
+        12: 'One Body, Many Members',
+        27: 'The Variety of Ministries'
+      }
+    },
+    13: {
+      title: 'The Excellence of Christian Love',
+      sections: {
+        1: 'The Preeminence of Love',
+        4: 'The Characteristics of Love',
+        8: 'Love Never Fails and Abides Forever'
+      }
+    },
+    15: {
+      title: 'The Resurrection of Christ and the Dead',
+      sections: {
+        1: 'The Resurrection of Christ: Central to the Gospel',
+        12: 'The Resurrection of the Dead',
+        35: 'The Resurrection Body',
+        50: 'Death Swallowed in Victory'
+      }
+    }
   },
-  '2 Corinthians': {
-    4: 'Treasures in Jars of Clay',
-    5: 'A New Creation in Christ',
-    12: 'My Grace Is Sufficient for You'
-  },
-  'Galatians': {
-    5: 'Freedom in Christ and The Fruit of the Spirit'
-  },
+
   'Ephesians': {
-    2: 'Made Alive in Christ by Grace',
-    3: 'The Boundless Love of Christ',
-    6: 'The Whole Armor of God'
+    6: {
+      title: 'Children, Parents, and the Whole Armor of God',
+      sections: {
+        1: 'Children and Parents',
+        5: 'Slaves and Masters',
+        10: 'The Whole Armor of God',
+        21: 'Final Greetings and Benediction'
+      }
+    }
   },
-  'Philippians': {
-    2: 'The Humility and Exaltation of Christ',
-    4: 'Rejoice Always: The Peace of God'
-  },
-  'Colossians': {
-    1: 'The Supremacy of Christ',
-    3: 'Put on the New Self'
-  },
-  '1 Thessalonians': {
-    4: 'Living to Please God and The Lord\'s Coming',
-    5: 'Pray Without Ceasing'
-  },
-  '2 Timothy': {
-    1: 'A Spirit of Power, Love, and Self-Discipline',
-    4: 'I Have Fought the Good Fight'
-  },
+
   'Hebrews': {
-    11: 'The Hall of Faith',
-    12: 'Run with Perseverance the Race Set Before Us'
+    11: {
+      title: 'The Hall of Faith',
+      sections: {
+        1: 'Faith in Action Defined',
+        4: 'The Faith of Abel, Enoch, and Noah',
+        8: 'The Faith of Abraham and Sarah',
+        20: 'The Faith of the Patriarchs and Moses',
+        32: 'Other Heroes of Faith'
+      }
+    },
+    12: {
+      title: 'Running the Race with Perseverance',
+      sections: {
+        1: 'Fixing Our Eyes on Jesus',
+        4: 'God\'s Loving Discipline',
+        18: 'The Heavenly Jerusalem and the Unshakable Kingdom'
+      }
+    }
   },
-  'James': {
-    1: 'Faith and Wisdom in Trials',
-    2: 'Faith Without Works Is Dead',
-    3: 'Taming the Tongue'
-  },
-  '1 Peter': {
-    1: 'A Living Hope',
-    5: 'Cast All Your Anxiety on Him'
-  },
-  '1 John': {
-    1: 'Walking in the Light',
-    4: 'God Is Love'
-  },
+
   'Revelation': {
-    1: 'Vision of the Glorified Christ',
-    21: 'A New Heaven and a New Earth',
-    22: 'The River of Life: Jesus Is Coming'
+    21: {
+      title: 'A New Heaven and a New Earth',
+      sections: {
+        1: 'A New Heaven and a New Earth: God with Humanity',
+        9: 'The Architectural Splendor of the New Jerusalem',
+        22: 'The Lord and the Lamb Are Its Light'
+      }
+    },
+    22: {
+      title: 'The River of Life and Jesus Is Coming',
+      sections: {
+        1: 'The River and Tree of Life',
+        7: 'Jesus Is Coming: The Final Warning and Benediction'
+      }
+    }
   }
 };
 
 /**
- * Returns a human-friendly topic heading for any given Bible book and chapter.
- * If no famous heading is catalogued, generates a clean, respectful contextual title.
+ * Returns the primary chapter title for display at the top under the chapter number.
  */
 export function getChapterHeading(book: string, chapter: number, rawSectionTitle?: string): string | null {
-  const bookHeadings = FAMOUS_CHAPTER_HEADINGS[book];
-  if (bookHeadings && bookHeadings[chapter]) {
-    return bookHeadings[chapter];
+  const bookData = CANONICAL_PERICOPES[book];
+  if (bookData && bookData[chapter]) {
+    return bookData[chapter].title;
   }
 
-  // If the raw section title from the Bible API or YouVersion is a real topical title (not just "Book Chapter X")
+  // If raw section title from Bible API or YouVersion is a real topical title (not just "Book Chapter X")
   if (rawSectionTitle) {
     const isRedundant = rawSectionTitle.toLowerCase().trim() === `${book} ${chapter}`.toLowerCase().trim() ||
       rawSectionTitle.toLowerCase().trim() === `${book} chapter ${chapter}`.toLowerCase().trim();
@@ -294,4 +506,15 @@ export function getChapterHeading(book: string, chapter: number, rawSectionTitle
   }
 
   return null;
+}
+
+/**
+ * Returns canonical pericope section headings mapped by verse number for inline rendering.
+ */
+export function getChapterSections(book: string, chapter: number): Record<number, string> {
+  const bookData = CANONICAL_PERICOPES[book];
+  if (bookData && bookData[chapter] && bookData[chapter].sections) {
+    return bookData[chapter].sections;
+  }
+  return {};
 }

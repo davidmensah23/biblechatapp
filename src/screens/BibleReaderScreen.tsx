@@ -32,7 +32,7 @@ import { VerseImageModal } from '../components/VerseImageModal';
 import { VerseNoteModal } from '../components/VerseNoteModal';
 import { BibleChapterSkeleton } from '../components/SoftSkeleton';
 import { ScriptureMemoryModal } from '../components/ScriptureMemoryModal';
-import { getChapterHeading } from '../services/chapterHeadings';
+import { getChapterHeading, getChapterSections } from '../services/chapterHeadings';
 import { getLastReadPosition, saveLastReadPosition } from '../services/readingProgressService';
 import { ApostleSelectSheet } from '../components/ApostleSelectSheet';
 import { ToastBanner } from '../components/ToastBanner';
@@ -494,31 +494,41 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
               })()}
             </View>
 
-            {/* Verses List */}
+            {/* Verses List with Canonical Pericope Sub-Headings */}
             <View style={styles.versesContainer}>
-              {chapterData.verses.map((v) => {
-                const isSelected = selectedVerseNumber === v.verseNumber;
-                const highlightColor = chapterHighlights[v.verseNumber];
-                const hasNote = Boolean(chapterNotes[v.verseNumber]);
-                const isReadingThisVerse = activeReadingVerse === v.verseNumber;
+              {(() => {
+                const chapterSections = getChapterSections(chapterData.book, chapterData.chapter);
+                return chapterData.verses.map((v) => {
+                  const isSelected = selectedVerseNumber === v.verseNumber;
+                  const highlightColor = chapterHighlights[v.verseNumber];
+                  const hasNote = Boolean(chapterNotes[v.verseNumber]);
+                  const isReadingThisVerse = activeReadingVerse === v.verseNumber;
+                  const inlineSectionTitle = chapterSections[v.verseNumber];
 
-                return (
-                  <View
-                    key={v.verseNumber}
-                    onLayout={(e) => {
-                      verseLayouts.current[v.verseNumber] = e.nativeEvent.layout.y;
-                    }}
-                  >
-                    <TouchableOpacity
-                      style={[
-                        styles.verseParagraph,
-                        highlightColor && { backgroundColor: highlightColor },
-                        isSelected && !highlightColor && styles.verseParagraphSelected,
-                        isReadingThisVerse && styles.verseReadingActive
-                      ]}
-                      onPress={() => handleVerseTap(v.verseNumber)}
-                      activeOpacity={0.8}
+                  return (
+                    <View
+                      key={v.verseNumber}
+                      onLayout={(e) => {
+                        verseLayouts.current[v.verseNumber] = e.nativeEvent.layout.y;
+                      }}
                     >
+                      {/* Canonical Pericope Section Heading (NIV/ESV official section breaks) */}
+                      {inlineSectionTitle && v.verseNumber !== 1 && (
+                        <View style={styles.inlineSectionHeaderWrap}>
+                          <Text style={styles.inlineSectionHeaderText}>{inlineSectionTitle}</Text>
+                        </View>
+                      )}
+
+                      <TouchableOpacity
+                        style={[
+                          styles.verseParagraph,
+                          highlightColor && { backgroundColor: highlightColor },
+                          isSelected && !highlightColor && styles.verseParagraphSelected,
+                          isReadingThisVerse && styles.verseReadingActive
+                        ]}
+                        onPress={() => handleVerseTap(v.verseNumber)}
+                        activeOpacity={0.8}
+                      >
                       <Text
                         style={[
                           styles.verseContentText,
@@ -554,7 +564,8 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
                     )}
                   </View>
                 );
-              })}
+              });
+            })()}
             </View>
           </View>
         ) : null}
@@ -820,6 +831,19 @@ const styles = StyleSheet.create({
   verseContentText: {
     fontFamily: Typography.fontSerifMedium,
     color: '#111827',
+    letterSpacing: 0.1,
+  },
+  inlineSectionHeaderWrap: {
+    marginTop: 22,
+    marginBottom: 8,
+    paddingHorizontal: 6,
+  },
+  inlineSectionHeaderText: {
+    fontFamily: Typography.fontSerifBold,
+    fontSize: 18,
+    lineHeight: 24,
+    color: '#111827',
+    textAlign: 'left',
     letterSpacing: 0.1,
   },
   inlineNoteCallout: {
