@@ -93,6 +93,7 @@ export default function App() {
   const [chatInitialMessage, setChatInitialMessage] = useState<string | undefined>(undefined);
   const [chatContextQuote, setChatContextQuote] = useState<{ text: string; reference: string } | undefined>(undefined);
   const [chatMinistryObjective, setChatMinistryObjective] = useState<'sermon_prep' | 'small_group' | 'personal_reflection' | 'seeker_explore' | undefined>(undefined);
+  const [communityInitialSegment, setCommunityInitialSegment] = useState<'community' | 'my_prayers'>('community');
   const [forceRender, setForceRender] = useState<boolean>(false);
   const [isNavBarVisible, setIsNavBarVisible] = useState<boolean>(true);
   const [showPrivacyNotice, setShowPrivacyNotice] = useState<boolean>(false);
@@ -393,7 +394,9 @@ export default function App() {
               />
             )}
 
-            {activeNavTab === 'community' && <CommunityScreen />}
+            {activeNavTab === 'community' && (
+              <CommunityScreen initialSegment={communityInitialSegment} />
+            )}
 
             {activeNavTab === 'profile' && (
               <ProfileScreen
@@ -401,6 +404,10 @@ export default function App() {
                 onOpenAuthModal={() => setShowAuthModal(true)}
                 onSelectApostle={() => setActiveNavTab('home')}
                 onOpenBible={() => setActiveNavTab('bible')}
+                onOpenCommunityPrayers={(seg) => {
+                  setCommunityInitialSegment(seg || 'my_prayers');
+                  setActiveNavTab('community');
+                }}
               />
             )}
           </ScreenTransition>

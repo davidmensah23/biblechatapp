@@ -44,13 +44,15 @@ interface ProfileScreenProps {
   onOpenAuthModal?: () => void;
   onSelectApostle?: () => void;
   onOpenBible?: () => void;
+  onOpenCommunityPrayers?: (segment?: 'my_prayers' | 'community') => void;
 }
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onLogout,
   onOpenAuthModal,
   onSelectApostle,
-  onOpenBible
+  onOpenBible,
+  onOpenCommunityPrayers
 }) => {
   const { t } = useTranslation();
   const [bookmarks, setBookmarks] = useState<SavedBookmark[]>([]);
@@ -243,7 +245,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={onSelectApostle}
+            onPress={() => onOpenCommunityPrayers ? onOpenCommunityPrayers('my_prayers') : onSelectApostle?.()}
             activeOpacity={0.75}
           >
             <Ionicons name="hand-left-outline" size={22} color="#111111" style={{ marginBottom: 6 }} />

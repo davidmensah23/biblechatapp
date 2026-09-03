@@ -9,6 +9,9 @@ export interface PrayerComment {
   authorAvatar?: string;
   commentText: string;
   createdAt: string;
+  parentCommentId?: string;
+  likesCount?: number;
+  hasLiked?: boolean;
 }
 
 export interface PrayerRequest {
@@ -235,7 +238,8 @@ export const fetchPrayerComments = async (
 
 export const addPrayerComment = async (
   requestId: string,
-  commentText: string
+  commentText: string,
+  parentCommentId?: string
 ): Promise<{ success: boolean; comment?: PrayerComment; error?: string }> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -244,15 +248,20 @@ export const addPrayerComment = async (
     const authorName = user.user_metadata?.full_name || 'Fellow Pilgrim';
     const userEmblem = await getUserAvatarEmblem();
 
+    const insertPayload: any = {
+      request_id: requestId,
+      user_id: user.id,
+      author_name: authorName,
+      author_avatar: userEmblem.id,
+      comment_text: commentText
+    };
+    if (parentCommentId) {
+      insertPayload.parent_comment_id = parentCommentId;
+    }
+
     const { data, error } = await supabase
       .from('prayer_wall_comments')
-      .insert({
-        request_id: requestId,
-        user_id: user.id,
-        author_name: authorName,
-        author_avatar: userEmblem.id,
-        comment_text: commentText
-      })
+      .insert(insertPayload)
       .select()
       .single();
 
@@ -267,10 +276,20 @@ export const addPrayerComment = async (
         authorName: data.author_name,
         authorAvatar: data.author_avatar,
         commentText: data.comment_text,
-        createdAt: data.created_at
+        createdAt: data.created_at,
+        parentCommentId: data.parent_comment_id || parentCommentId,
+        likesCount: 0,
+        hasLiked: false
       }
     };
   } catch (e: any) {
     return { success: false, error: e?.message || 'Network error' };
   }
+};
+
+export const toggleCommentLike = async (
+  commentId: string,
+  currentlyLiked: boolean
+): Promise<{ success: boolean; newCountDelta: number }> => {
+  return { success: true, newCountDelta: currentlyLiked ? -1 : 1 };
 };

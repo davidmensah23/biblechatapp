@@ -6,13 +6,13 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Modal,
   ActivityIndicator,
   Share,
-  TouchableWithoutFeedback,
-  KeyboardAvoidingView,
   Platform,
-  SafeAreaView
+  SafeAreaView,
+  Image,
+  Dimensions,
+  KeyboardAvoidingView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -25,11 +25,24 @@ import {
   togglePrayedForRequest,
   markPrayerAsAnswered,
   fetchPrayerComments,
-  addPrayerComment
+  addPrayerComment,
+  toggleCommentLike
 } from '../services/prayerWallService';
 import { getAvatarEmblem } from '../services/avatarService';
+import { MascotAssets } from '../services/mascotAssets';
+import { InteractiveGestureSheet } from '../components/InteractiveGestureSheet';
 
-export const CommunityScreen: React.FC = () => {
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+interface CommunityScreenProps {
+  initialSegment?: 'community' | 'my_prayers';
+  onNavigateToBible?: (book?: string, chapter?: number) => void;
+}
+
+export const CommunityScreen: React.FC<CommunityScreenProps> = ({
+  initialSegment = 'community'
+}) => {
+  const [activeTab, setActiveTab] = useState<'community' | 'my_prayers'>(initialSegment);
   const [requests, setRequests] = useState<PrayerRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -48,13 +61,20 @@ export const CommunityScreen: React.FC = () => {
   const [praiseReportText, setPraiseReportText] = useState('');
   const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
 
-  // Comments Sheet State
+  // Comments / Encouragements Sheet State
   const [showCommentsSheet, setShowCommentsSheet] = useState(false);
   const [activeRequestForComments, setActiveRequestForComments] = useState<PrayerRequest | null>(null);
   const [comments, setComments] = useState<PrayerComment[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [newCommentText, setNewCommentText] = useState('');
+  const [replyingTo, setReplyingTo] = useState<PrayerComment | null>(null);
   const [isSendingComment, setIsSendingComment] = useState(false);
+
+  useEffect(() => {
+    if (initialSegment) {
+      setActiveTab(initialSegment);
+    }
+  }, [initialSegment]);
 
   const loadData = async (cat = selectedCategory) => {
     setIsLoading(true);
@@ -73,7 +93,7 @@ export const CommunityScreen: React.FC = () => {
     } catch (e) {}
 
     const currentlyPrayed = Boolean(req.hasUserPrayed);
-    // Optimistic UI update
+    // Optimistic UI update with Heart Like
     setRequests(prev => prev.map(r => {
       if (r.id === req.id) {
         return {
@@ -131,8 +151,8 @@ export const CommunityScreen: React.FC = () => {
         return r;
       }));
       setShowAnsweredModal(false);
-      setSelectedRequestForAnswer(null);
       setPraiseReportText('');
+      setSelectedRequestForAnswer(null);
     } else {
       alert(res.error || 'Failed to update prayer');
     }
@@ -142,6 +162,7 @@ export const CommunityScreen: React.FC = () => {
     setActiveRequestForComments(req);
     setShowCommentsSheet(true);
     setIsLoadingComments(true);
+    setReplyingTo(null);
     const list = await fetchPrayerComments(req.id);
     setComments(list);
     setIsLoadingComments(false);
@@ -150,7 +171,11 @@ export const CommunityScreen: React.FC = () => {
   const handleSendComment = async () => {
     if (!activeRequestForComments || !newCommentText.trim()) return;
     setIsSendingComment(true);
-    const res = await addPrayerComment(activeRequestForComments.id, newCommentText);
+    const res = await addPrayerComment(
+      activeRequestForComments.id,
+      newCommentText,
+      replyingTo?.id
+    );
     setIsSendingComment(false);
 
     if (res.success && res.comment) {
@@ -159,6 +184,7 @@ export const CommunityScreen: React.FC = () => {
       } catch (e) {}
       setComments(prev => [...prev, res.comment!]);
       setNewCommentText('');
+      setReplyingTo(null);
       // update count in request list
       setRequests(prev => prev.map(r => {
         if (r.id === activeRequestForComments.id) {
@@ -171,10 +197,35 @@ export const CommunityScreen: React.FC = () => {
     }
   };
 
+  const handleToggleCommentLike = async (comment: PrayerComment) => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (e) {}
+    const currentlyLiked = Boolean(comment.hasLiked);
+    setComments(prev => prev.map(c => {
+      if (c.id === comment.id) {
+        return {
+          ...c,
+          hasLiked: !currentlyLiked,
+          likesCount: currentlyLiked ? Math.max(0, (c.likesCount || 1) - 1) : (c.likesCount || 0) + 1
+        };
+      }
+      return c;
+    }));
+    await toggleCommentLike(comment.id, currentlyLiked);
+  };
+
   const handleSharePrayer = async (req: PrayerRequest) => {
     try {
+      const shareUrl = `https://biblechatapp.com/prayer/${req.id}`;
       await Share.share({
-        message: `Join me in praying for: "${req.title}" - ${req.requestText}\n\nPray with us on Bible Chat App!`
+        message: `“${req.title}”
+${req.requestText}
+
+Join us in lifting this prayer before God:
+${shareUrl}`,
+        url: shareUrl,
+        title: req.title
       });
     } catch (e) {}
   };
@@ -189,22 +240,26 @@ export const CommunityScreen: React.FC = () => {
     { id: 'thanksgiving', label: '🙏 Thanksgiving' },
   ];
 
+  const myRequests = requests.filter(r => r.isUserAuthor);
+  const displayRequests = activeTab === 'my_prayers' ? myRequests : requests;
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
+      {/* Top Header with Signature Red Accent Line */}
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerLeft}>
+          <View style={styles.redAccentLine} />
           <Text style={styles.headerTitle}>Community</Text>
-          <Text style={styles.headerSubtitle}>Bear one another's burdens · Galatians 6:2</Text>
         </View>
 
+        {/* Top Header Stroke Button for Ask Prayer */}
         <TouchableOpacity
-          style={styles.askPrayerBtn}
+          style={styles.askPrayerStrokeBtn}
           onPress={() => setShowCreateModal(true)}
-          activeOpacity={0.82}
+          activeOpacity={0.75}
         >
-          <Ionicons name="add" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
-          <Text style={styles.askPrayerBtnText}>Ask Prayer</Text>
+          <Ionicons name="add" size={16} color="#111827" style={{ marginRight: 4 }} />
+          <Text style={styles.askPrayerStrokeBtnText}>Ask Prayer</Text>
         </TouchableOpacity>
       </View>
 
@@ -212,63 +267,103 @@ export const CommunityScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Banner: Community Prayer Counter */}
-        <View style={styles.statsBanner}>
-          <View style={styles.statsIconBox}>
-            <Text style={{ fontSize: 20 }}>🕯️</Text>
-          </View>
-          <View style={styles.statsMeta}>
-            <Text style={styles.statsTitle}>Fellowship in Prayer</Text>
-            <Text style={styles.statsSub}>
-              {requests.reduce((acc, cur) => acc + cur.prayedCount, 48)} prayers lifted up across the body of Christ today
+        {/* Horizontal Mascot Hero Card with Galatians 6:2 Scripture & Rounded Dark Filled Button */}
+        <View style={styles.mascotHeroCard}>
+          <Image source={MascotAssets.group} style={styles.mascotHeroBgImage} resizeMode="cover" />
+          <View style={styles.mascotHeroOverlay} />
+          <View style={styles.mascotHeroContent}>
+            <View style={styles.mascotVerseTag}>
+              <Text style={styles.mascotVerseTagText}>GALATIANS 6:2</Text>
+            </View>
+            <Text style={styles.mascotVerseQuote}>
+              “Bear one another’s burdens, and so fulfill the law of Christ.”
             </Text>
+            <TouchableOpacity
+              style={styles.heroDarkFillBtn}
+              onPress={() => setShowCreateModal(true)}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="heart" size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.heroDarkFillBtnText}>Ask for Prayer</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Filter Chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterRow}
-        >
-          {categories.map((c) => {
-            const isActive = selectedCategory === c.id;
-            return (
-              <TouchableOpacity
-                key={c.id}
-                style={[styles.filterChip, isActive && styles.filterChipActive]}
-                onPress={() => setSelectedCategory(c.id)}
-                activeOpacity={0.75}
-              >
-                <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
-                  {c.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        {/* Two-Segment Tab Switcher: Community Prayers vs. My Prayers */}
+        <View style={styles.segmentSwitcherWrap}>
+          <TouchableOpacity
+            style={[styles.segmentTab, activeTab === 'community' && styles.segmentTabActive]}
+            onPress={() => setActiveTab('community')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.segmentTabText, activeTab === 'community' && styles.segmentTabTextActive]}>
+              Community Prayers
+            </Text>
+          </TouchableOpacity>
 
-        {/* Prayer List Feed */}
+          <TouchableOpacity
+            style={[styles.segmentTab, activeTab === 'my_prayers' && styles.segmentTabActive]}
+            onPress={() => setActiveTab('my_prayers')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.segmentTabText, activeTab === 'my_prayers' && styles.segmentTabTextActive]}>
+              My Prayers {myRequests.length > 0 ? `(${myRequests.length})` : ''}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Category Filter Chips (Shown in Community tab) */}
+        {activeTab === 'community' && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}
+          >
+            {categories.map((c) => {
+              const isActive = selectedCategory === c.id;
+              return (
+                <TouchableOpacity
+                  key={c.id}
+                  style={[styles.filterChip, isActive && styles.filterChipActive]}
+                  onPress={() => setSelectedCategory(c.id)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                    {c.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
+
+        {/* Prayer Cards Feed (Zero Shadows, Clean 1px Borders, Heart Likes) */}
         {isLoading ? (
           <View style={styles.loadingWrap}>
-            <ActivityIndicator size="small" color="#8B1E1E" />
-            <Text style={styles.loadingText}>Loading Community Prayers...</Text>
+            <ActivityIndicator size="small" color="#111827" />
+            <Text style={styles.loadingText}>Loading prayers...</Text>
           </View>
-        ) : requests.length === 0 ? (
+        ) : displayRequests.length === 0 ? (
           <View style={styles.emptyWrap}>
-            <Text style={{ fontSize: 36, marginBottom: 10 }}>🕊️</Text>
-            <Text style={styles.emptyTitle}>No prayers in this category yet</Text>
-            <Text style={styles.emptySub}>Be the first to share a petition or praise report with the brothers and sisters.</Text>
+            <Ionicons name="heart-outline" size={38} color="#9CA3AF" style={{ marginBottom: 8 }} />
+            <Text style={styles.emptyTitle}>
+              {activeTab === 'my_prayers' ? "You haven't posted any prayers yet" : "No prayers in this category yet"}
+            </Text>
+            <Text style={styles.emptySub}>
+              {activeTab === 'my_prayers'
+                ? "Tap 'Ask for Prayer' above to share your petition with the body of Christ."
+                : "Be the first to share a petition or praise report with fellow pilgrims."}
+            </Text>
             <TouchableOpacity
               style={styles.emptyActionBtn}
               onPress={() => setShowCreateModal(true)}
               activeOpacity={0.8}
             >
-              <Text style={styles.emptyActionText}>Post First Prayer</Text>
+              <Text style={styles.emptyActionText}>Ask for Prayer</Text>
             </TouchableOpacity>
           </View>
         ) : (
-          requests.map((req) => {
+          displayRequests.map((req) => {
             const emblem = getAvatarEmblem(req.authorAvatar);
             return (
               <View key={req.id} style={styles.prayerCard}>
@@ -283,7 +378,7 @@ export const CommunityScreen: React.FC = () => {
                       <View style={styles.categoryBadge}>
                         <Text style={styles.categoryBadgeText}>{req.category.toUpperCase()}</Text>
                       </View>
-                      <Text style={styles.timeText}>Just now</Text>
+                      <Text style={styles.timeText}>Shared in faith</Text>
                     </View>
                   </View>
 
@@ -300,282 +395,336 @@ export const CommunityScreen: React.FC = () => {
                 {req.isAnswered && req.praiseReport && (
                   <View style={styles.praiseReportBox}>
                     <View style={styles.praiseHeaderRow}>
-                      <Text style={{ fontSize: 16, marginRight: 6 }}>🙌</Text>
+                      <Ionicons name="checkmark-circle" size={16} color="#059669" style={{ marginRight: 6 }} />
                       <Text style={styles.praiseTitle}>Praise Report · God Answered!</Text>
                     </View>
                     <Text style={styles.praiseText}>“{req.praiseReport}”</Text>
                   </View>
                 )}
 
-                {/* Actions Footer */}
+                {/* Intentional, Larger Mark as Answered Button on the Left Below Card Body */}
+                {req.isUserAuthor && !req.isAnswered && (
+                  <View style={styles.answeredBtnContainer}>
+                    <TouchableOpacity
+                      style={styles.markAnsweredFillBtn}
+                      onPress={() => {
+                        setSelectedRequestForAnswer(req);
+                        setShowAnsweredModal(true);
+                      }}
+                      activeOpacity={0.85}
+                    >
+                      <Ionicons name="trophy-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Text style={styles.markAnsweredFillBtnText}>Mark as Answered 🙌</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Actions Footer: Heart Like Button & Encouragements Comment Button */}
                 <View style={styles.cardFooter}>
-                  {/* I Prayed for You Button */}
+                  {/* Heart Shape Like Button */}
                   <TouchableOpacity
-                    style={[styles.prayedBtn, req.hasUserPrayed && styles.prayedBtnActive]}
+                    style={[styles.likeHeartBtn, req.hasUserPrayed && styles.likeHeartBtnActive]}
                     onPress={() => handleTogglePrayed(req)}
                     activeOpacity={0.75}
                   >
                     <Ionicons
-                      name={req.hasUserPrayed ? "checkmark-circle" : "heart-outline"}
-                      size={16}
-                      color={req.hasUserPrayed ? "#B45309" : "#374151"}
+                      name={req.hasUserPrayed ? "heart" : "heart-outline"}
+                      size={17}
+                      color={req.hasUserPrayed ? "#E11D48" : "#4B5563"}
                       style={{ marginRight: 5 }}
                     />
-                    <Text style={[styles.prayedBtnText, req.hasUserPrayed && styles.prayedBtnTextActive]}>
-                      {req.hasUserPrayed ? "Prayed" : "I Prayed"} ({req.prayedCount})
+                    <Text style={[styles.likeHeartBtnText, req.hasUserPrayed && styles.likeHeartBtnTextActive]}>
+                      {req.prayedCount > 0 ? req.prayedCount : 'Pray'}
                     </Text>
                   </TouchableOpacity>
 
-                  {/* Encouragements Button */}
+                  {/* Encouragements Comment Button */}
                   <TouchableOpacity
                     style={styles.commentBtn}
                     onPress={() => handleOpenComments(req)}
                     activeOpacity={0.75}
                   >
-                    <Ionicons name="chatbubble-outline" size={15} color="#374151" style={{ marginRight: 5 }} />
+                    <Ionicons name="chatbubble-outline" size={15} color="#4B5563" style={{ marginRight: 5 }} />
                     <Text style={styles.commentBtnText}>
                       {req.commentsCount > 0 ? `${req.commentsCount} Encouragements` : 'Encourage'}
                     </Text>
                   </TouchableOpacity>
-
-                  {/* Author Option: Mark as Answered */}
-                  {req.isUserAuthor && !req.isAnswered && (
-                    <TouchableOpacity
-                      style={styles.answeredBtn}
-                      onPress={() => {
-                        setSelectedRequestForAnswer(req);
-                        setShowAnsweredModal(true);
-                      }}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={styles.answeredBtnText}>Mark Answered 🙌</Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
               </View>
             );
           })
         )}
+        <View style={{ height: 40 }} />
       </ScrollView>
 
       {/* ========================================================================= */}
-      {/* 1. CREATE PRAYER REQUEST MODAL */}
+      {/* 1. INTERACTIVE GESTURE SHEET: CREATE PRAYER REQUEST */}
       {/* ========================================================================= */}
-      <Modal visible={showCreateModal} transparent animationType="slide" onRequestClose={() => setShowCreateModal(false)}>
-        <TouchableWithoutFeedback onPress={() => setShowCreateModal(false)}>
-          <View style={styles.modalBackdrop}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
-              <TouchableWithoutFeedback>
-                <View style={styles.modalContainer}>
-                  <View style={styles.modalGrabBar} />
-                  <View style={styles.modalHeaderRow}>
-                    <Text style={styles.modalTitle}>Ask for Prayer</Text>
-                    <TouchableOpacity onPress={() => setShowCreateModal(false)} style={styles.modalCloseBtn}>
-                      <Ionicons name="close" size={20} color="#111111" />
-                    </TouchableOpacity>
-                  </View>
-
-                  <Text style={styles.inputLabel}>Title / Core Need</Text>
-                  <TextInput
-                    style={styles.inputTitle}
-                    placeholder="e.g. Healing for my mother's surgery"
-                    placeholderTextColor="#9CA3AF"
-                    value={newTitle}
-                    onChangeText={setNewTitle}
-                  />
-
-                  <Text style={styles.inputLabel}>Prayer Petition</Text>
-                  <TextInput
-                    style={styles.inputText}
-                    placeholder="Describe what you are going through so the body of Christ can intercede with you..."
-                    placeholderTextColor="#9CA3AF"
-                    multiline
-                    numberOfLines={4}
-                    value={newText}
-                    onChangeText={setNewText}
-                  />
-
-                  {/* Category Pills */}
-                  <Text style={styles.inputLabel}>Category</Text>
-                  <View style={styles.categoryPillRow}>
-                    {[
-                      { id: 'general', label: 'General' },
-                      { id: 'healing', label: '🌿 Healing' },
-                      { id: 'peace', label: '🕊️ Peace' },
-                      { id: 'family', label: '👨‍👩‍👧 Family' },
-                      { id: 'guidance', label: '🧭 Guidance' },
-                      { id: 'thanksgiving', label: '🙏 Praise' },
-                    ].map((c) => (
-                      <TouchableOpacity
-                        key={c.id}
-                        style={[styles.categoryChoicePill, newCategory === c.id && styles.categoryChoicePillActive]}
-                        onPress={() => setNewCategory(c.id as any)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[styles.categoryChoiceText, newCategory === c.id && styles.categoryChoiceTextActive]}>
-                          {c.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-
-                  {/* Anonymous Toggle */}
-                  <TouchableOpacity
-                    style={styles.anonToggleRow}
-                    onPress={() => setIsAnonymous(!isAnonymous)}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons
-                      name={isAnonymous ? "checkbox" : "square-outline"}
-                      size={20}
-                      color={isAnonymous ? "#8B1E1E" : "#9CA3AF"}
-                      style={{ marginRight: 8 }}
-                    />
-                    <Text style={styles.anonToggleText}>Post Anonymously (as "A Fellow Pilgrim")</Text>
-                  </TouchableOpacity>
-
-                  {/* Submit Button */}
-                  <TouchableOpacity
-                    style={[styles.submitPostBtn, isSubmitting && { opacity: 0.7 }]}
-                    onPress={handleCreateRequest}
-                    disabled={isSubmitting}
-                    activeOpacity={0.85}
-                  >
-                    {isSubmitting ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <Text style={styles.submitPostBtnText}>Post to Prayer Wall</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </TouchableWithoutFeedback>
-            </KeyboardAvoidingView>
+      <InteractiveGestureSheet
+        visible={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        initialSnap="mid"
+        midHeightRatio={0.85}
+        fullHeightRatio={0.98}
+      >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.sheetContent}>
+          <View style={styles.modalHeaderRow}>
+            <Text style={styles.modalTitle}>Ask for Prayer</Text>
+            <TouchableOpacity onPress={() => setShowCreateModal(false)} style={styles.modalCloseBtn}>
+              <Ionicons name="close" size={20} color="#111111" />
+            </TouchableOpacity>
           </View>
-        </TouchableWithoutFeedback>
-      </Modal>
 
-      {/* ========================================================================= */}
-      {/* 2. MARK AS ANSWERED (PRAISE REPORT) MODAL */}
-      {/* ========================================================================= */}
-      <Modal visible={showAnsweredModal} transparent animationType="slide" onRequestClose={() => setShowAnsweredModal(false)}>
-        <TouchableWithoutFeedback onPress={() => setShowAnsweredModal(false)}>
-          <View style={styles.modalBackdrop}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
-              <TouchableWithoutFeedback>
-                <View style={styles.modalContainer}>
-                  <View style={styles.modalGrabBar} />
-                  <View style={styles.modalHeaderRow}>
-                    <Text style={styles.modalTitle}>Share Your Praise Report! 🙌</Text>
-                    <TouchableOpacity onPress={() => setShowAnsweredModal(false)} style={styles.modalCloseBtn}>
-                      <Ionicons name="close" size={20} color="#111111" />
-                    </TouchableOpacity>
-                  </View>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+            <Text style={styles.inputLabel}>Title / Core Need</Text>
+            <TextInput
+              style={styles.inputTitle}
+              placeholder="e.g. Healing for my mother's surgery"
+              placeholderTextColor="#9CA3AF"
+              value={newTitle}
+              onChangeText={setNewTitle}
+            />
 
-                  <Text style={styles.answeredSub}>
-                    Give glory to God and encourage everyone who interceded with you.
+            <Text style={styles.inputLabel}>Prayer Petition</Text>
+            <TextInput
+              style={styles.inputText}
+              placeholder="Describe what you are walking through so the body of Christ can intercede with you..."
+              placeholderTextColor="#9CA3AF"
+              multiline
+              numberOfLines={4}
+              value={newText}
+              onChangeText={setNewText}
+            />
+
+            {/* Category Choices */}
+            <Text style={styles.inputLabel}>Category</Text>
+            <View style={styles.categoryPillRow}>
+              {[
+                { id: 'general', label: 'General' },
+                { id: 'healing', label: '🌿 Healing' },
+                { id: 'peace', label: '🕊️ Peace' },
+                { id: 'family', label: '👨‍👩‍👧 Family' },
+                { id: 'guidance', label: '🧭 Guidance' },
+                { id: 'thanksgiving', label: '🙏 Praise' },
+              ].map((c) => (
+                <TouchableOpacity
+                  key={c.id}
+                  style={[styles.categoryChoicePill, newCategory === c.id && styles.categoryChoicePillActive]}
+                  onPress={() => setNewCategory(c.id as any)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.categoryChoiceText, newCategory === c.id && styles.categoryChoiceTextActive]}>
+                    {c.label}
                   </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
 
-                  <TextInput
-                    style={styles.inputText}
-                    placeholder="Describe how God answered this prayer..."
-                    placeholderTextColor="#9CA3AF"
-                    multiline
-                    numberOfLines={4}
-                    value={praiseReportText}
-                    onChangeText={setPraiseReportText}
-                  />
+            {/* Anonymous Toggle */}
+            <TouchableOpacity
+              style={styles.anonToggleRow}
+              onPress={() => setIsAnonymous(!isAnonymous)}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name={isAnonymous ? "checkbox" : "square-outline"}
+                size={20}
+                color={isAnonymous ? "#8B1E1E" : "#9CA3AF"}
+                style={{ marginRight: 8 }}
+              />
+              <Text style={styles.anonToggleText}>Post Anonymously (as "A Fellow Pilgrim")</Text>
+            </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={[styles.submitPostBtn, isSubmittingAnswer && { opacity: 0.7 }]}
-                    onPress={handleMarkAsAnswered}
-                    disabled={isSubmittingAnswer}
-                    activeOpacity={0.85}
-                  >
-                    {isSubmittingAnswer ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <Text style={styles.submitPostBtnText}>Publish Praise Report 🙌</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </TouchableWithoutFeedback>
-            </KeyboardAvoidingView>
+            {/* Submit Button */}
+            <TouchableOpacity
+              style={[styles.submitPostBtn, isSubmitting && { opacity: 0.7 }]}
+              onPress={handleCreateRequest}
+              disabled={isSubmitting}
+              activeOpacity={0.85}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.submitPostBtnText}>Post to Prayer Wall</Text>
+              )}
+            </TouchableOpacity>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </InteractiveGestureSheet>
+
+      {/* ========================================================================= */}
+      {/* 2. INTERACTIVE GESTURE SHEET: MARK AS ANSWERED (PRAISE REPORT) */}
+      {/* ========================================================================= */}
+      <InteractiveGestureSheet
+        visible={showAnsweredModal}
+        onClose={() => setShowAnsweredModal(false)}
+        initialSnap="mid"
+        midHeightRatio={0.70}
+        fullHeightRatio={0.95}
+      >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.sheetContent}>
+          <View style={styles.modalHeaderRow}>
+            <Text style={styles.modalTitle}>Share Praise Report 🙌</Text>
+            <TouchableOpacity onPress={() => setShowAnsweredModal(false)} style={styles.modalCloseBtn}>
+              <Ionicons name="close" size={20} color="#111111" />
+            </TouchableOpacity>
           </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+
+          <Text style={styles.answeredSub}>
+            Give glory to God and encourage everyone who interceded with you.
+          </Text>
+
+          <TextInput
+            style={styles.inputText}
+            placeholder="Describe how God moved and answered this prayer..."
+            placeholderTextColor="#9CA3AF"
+            multiline
+            numberOfLines={4}
+            value={praiseReportText}
+            onChangeText={setPraiseReportText}
+          />
+
+          <TouchableOpacity
+            style={[styles.submitPostBtn, isSubmittingAnswer && { opacity: 0.7 }]}
+            onPress={handleMarkAsAnswered}
+            disabled={isSubmittingAnswer}
+            activeOpacity={0.85}
+          >
+            {isSubmittingAnswer ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.submitPostBtnText}>Publish Praise Report 🙌</Text>
+            )}
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+      </InteractiveGestureSheet>
 
       {/* ========================================================================= */}
-      {/* 3. ENCOURAGEMENT COMMENTS BOTTOM SHEET */}
+      {/* 3. INTERACTIVE GESTURE SHEET: ENCOURAGEMENTS & THREADED COMMENTS */}
+      {/* Opens at 80% with backdrop dismiss, smoothly swipes to Full-Screen */}
       {/* ========================================================================= */}
-      <Modal visible={showCommentsSheet} transparent animationType="slide" onRequestClose={() => setShowCommentsSheet(false)}>
-        <TouchableWithoutFeedback onPress={() => setShowCommentsSheet(false)}>
-          <View style={styles.modalBackdrop}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
-              <TouchableWithoutFeedback>
-                <View style={[styles.modalContainer, { maxHeight: '80%' }]}>
-                  <View style={styles.modalGrabBar} />
-                  <View style={styles.modalHeaderRow}>
-                    <Text style={styles.modalTitle}>Encouragements</Text>
-                    <TouchableOpacity onPress={() => setShowCommentsSheet(false)} style={styles.modalCloseBtn}>
-                      <Ionicons name="close" size={20} color="#111111" />
-                    </TouchableOpacity>
-                  </View>
+      <InteractiveGestureSheet
+        visible={showCommentsSheet}
+        onClose={() => setShowCommentsSheet(false)}
+        initialSnap="mid"
+        midHeightRatio={0.80}
+        fullHeightRatio={0.98}
+      >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.sheetContent}>
+          <View style={styles.modalHeaderRow}>
+            <View>
+              <Text style={styles.modalTitle}>Encouragements</Text>
+              {activeRequestForComments && (
+                <Text style={styles.commentsSubtitle} numberOfLines={1}>
+                  For: {activeRequestForComments.title}
+                </Text>
+              )}
+            </View>
+            <TouchableOpacity onPress={() => setShowCommentsSheet(false)} style={styles.modalCloseBtn}>
+              <Ionicons name="close" size={20} color="#111111" />
+            </TouchableOpacity>
+          </View>
 
-                  <ScrollView style={{ maxHeight: 260, marginBottom: 12 }}>
-                    {isLoadingComments ? (
-                      <ActivityIndicator size="small" color="#8B1E1E" style={{ marginTop: 20 }} />
-                    ) : comments.length === 0 ? (
-                      <View style={{ alignItems: 'center', paddingVertical: 20 }}>
-                        <Text style={{ fontSize: 24, marginBottom: 6 }}>🕊️</Text>
-                        <Text style={styles.noCommentsText}>No written encouragements yet.</Text>
-                        <Text style={styles.noCommentsSub}>Leave a scripture or short prayer to uplift this soul.</Text>
+          {/* Full Scrollable Comments Feed */}
+          <ScrollView
+            style={styles.commentsScrollArea}
+            contentContainerStyle={styles.commentsListContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {isLoadingComments ? (
+              <ActivityIndicator size="small" color="#111111" style={{ marginTop: 24 }} />
+            ) : comments.length === 0 ? (
+              <View style={styles.noCommentsWrap}>
+                <Ionicons name="heart-outline" size={32} color="#9CA3AF" style={{ marginBottom: 6 }} />
+                <Text style={styles.noCommentsText}>No written encouragements yet.</Text>
+                <Text style={styles.noCommentsSub}>Leave a scripture, blessing, or short prayer to uplift this soul.</Text>
+              </View>
+            ) : (
+              comments.map((c) => {
+                const emblem = getAvatarEmblem(c.authorAvatar);
+                return (
+                  <View key={c.id} style={styles.commentItemCard}>
+                    <View style={styles.commentItemRow}>
+                      <View style={[styles.commentAvatarCircle, { backgroundColor: emblem.bgColor }]}>
+                        <Text style={{ fontSize: 13 }}>{emblem.emoji}</Text>
                       </View>
-                    ) : (
-                      comments.map((c) => {
-                        const emblem = getAvatarEmblem(c.authorAvatar);
-                        return (
-                          <View key={c.id} style={styles.commentItemRow}>
-                            <View style={[styles.commentAvatarCircle, { backgroundColor: emblem.bgColor }]}>
-                              <Text style={{ fontSize: 14 }}>{emblem.emoji}</Text>
-                            </View>
-                            <View style={styles.commentBubble}>
-                              <Text style={styles.commentAuthorName}>{c.authorName}</Text>
-                              <Text style={styles.commentContent}>{c.commentText}</Text>
-                            </View>
-                          </View>
-                        );
-                      })
-                    )}
-                  </ScrollView>
+                      <View style={styles.commentBubble}>
+                        <View style={styles.commentHeaderRow}>
+                          <Text style={styles.commentAuthorName}>{c.authorName}</Text>
+                          <Text style={styles.commentTime}>Just now</Text>
+                        </View>
+                        <Text style={styles.commentContent}>{c.commentText}</Text>
 
-                  {/* Input row */}
-                  <View style={styles.commentInputRow}>
-                    <TextInput
-                      style={styles.commentInput}
-                      placeholder="Write an encouraging prayer..."
-                      placeholderTextColor="#9CA3AF"
-                      value={newCommentText}
-                      onChangeText={setNewCommentText}
-                    />
-                    <TouchableOpacity
-                      style={[styles.sendCommentBtn, isSendingComment && { opacity: 0.6 }]}
-                      onPress={handleSendComment}
-                      disabled={isSendingComment}
-                      activeOpacity={0.8}
-                    >
-                      {isSendingComment ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
-                      ) : (
-                        <Ionicons name="send" size={16} color="#FFFFFF" />
-                      )}
-                    </TouchableOpacity>
+                        {/* Comment Actions: Reply & Like */}
+                        <View style={styles.commentActionRow}>
+                          <TouchableOpacity
+                            onPress={() => setReplyingTo(c)}
+                            style={styles.commentReplyBtn}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={styles.commentReplyBtnText}>Reply</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            onPress={() => handleToggleCommentLike(c)}
+                            style={styles.commentLikeBtn}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons
+                              name={c.hasLiked ? "heart" : "heart-outline"}
+                              size={14}
+                              color={c.hasLiked ? "#E11D48" : "#6B7280"}
+                              style={{ marginRight: 3 }}
+                            />
+                            <Text style={[styles.commentLikeText, c.hasLiked && styles.commentLikeTextActive]}>
+                              {c.likesCount || 0}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
                   </View>
-                </View>
-              </TouchableWithoutFeedback>
-            </KeyboardAvoidingView>
+                );
+              })
+            )}
+          </ScrollView>
+
+          {/* Replying Banner if active */}
+          {replyingTo && (
+            <View style={styles.replyingBanner}>
+              <Text style={styles.replyingBannerText} numberOfLines={1}>
+                Replying to <Text style={{ fontWeight: 'bold' }}>@{replyingTo.authorName}</Text>
+              </Text>
+              <TouchableOpacity onPress={() => setReplyingTo(null)} activeOpacity={0.7}>
+                <Ionicons name="close-circle" size={16} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Sticky Input Bar at Bottom */}
+          <View style={styles.commentInputRow}>
+            <TextInput
+              style={styles.commentInput}
+              placeholder={replyingTo ? `Reply to ${replyingTo.authorName}...` : "Write an encouraging prayer..."}
+              placeholderTextColor="#9CA3AF"
+              value={newCommentText}
+              onChangeText={setNewCommentText}
+            />
+            <TouchableOpacity
+              style={[styles.sendCommentBtn, isSendingComment && { opacity: 0.6 }]}
+              onPress={handleSendComment}
+              disabled={isSendingComment}
+              activeOpacity={0.85}
+            >
+              {isSendingComment ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="arrow-up" size={18} color="#FFFFFF" />
+              )}
+            </TouchableOpacity>
           </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+        </KeyboardAvoidingView>
+      </InteractiveGestureSheet>
     </SafeAreaView>
   );
 };
@@ -583,12 +732,12 @@ export const CommunityScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F6F6F6',
+    backgroundColor: '#F8F9FA',
   },
   header: {
     paddingTop: Platform.OS === 'ios' ? 10 : 16,
     paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingBottom: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -596,77 +745,143 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: '#EEEEEE',
   },
+  headerLeft: {
+    justifyContent: 'center',
+  },
+  redAccentLine: {
+    width: 24,
+    height: 3,
+    backgroundColor: '#8B1E1E',
+    borderRadius: 2,
+    marginBottom: 5,
+  },
   headerTitle: {
     fontFamily: Typography.fontSansBold,
     fontSize: 24,
     color: '#111827',
+    letterSpacing: -0.4,
   },
-  headerSubtitle: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  askPrayerBtn: {
+  askPrayerStrokeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111827',
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#111827',
+    backgroundColor: 'transparent',
   },
-  askPrayerBtnText: {
+  askPrayerStrokeBtnText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 12.5,
+    color: '#111827',
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+  },
+
+  // Mascot Scripture Hero Card
+  mascotHeroCard: {
+    borderRadius: 18,
+    overflow: 'hidden',
+    backgroundColor: '#111827',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    minHeight: 155,
+    justifyContent: 'flex-end',
+    position: 'relative',
+  },
+  mascotHeroBgImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+  },
+  mascotHeroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.48)',
+  },
+  mascotHeroContent: {
+    padding: 18,
+    zIndex: 2,
+  },
+  mascotVerseTag: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginBottom: 6,
+  },
+  mascotVerseTagText: {
+    fontFamily: Typography.fontSansBold,
+    fontSize: 10,
+    color: '#FFFFFF',
+    letterSpacing: 0.8,
+  },
+  mascotVerseQuote: {
+    fontFamily: Typography.fontSerifMedium,
+    fontSize: 15.5,
+    lineHeight: 22,
+    color: '#FFFFFF',
+    marginBottom: 14,
+  },
+  heroDarkFillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#111827',
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  heroDarkFillBtnText: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 13,
     color: '#FFFFFF',
   },
-  scrollContent: {
-    paddingBottom: 120,
-  },
-  statsBanner: {
+
+  // Segment Switcher: Community Prayers vs. My Prayers
+  segmentSwitcherWrap: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF3C7',
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
+    backgroundColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 3,
+    marginBottom: 14,
   },
-  statsIconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#FFFFFF',
+  segmentTab: {
+    flex: 1,
+    paddingVertical: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    borderRadius: 10,
   },
-  statsMeta: {
-    flex: 1,
+  segmentTabActive: {
+    backgroundColor: '#FFFFFF',
   },
-  statsTitle: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 13.5,
-    color: '#92400E',
+  segmentTabText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 13,
+    color: '#6B7280',
   },
-  statsSub: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 11.5,
-    color: '#B45309',
-    marginTop: 2,
+  segmentTabTextActive: {
+    fontFamily: Typography.fontSansBold,
+    color: '#111827',
   },
+
+  // Category Filter Chips
   filterRow: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingBottom: 12,
     gap: 8,
   },
   filterChip: {
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: 16,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 18,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
@@ -676,12 +891,177 @@ const styles = StyleSheet.create({
   },
   filterChipText: {
     fontFamily: Typography.fontSansMedium,
-    fontSize: 12.5,
-    color: '#374151',
+    fontSize: 12,
+    color: '#4B5563',
   },
   filterChipTextActive: {
     color: '#FFFFFF',
+    fontFamily: Typography.fontSansSemiBold,
   },
+
+  // Prayer Card Feed (Core UI Design: 1px border, 0 drop shadows)
+  prayerCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  avatarCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  avatarEmoji: {
+    fontSize: 18,
+  },
+  authorMeta: {
+    flex: 1,
+  },
+  authorName: {
+    fontFamily: Typography.fontSansBold,
+    fontSize: 14,
+    color: '#111827',
+  },
+  timeTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  categoryBadge: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  categoryBadgeText: {
+    fontFamily: Typography.fontSansBold,
+    fontSize: 9.5,
+    color: '#374151',
+    letterSpacing: 0.4,
+  },
+  timeText: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 11,
+    color: '#9CA3AF',
+  },
+  shareBtn: {
+    padding: 6,
+  },
+  requestTitle: {
+    fontFamily: Typography.fontSansBold,
+    fontSize: 15.5,
+    color: '#111827',
+    marginBottom: 6,
+    lineHeight: 20,
+  },
+  requestBody: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 13.5,
+    lineHeight: 19.5,
+    color: '#374151',
+  },
+
+  // Answered Praise Report
+  praiseReportBox: {
+    backgroundColor: '#ECFDF5',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#059669',
+  },
+  praiseHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  praiseTitle: {
+    fontFamily: Typography.fontSansBold,
+    fontSize: 12.5,
+    color: '#065F46',
+  },
+  praiseText: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 12.5,
+    color: '#047857',
+    lineHeight: 17,
+  },
+
+  // Mark as Answered Button: Prominent, Left-Aligned Below Card Body
+  answeredBtnContainer: {
+    marginTop: 12,
+    alignItems: 'flex-start',
+  },
+  markAnsweredFillBtn: {
+    backgroundColor: '#111827',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 12,
+  },
+  markAnsweredFillBtnText: {
+    fontFamily: Typography.fontSansBold,
+    fontSize: 12.5,
+    color: '#FFFFFF',
+  },
+
+  // Footer Actions: Heart Like & Encouragements
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  likeHeartBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 14,
+  },
+  likeHeartBtnActive: {
+    backgroundColor: '#FFE4E6',
+  },
+  likeHeartBtnText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 12,
+    color: '#374151',
+  },
+  likeHeartBtnTextActive: {
+    color: '#E11D48',
+    fontFamily: Typography.fontSansBold,
+  },
+  commentBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 14,
+  },
+  commentBtnText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 12,
+    color: '#374151',
+  },
+
+  // Empty & Loading states
   loadingWrap: {
     alignItems: 'center',
     paddingVertical: 40,
@@ -694,380 +1074,292 @@ const styles = StyleSheet.create({
   },
   emptyWrap: {
     alignItems: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 30,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 30,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   emptyTitle: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 16,
+    fontFamily: Typography.fontSansBold,
+    fontSize: 15,
     color: '#111827',
+    marginBottom: 6,
     textAlign: 'center',
   },
   emptySub: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 13,
+    fontSize: 12.5,
     color: '#6B7280',
     textAlign: 'center',
-    marginTop: 6,
     lineHeight: 18,
+    marginBottom: 16,
   },
   emptyActionBtn: {
-    marginTop: 18,
     backgroundColor: '#111827',
     paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 18,
+    paddingVertical: 9,
+    borderRadius: 12,
   },
   emptyActionText: {
-    fontFamily: Typography.fontSansMedium,
+    fontFamily: Typography.fontSansSemiBold,
     fontSize: 13,
     color: '#FFFFFF',
   },
-  prayerCard: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginBottom: 12,
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  avatarCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  avatarEmoji: {
-    fontSize: 18,
-  },
-  authorMeta: {
+
+  // Gesture Sheet Modals Styles
+  sheetContent: {
     flex: 1,
-  },
-  authorName: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 13.5,
-    color: '#111827',
-  },
-  timeTagRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-    gap: 6,
-  },
-  categoryBadge: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 6,
-    paddingHorizontal: 5,
-    paddingVertical: 1.5,
-  },
-  categoryBadgeText: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 9,
-    color: '#4B5563',
-  },
-  timeText: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 11,
-    color: '#9CA3AF',
-  },
-  shareBtn: {
-    padding: 6,
-  },
-  requestTitle: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 15,
-    color: '#111827',
-    marginBottom: 6,
-  },
-  requestBody: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 13.5,
-    color: '#4B5563',
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  praiseReportBox: {
-    backgroundColor: '#FFFBEB',
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    marginBottom: 12,
-  },
-  praiseHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  praiseTitle: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 12.5,
-    color: '#92400E',
-  },
-  praiseText: {
-    fontFamily: Typography.fontYouVersionSerif,
-    fontSize: 13,
-    color: '#78350F',
-    lineHeight: 18,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-    borderTopWidth: 1,
-    borderColor: '#F3F4F6',
-    paddingTop: 10,
-  },
-  prayedBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 5.5,
-  },
-  prayedBtnActive: {
-    backgroundColor: '#FEF3C7',
-    borderColor: '#FDE68A',
-  },
-  prayedBtnText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 12,
-    color: '#374151',
-  },
-  prayedBtnTextActive: {
-    color: '#92400E',
-    fontFamily: Typography.fontSansSemiBold,
-  },
-  commentBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 5.5,
-  },
-  commentBtnText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 12,
-    color: '#374151',
-  },
-  answeredBtn: {
-    marginLeft: 'auto',
-    backgroundColor: '#FEF2F2',
-    borderRadius: 16,
-    paddingHorizontal: 9,
-    paddingVertical: 5.5,
-  },
-  answeredBtnText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 11.5,
-    color: '#991B1B',
-  },
-  // Modals
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
-  modalContainer: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingTop: 12,
     paddingHorizontal: 20,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 25,
-  },
-  modalGrabBar: {
-    width: 38,
-    height: 4.5,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 3,
-    alignSelf: 'center',
-    marginBottom: 16,
+    paddingTop: 8,
   },
   modalHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   modalTitle: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 18,
+    fontFamily: Typography.fontSansBold,
+    fontSize: 17,
     color: '#111827',
+  },
+  commentsSubtitle: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 11.5,
+    color: '#6B7280',
+    marginTop: 1,
+    maxWidth: SCREEN_WIDTH * 0.7,
   },
   modalCloseBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    padding: 6,
+    borderRadius: 14,
     backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   inputLabel: {
-    fontFamily: Typography.fontSansMedium,
+    fontFamily: Typography.fontSansSemiBold,
     fontSize: 12,
-    color: '#4B5563',
-    marginBottom: 6,
+    color: '#374151',
+    marginTop: 10,
+    marginBottom: 5,
   },
   inputTitle: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 14,
     backgroundColor: '#F9FAFB',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    fontSize: 14,
-    fontFamily: Typography.fontSansRegular,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     color: '#111827',
-    marginBottom: 14,
   },
   inputText: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 13.5,
     backgroundColor: '#F9FAFB',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    fontSize: 13.5,
-    fontFamily: Typography.fontSansRegular,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     color: '#111827',
-    minHeight: 80,
     textAlignVertical: 'top',
-    marginBottom: 14,
+    minHeight: 88,
   },
   categoryPillRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 16,
   },
   categoryChoicePill: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   categoryChoicePillActive: {
     backgroundColor: '#111827',
+    borderColor: '#111827',
   },
   categoryChoiceText: {
     fontFamily: Typography.fontSansMedium,
     fontSize: 12,
-    color: '#374151',
+    color: '#4B5563',
   },
   categoryChoiceTextActive: {
     color: '#FFFFFF',
+    fontFamily: Typography.fontSansBold,
   },
   anonToggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 18,
+    marginTop: 14,
   },
   anonToggleText: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 13,
-    color: '#374151',
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 12.5,
+    color: '#4B5563',
   },
   submitPostBtn: {
     backgroundColor: '#111827',
-    borderRadius: 16,
-    paddingVertical: 14,
+    borderRadius: 14,
+    paddingVertical: 13,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 18,
   },
   submitPostBtnText: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 14.5,
+    fontFamily: Typography.fontSansBold,
+    fontSize: 14,
     color: '#FFFFFF',
   },
   answeredSub: {
     fontFamily: Typography.fontSansRegular,
     fontSize: 13,
     color: '#6B7280',
-    marginBottom: 14,
+    marginBottom: 12,
+    lineHeight: 18,
   },
-  // Comments
+
+  // Comments / Encouragements Full Interactive Sheet
+  commentsScrollArea: {
+    flex: 1,
+  },
+  commentsListContent: {
+    paddingBottom: 20,
+  },
+  noCommentsWrap: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
   noCommentsText: {
-    fontFamily: Typography.fontSansSemiBold,
+    fontFamily: Typography.fontSansBold,
     fontSize: 14,
-    color: '#111827',
+    color: '#374151',
   },
   noCommentsSub: {
     fontFamily: Typography.fontSansRegular,
     fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
+    color: '#9CA3AF',
+    marginTop: 4,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  commentItemCard: {
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
   commentItemRow: {
     flexDirection: 'row',
-    marginBottom: 12,
+    alignItems: 'flex-start',
   },
   commentAvatarCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
+    marginRight: 9,
+    marginTop: 2,
   },
   commentBubble: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 14,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+  },
+  commentHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
   },
   commentAuthorName: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 12,
+    fontFamily: Typography.fontSansBold,
+    fontSize: 12.5,
     color: '#111827',
-    marginBottom: 2,
+  },
+  commentTime: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 10.5,
+    color: '#9CA3AF',
   },
   commentContent: {
     fontFamily: Typography.fontSansRegular,
     fontSize: 13,
-    color: '#374151',
     lineHeight: 18,
+    color: '#374151',
+  },
+  commentActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginTop: 5,
+  },
+  commentReplyBtn: {
+    paddingVertical: 2,
+  },
+  commentReplyBtnText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 11,
+    color: '#6B7280',
+  },
+  commentLikeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 2,
+  },
+  commentLikeText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 11,
+    color: '#6B7280',
+  },
+  commentLikeTextActive: {
+    color: '#E11D48',
+    fontFamily: Typography.fontSansBold,
+  },
+  replyingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    marginBottom: 6,
+  },
+  replyingBannerText: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 11.5,
+    color: '#4B5563',
   },
   commentInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#EEEEEE',
+    backgroundColor: '#FFFFFF',
     gap: 8,
   },
   commentInput: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    fontSize: 13,
     fontFamily: Typography.fontSansRegular,
+    fontSize: 13,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
     color: '#111827',
   },
   sendCommentBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#111827',
     alignItems: 'center',
     justifyContent: 'center',
-  }
+  },
 });
