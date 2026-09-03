@@ -389,6 +389,7 @@ export default function App() {
                   setChatContextQuote({ text: verseText, reference: citation });
                   setCurrentView('chat');
                 }}
+                onSetNavBarVisible={setIsNavBarVisible}
               />
             )}
 

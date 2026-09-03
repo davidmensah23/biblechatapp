@@ -37,17 +37,26 @@ import { getLastReadPosition, saveLastReadPosition } from '../services/readingPr
 import { ApostleSelectSheet } from '../components/ApostleSelectSheet';
 import { ToastBanner } from '../components/ToastBanner';
 import { ApostlePersona } from '../types';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming
+} from 'react-native-reanimated';
+import { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 
 interface BibleReaderScreenProps {
   onAskApostleWithVerse?: (verseText: string, reference: string, apostle?: ApostlePersona) => void;
   initialBook?: string;
   initialChapter?: number;
+  onSetNavBarVisible?: (visible: boolean) => void;
 }
 
 export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ 
   onAskApostleWithVerse,
   initialBook,
-  initialChapter 
+  initialChapter,
+  onSetNavBarVisible
 }) => {
   const [currentBook, setCurrentBook] = useState(initialBook || 'Romans');
   const [currentChapter, setCurrentChapter] = useState(initialChapter || 8);
@@ -86,6 +95,79 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
   const [fontSize, setFontSize] = useState(18);
 
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Immersive Full-Screen Reading Shared Values
+  const topHeaderTranslateY = useSharedValue(0);
+  const topHeaderOpacity = useSharedValue(1);
+  const bottomControlsTranslateY = useSharedValue(0);
+  const bottomControlsOpacity = useSharedValue(1);
+
+  const lastScrollY = useRef(0);
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isControlsVisibleRef = useRef(true);
+
+  const setControlsVisibility = (visible: boolean) => {
+    isControlsVisibleRef.current = visible;
+    topHeaderTranslateY.value = withSpring(visible ? 0 : -85, { damping: 20, stiffness: 220 });
+    topHeaderOpacity.value = withTiming(visible ? 1 : 0, { duration: 180 });
+    bottomControlsTranslateY.value = withSpring(visible ? 0 : 130, { damping: 20, stiffness: 220 });
+    bottomControlsOpacity.value = withTiming(visible ? 1 : 0, { duration: 180 });
+    onSetNavBarVisible?.(visible);
+  };
+
+  // Scroll listener for immersive reading: scrolling down hides bars, pause/up shows them
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const currentY = event.nativeEvent.contentOffset.y;
+    const diff = currentY - lastScrollY.current;
+
+    if (currentY <= 25) {
+      if (!isControlsVisibleRef.current) {
+        setControlsVisibility(true);
+      }
+      lastScrollY.current = currentY;
+      return;
+    }
+
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+    }
+
+    if (diff > 8) {
+      // User is scrolling down to read: Hide top header, floating controls & nav bar
+      if (isControlsVisibleRef.current) {
+        setControlsVisibility(false);
+      }
+      // Restore automatically when user pauses scrolling for 1.2s
+      hideTimeoutRef.current = setTimeout(() => {
+        setControlsVisibility(true);
+      }, 1200);
+    } else if (diff < -12) {
+      // Scrolling up: Bring controls back into view
+      if (!isControlsVisibleRef.current) {
+        setControlsVisibility(true);
+      }
+    }
+
+    lastScrollY.current = currentY;
+  };
+
+  // Ensure nav bar is restored when unmounting
+  useEffect(() => {
+    return () => {
+      onSetNavBarVisible?.(true);
+      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+    };
+  }, []);
+
+  const animatedTopHeaderStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: topHeaderTranslateY.value }],
+    opacity: topHeaderOpacity.value,
+  }));
+
+  const animatedBottomControlsStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: bottomControlsTranslateY.value }],
+    opacity: bottomControlsOpacity.value,
+  }));
 
   const showToast = (message: string, icon: keyof typeof Ionicons.glyphMap = 'checkmark-circle') => {
     setToastMessage(message);
@@ -343,8 +425,8 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
         onDismiss={() => setToastVisible(false)}
       />
 
-      {/* Top Header Bar */}
-      <View style={styles.topHeader}>
+      {/* Top Header Bar (Animated for Immersive Full-Screen Reading) */}
+      <Animated.View style={[styles.topHeader, animatedTopHeaderStyle]}>
         <View style={styles.topHeaderLeft}>
           <TouchableOpacity
             style={[styles.headerIconBtn, isPlayingAudio && styles.headerIconBtnAudioActive]}
@@ -386,7 +468,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
             <Text style={styles.fontScaleBtnText}>aA</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </Animated.View>
 
       {/* Scripture Reading Content */}
       <ScrollView
@@ -394,6 +476,8 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
         style={styles.scrollArea}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
         {isLoading ? (
           <BibleChapterSkeleton />
@@ -476,8 +560,8 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
         ) : null}
       </ScrollView>
 
-      {/* Floating Bottom Audio & Chapter Controls */}
-      <View style={styles.floatingControlsWrapper}>
+      {/* Floating Bottom Audio & Chapter Controls (Animated for Immersive Reading) */}
+      <Animated.View style={[styles.floatingControlsWrapper, animatedBottomControlsStyle]}>
         <TouchableOpacity
           style={[styles.floatingAudioBtn, isPlayingAudio && styles.floatingAudioBtnActive]}
           onPress={handleToggleAudioNarration}
@@ -505,7 +589,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
             <Ionicons name="chevron-forward" size={20} color={Colors.textPrimary} />
           </TouchableOpacity>
         </View>
-      </View>
+      </Animated.View>
 
       {/* Soft UI Verse Action Sheet with Multi-Version Comparison */}
       <VerseActionSheet
