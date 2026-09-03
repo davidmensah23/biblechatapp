@@ -156,7 +156,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
             activeOpacity={0.7}
           >
             <Text style={[styles.tabText, activeTab === 'disciples' ? styles.tabTextActive : styles.tabTextInactive]}>
-              AI Companions
+              {t('tab_companions', 'AI Companions')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -197,9 +197,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
           {/* ========================================================================= */}
           <View style={styles.companionsSectionWrap}>
             <View style={styles.companionsHeadingRow}>
-              <Text style={styles.companionsHeading}>Your AI Companions</Text>
+              <Text style={styles.companionsHeading}>{t('your_companions', 'Your AI Companions')}</Text>
               <TouchableOpacity onPress={() => setActiveTab('disciples')} activeOpacity={0.7}>
-                <Text style={styles.seeAllText}>See all ({APOSTLE_PERSONAS.length})</Text>
+                <Text style={styles.seeAllText}>{t('see_all', 'See all')} ({APOSTLE_PERSONAS.length})</Text>
               </TouchableOpacity>
             </View>
 
@@ -223,7 +223,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
                   <Text style={styles.companionMiniRole} numberOfLines={1}>{apostle.subtitle}</Text>
                   <View style={styles.companionChatPill}>
                     <Ionicons name="chatbubble-ellipses-outline" size={12} color="#111111" style={{ marginRight: 3 }} />
-                    <Text style={styles.companionChatPillText}>Converse</Text>
+                    <Text style={styles.companionChatPillText}>{t('converse', 'Converse')}</Text>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -237,8 +237,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
                 <View style={styles.exploreMoreIconCircle}>
                   <Ionicons name="arrow-forward" size={22} color="#111111" />
                 </View>
-                <Text style={styles.exploreMoreTitle}>Explore More</Text>
-                <Text style={styles.exploreMoreSubtitle}>Meet all 7 Apostles & Biblical mentors</Text>
+                <Text style={styles.exploreMoreTitle}>{t('explore_more', 'Explore More')}</Text>
+                <Text style={styles.exploreMoreSubtitle}>{t('explore_subtitle', 'Meet all 7 Apostles & Biblical mentors')}</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -246,7 +246,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
           {/* ========================================================================= */}
           {/* 3. DAILY GUIDED AUDIO LITURGY */}
           {/* ========================================================================= */}
-          <Text style={styles.moreForYouHeading}>More for you</Text>
+          <Text style={styles.moreForYouHeading}>{t('more_for_you', 'More for you')}</Text>
 
           {/* 1. Daily Guided Audio Liturgy (Morning / Evening) */}
           <DailyLiturgyCard
@@ -265,10 +265,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
               <View style={styles.resumeTagRow}>
                 <View style={styles.resumePill}>
                   <Ionicons name="bookmark" size={11} color="#8B1E1E" style={{ marginRight: 4 }} />
-                  <Text style={styles.resumePillText}>CONTINUE READING</Text>
+                  <Text style={styles.resumePillText}>{t('continue_reading', 'CONTINUE READING')}</Text>
                 </View>
                 <Text style={styles.resumeEstTime}>
-                  {lastRead?.estimatedMinutesRemaining || 4} MIN REMAINING
+                  {lastRead?.estimatedMinutesRemaining || 4} {t('min_remaining', 'MIN REMAINING')}
                 </Text>
               </View>
 
@@ -296,9 +296,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
                 />
               </View>
               <View style={styles.shareBannerBody}>
-                <Text style={styles.shareBannerTitle}>Share the Bible App</Text>
+                <Text style={styles.shareBannerTitle}>{t('share_app_title', 'Share the Bible App')}</Text>
                 <Text style={styles.shareBannerSub}>
-                  Invite your friends to connect with you here, in Biblical community.
+                  {t('share_app_sub', 'Invite your friends to connect with you here, in Biblical community.')}
                 </Text>
                 <View style={styles.shareBannerActions}>
                   <TouchableOpacity
@@ -306,7 +306,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
                     onPress={() => alert('Sharing Bible Chat App with friends')}
                     activeOpacity={0.75}
                   >
-                    <Text style={styles.shareNowText}>Share Now</Text>
+                    <Text style={styles.shareNowText}>{t('share_now', 'Share Now')}</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -314,7 +314,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
                     onPress={() => setShareBannerDismissed(true)}
                     activeOpacity={0.75}
                   >
-                    <Text style={styles.dismissText}>Dismiss</Text>
+                    <Text style={styles.dismissText}>{t('dismiss', 'Dismiss')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>

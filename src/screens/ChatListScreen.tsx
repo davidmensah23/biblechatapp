@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
 import { fetchConversations, fetchGroupThreads } from '../services/database';
+import { useTranslation } from '../services/localizationService';
 import { getPersonaById, APOSTLE_PERSONAS } from '../services/personas';
 import { ConversationThread, ApostlePersona } from '../types';
 import { GroupCouncilThread } from '../types/groupChat';
@@ -46,6 +47,7 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
   onBack,
   onSetNavBarVisible
 }) => {
+  const { t } = useTranslation();
   const [activeSegment, setActiveSegment] = useState<'apostles' | 'councils'>('apostles');
   const [conversations, setConversations] = useState<ConversationThread[]>([]);
   const [groupThreads, setGroupThreads] = useState<GroupCouncilThread[]>([]);
@@ -163,7 +165,7 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
           <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
             <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Chats</Text>
+          <Text style={styles.headerTitle}>{t('chats_title', 'Chats')}</Text>
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -174,7 +176,7 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
               activeOpacity={0.8}
             >
               <Ionicons name="add" size={18} color="#FFFFFF" />
-              <Text style={styles.newCouncilHeaderBtnText}>New Council</Text>
+              <Text style={styles.newCouncilHeaderBtnText}>{t('new_council', 'New Council')}</Text>
             </TouchableOpacity>
           )}
 
@@ -204,7 +206,7 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
           activeOpacity={0.8}
         >
           <Text style={[styles.segmentText, activeSegment === 'apostles' && styles.segmentTextActive]}>
-            👤 1-on-1 Apostles
+            👤 {t('tab_one_on_one', '1-on-1 Apostles')}
           </Text>
         </TouchableOpacity>
 
@@ -214,7 +216,7 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
           activeOpacity={0.8}
         >
           <Text style={[styles.segmentText, activeSegment === 'councils' && styles.segmentTextActive]}>
-            🏛️ Councils ({groupThreads.length})
+            🏛️ {t('tab_councils', 'Councils')} ({groupThreads.length})
           </Text>
         </TouchableOpacity>
       </View>

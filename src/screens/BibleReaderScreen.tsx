@@ -176,7 +176,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
     setToastVisible(true);
   };
 
-  const { currentLanguage } = useTranslation();
+  const { currentLanguage, t } = useTranslation();
 
   // Listen to version changes across the entire app
   useEffect(() => {
@@ -577,7 +577,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
                       >
                         <View style={styles.inlineNoteHeader}>
                           <Ionicons name="document-text" size={12} color="#8B1E1E" style={{ marginRight: 5 }} />
-                          <Text style={styles.inlineNoteLabel}>My Reflection</Text>
+                          <Text style={styles.inlineNoteLabel}>{t('my_reflection', 'My Reflection')}</Text>
                         </View>
                         <Text style={styles.inlineNoteText} numberOfLines={2}>
                           {chapterNotes[v.verseNumber]}

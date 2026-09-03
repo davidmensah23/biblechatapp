@@ -37,6 +37,7 @@ import { ActivityListSkeleton } from '../components/SoftSkeleton';
 import { AvatarPickerModal } from '../components/AvatarPickerModal';
 import { getUserAvatarEmblem, SacredAvatarEmblem, SACRED_AVATAR_EMBLEMS } from '../services/avatarService';
 import { SavedItemsModal } from '../components/SavedItemsModal';
+import { useTranslation } from '../services/localizationService';
 
 interface ProfileScreenProps {
   onLogout?: () => void;
@@ -51,6 +52,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onSelectApostle,
   onOpenBible
 }) => {
+  const { t } = useTranslation();
   const [bookmarks, setBookmarks] = useState<SavedBookmark[]>([]);
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [authProvider, setAuthProvider] = useState<'google' | 'email' | 'guest'>('guest');
@@ -225,7 +227,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           activeOpacity={0.8}
         >
           <Ionicons name="home-outline" size={17} color="#111111" style={{ marginRight: 8 }} />
-          <Text style={styles.findChurchText}>Find Your Church</Text>
+          <Text style={styles.findChurchText}>{t('find_church', 'Find Your Church')}</Text>
         </TouchableOpacity>
 
         {/* 3 Soft Action Cards: Saved, Prayer, Giving */}
@@ -236,7 +238,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             activeOpacity={0.75}
           >
             <Ionicons name="bookmark-outline" size={22} color="#111111" style={{ marginBottom: 6 }} />
-            <Text style={styles.actionCardLabel}>Saved</Text>
+            <Text style={styles.actionCardLabel}>{t('saved_card', 'Saved')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -245,7 +247,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             activeOpacity={0.75}
           >
             <Ionicons name="hand-left-outline" size={22} color="#111111" style={{ marginBottom: 6 }} />
-            <Text style={styles.actionCardLabel}>Prayer</Text>
+            <Text style={styles.actionCardLabel}>{t('prayer_card', 'Prayer')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -262,7 +264,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             activeOpacity={0.75}
           >
             <Ionicons name="heart-outline" size={22} color="#111111" style={{ marginBottom: 6 }} />
-            <Text style={styles.actionCardLabel}>Giving</Text>
+            <Text style={styles.actionCardLabel}>{t('giving_card', 'Giving')}</Text>
           </TouchableOpacity>
         </View>
 
