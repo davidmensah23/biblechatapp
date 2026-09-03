@@ -33,7 +33,8 @@ import { VerseNoteModal } from '../components/VerseNoteModal';
 import { BibleChapterSkeleton } from '../components/SoftSkeleton';
 import { ScriptureMemoryModal } from '../components/ScriptureMemoryModal';
 import { getChapterHeading, getChapterSections } from '../services/chapterHeadings';
-import { getLastReadPosition, saveLastReadPosition } from '../services/readingProgressService';
+import { getLastReadPosition, saveLastReadPosition, subscribeVersionChange, setPreferredTranslation } from '../services/readingProgressService';
+import { useTranslation, LANGUAGE_TO_DEFAULT_BIBLE } from '../services/localizationService';
 import { ApostleSelectSheet } from '../components/ApostleSelectSheet';
 import { ToastBanner } from '../components/ToastBanner';
 import { ApostlePersona } from '../types';
@@ -174,6 +175,27 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
     setToastIcon(icon);
     setToastVisible(true);
   };
+
+  const { currentLanguage } = useTranslation();
+
+  // Listen to version changes across the entire app
+  useEffect(() => {
+    const unsub = subscribeVersionChange((newVersion) => {
+      setTranslation(newVersion);
+    });
+    return unsub;
+  }, []);
+
+  // When language changes (e.g. user selects Twi, Spanish, etc.), auto-switch Bible translation!
+  useEffect(() => {
+    if (currentLanguage) {
+      const defaultBible = LANGUAGE_TO_DEFAULT_BIBLE[currentLanguage];
+      if (defaultBible && defaultBible !== translation) {
+        setTranslation(defaultBible);
+        saveLastReadPosition(currentBook, currentChapter, defaultBible);
+      }
+    }
+  }, [currentLanguage]);
 
   // Restore Last Read Position on mount if no initial target was given
   useEffect(() => {

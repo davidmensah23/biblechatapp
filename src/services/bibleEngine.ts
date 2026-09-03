@@ -1,6 +1,6 @@
 import { BibleBook } from '../types';
 import { getDB } from './database';
-import { fetchYouVersionPassage } from './youversionService';
+import { fetchYouVersionPassage, fetchYouVersionBibles } from './youversionService';
 
 export interface ChapterVerse {
   verseNumber: number;
@@ -157,6 +157,74 @@ export const INITIAL_BIBLE_VERSIONS: BibleVersionInfo[] = [
 ];
 
 let memoryVersionsState: BibleVersionInfo[] = [...INITIAL_BIBLE_VERSIONS];
+
+
+export const registerDynamicBibleVersion = (v: BibleVersionInfo) => {
+  const existingIndex = INITIAL_BIBLE_VERSIONS.findIndex(
+    item => item.code.toUpperCase() === v.code.toUpperCase()
+  );
+  if (existingIndex === -1) {
+    INITIAL_BIBLE_VERSIONS.push(v);
+  } else {
+    INITIAL_BIBLE_VERSIONS[existingIndex] = { ...INITIAL_BIBLE_VERSIONS[existingIndex], ...v };
+  }
+};
+
+/**
+ * Fetches Bible versions categorized by language, combining local catalog
+ * with real-time live queries from the YouVersion API (1000s of Bibles).
+ */
+export const fetchBibleVersionsForLanguage = async (
+  langCode: string = 'all'
+): Promise<BibleVersionInfo[]> => {
+  let filteredLocal = [...INITIAL_BIBLE_VERSIONS];
+  if (langCode !== 'all') {
+    filteredLocal = INITIAL_BIBLE_VERSIONS.filter(v => v.language === langCode);
+  }
+
+  try {
+    const yvLangMap: Record<string, string> = {
+      tw: 'aka',
+      es: 'spa',
+      fr: 'fra',
+      pt: 'por',
+      sw: 'swa',
+      yo: 'yor',
+      ig: 'ibo',
+      pcm: 'pcm',
+      en: 'eng',
+      all: 'eng'
+    };
+    const yvQuery = yvLangMap[langCode] || 'eng';
+    const yvList = await fetchYouVersionBibles(yvQuery);
+    if (yvList && yvList.length > 0) {
+      const liveList: BibleVersionInfo[] = yvList.map(b => ({
+        id: String(b.id),
+        code: b.abbreviation.toUpperCase(),
+        name: b.title,
+        language: langCode === 'all' ? 'en' : langCode,
+        hasAudio: true,
+        isDownloaded: false,
+        apiTranslationKey: `youversion:${b.id}`
+      }));
+
+      // Register all dynamic bibles so fetchChapter can resolve them!
+      liveList.forEach(registerDynamicBibleVersion);
+
+      const combined = [...filteredLocal];
+      for (const live of liveList) {
+        if (!combined.some(c => c.code.toUpperCase() === live.code.toUpperCase())) {
+          combined.push(live);
+        }
+      }
+      return combined;
+    }
+  } catch (err) {
+    console.warn('Error fetching live YouVersion bibles:', err);
+  }
+
+  return filteredLocal;
+};
 
 export const getBibleVersionsList = async (): Promise<BibleVersionInfo[]> => {
   const db = await getDB();

@@ -16,10 +16,11 @@ import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
 import {
   BibleVersionInfo,
-  getBibleVersionsList,
+  fetchBibleVersionsForLanguage,
   downloadBibleVersion
 } from '../services/bibleEngine';
 import { useTranslation, SUPPORTED_LANGUAGES, AppLanguage } from '../services/localizationService';
+import { setPreferredTranslation } from '../services/readingProgressService';
 import { LanguagePickerModal } from './LanguagePickerModal';
 
 interface BibleVersionsModalProps {
@@ -29,28 +30,64 @@ interface BibleVersionsModalProps {
   onClose: () => void;
 }
 
+interface LanguageFilterTab {
+  code: string;
+  label: string;
+  flag: string;
+}
+
+const LANGUAGE_FILTER_TABS: LanguageFilterTab[] = [
+  { code: 'all', label: 'All', flag: '🌐' },
+  { code: 'tw', label: 'Twi', flag: '🇬🇭' },
+  { code: 'en', label: 'English', flag: '🇺🇸' },
+  { code: 'es', label: 'Español', flag: '🇪🇸' },
+  { code: 'fr', label: 'Français', flag: '🇫🇷' },
+  { code: 'pt', label: 'Português', flag: '🇵🇹' },
+  { code: 'sw', label: 'Kiswahili', flag: '🇰🇪' },
+  { code: 'yo', label: 'Yorùbá', flag: '🇳🇬' },
+  { code: 'ig', label: 'Igbo', flag: '🇳🇬' },
+  { code: 'pcm', label: 'Pidgin', flag: '🇳🇬' },
+];
+
 export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
   visible,
   currentVersion,
   onSelectVersion,
   onClose
 }) => {
-  const { t, currentLanguage, setLanguage } = useTranslation();
+  const { currentLanguage } = useTranslation();
+  const [selectedLangFilter, setSelectedLangFilter] = useState<string>(currentLanguage || 'all');
   const [versions, setVersions] = useState<BibleVersionInfo[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [downloadingCode, setDownloadingCode] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
 
+  // When modal opens, auto-detect active app language and select that filter tab!
   useEffect(() => {
     if (visible) {
-      loadVersions();
+      const initialLang = currentLanguage || 'all';
+      setSelectedLangFilter(initialLang);
+      loadVersionsForLanguage(initialLang);
     }
   }, [visible, currentLanguage]);
 
-  const loadVersions = async () => {
-    const list = await getBibleVersionsList();
-    setVersions(list);
+  const loadVersionsForLanguage = async (langCode: string) => {
+    setIsLoading(true);
+    try {
+      const list = await fetchBibleVersionsForLanguage(langCode);
+      setVersions(list);
+    } catch (e) {
+      console.warn('Error loading versions:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSelectFilter = (langCode: string) => {
+    setSelectedLangFilter(langCode);
+    loadVersionsForLanguage(langCode);
   };
 
   const handleDownload = async (item: BibleVersionInfo) => {
@@ -69,202 +106,197 @@ export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
         prev.map(v => (v.code === item.code ? { ...v, isDownloaded: true } : v))
       );
       Alert.alert(
-        'Downloaded for Offline Reading',
-        `${item.code} (${item.name}) is now saved on your device and will work 100% offline with zero internet!`
+        'Offline Ready',
+        `${item.code} (${item.name}) is saved onto your device for 100% offline reading.`
       );
     } else {
-      Alert.alert('Download Error', 'Could not complete translation download. Please check your connection.');
+      Alert.alert('Download Error', 'Could not complete download. Please check your internet connection.');
     }
   };
 
-  const handleSelect = (code: string) => {
+  const handleSelectVersion = async (code: string) => {
+    await setPreferredTranslation(code);
     onSelectVersion(code);
     onClose();
   };
 
-  const downloadedList = versions.filter(
-    (v) =>
-      v.isDownloaded &&
-      (v.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        v.name.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
-  const availableList = versions.filter(
-    (v) =>
-      !v.isDownloaded &&
-      (v.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        v.name.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredVersions = versions.filter((v) => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return true;
+    return (
+      v.code.toLowerCase().includes(query) ||
+      v.name.toLowerCase().includes(query) ||
+      (v.language && v.language.toLowerCase().includes(query))
+    );
+  });
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={styles.container}>
         {/* Header Bar */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+          <TouchableOpacity onPress={onClose} style={styles.headerCloseBtn} activeOpacity={0.7}>
+            <Ionicons name="close" size={22} color="#111111" />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>Translations</Text>
+          <Text style={styles.headerTitle}>Bible Translations</Text>
 
-          <TouchableOpacity style={styles.searchBtn}>
-            <Ionicons name="search" size={22} color={Colors.textPrimary} />
+          <TouchableOpacity
+            style={styles.headerLangBtn}
+            onPress={() => setShowLanguagePicker(true)}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="globe-outline" size={17} color="#111111" style={{ marginRight: 4 }} />
+            <Text style={styles.headerLangText}>
+              {SUPPORTED_LANGUAGES.find(l => l.code === currentLanguage)?.flag || '🌐'}
+            </Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {/* Language Selector Card */}
-          <TouchableOpacity
-            style={styles.languagePill}
-            onPress={() => setShowLanguagePicker(true)}
-            activeOpacity={0.8}
-          >
-            <View style={styles.languageLeft}>
-              <Ionicons name="globe-outline" size={20} color={Colors.textPrimary} style={{ marginRight: 10 }} />
-              <Text style={styles.languageLabel}>{t('language_label', 'Language')}</Text>
-            </View>
-            <View style={styles.languageRight}>
-              <Text style={styles.languageValue}>
-                {SUPPORTED_LANGUAGES.find(l => l.code === currentLanguage)?.flag}{' '}
-                {SUPPORTED_LANGUAGES.find(l => l.code === currentLanguage)?.name || 'English (US)'}
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color={Colors.textPrimary} style={{ marginLeft: 6 }} />
-            </View>
-          </TouchableOpacity>
-
-          {/* Search Input */}
+        {/* Search Bar */}
+        <View style={styles.searchWrapper}>
           <View style={styles.searchContainer}>
-            <Ionicons name="search" size={18} color={Colors.textMuted} style={{ marginRight: 8 }} />
+            <Ionicons name="search" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search translation name or code (KJV, NIV)..."
-              placeholderTextColor={Colors.textMuted}
+              placeholder="Search translation (e.g. Twi, KJV, NIV, RVR)..."
+              placeholderTextColor="#9CA3AF"
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
+                <Ionicons name="close-circle" size={18} color="#9CA3AF" />
               </TouchableOpacity>
             )}
           </View>
+        </View>
 
-          {/* Downloaded Offline Section */}
-          {downloadedList.length > 0 && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionHeading}>Offline Ready on Device ({downloadedList.length})</Text>
-                <View style={styles.offlineBadge}>
-                  <Ionicons name="checkmark-circle" size={13} color="#059669" />
-                  <Text style={styles.offlineBadgeText}>Offline</Text>
-                </View>
+        {/* Horizontal Language Filter Tabs */}
+        <View style={styles.langTabsWrapper}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.langTabsScroll}>
+            {LANGUAGE_FILTER_TABS.map((tab) => {
+              const isSelected = selectedLangFilter === tab.code;
+              return (
+                <TouchableOpacity
+                  key={tab.code}
+                  style={[styles.langTabPill, isSelected && styles.langTabPillActive]}
+                  onPress={() => handleSelectFilter(tab.code)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={styles.langTabFlag}>{tab.flag}</Text>
+                  <Text style={[styles.langTabText, isSelected && styles.langTabTextActive]}>
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Versions List */}
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color="#111111" />
+            <Text style={styles.loadingText}>Fetching translations from YouVersion & Offline Library...</Text>
+          </View>
+        ) : (
+          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            {filteredVersions.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="book-outline" size={44} color="#D1D5DB" />
+                <Text style={styles.emptyTitle}>No Translations Found</Text>
+                <Text style={styles.emptySubtitle}>
+                  Try selecting "All" or searching for a different language.
+                </Text>
               </View>
+            ) : (
+              <View style={styles.listCardWrap}>
+                {filteredVersions.map((item) => {
+                  const isSelected = currentVersion.toUpperCase() === item.code.toUpperCase();
+                  const isDownloading = downloadingCode === item.code;
 
-              {downloadedList.map((item) => {
-                const isSelected = currentVersion.toUpperCase() === item.code.toUpperCase();
-                return (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[styles.versionRow, isSelected && styles.versionRowSelected]}
-                    onPress={() => handleSelect(item.code)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.versionInfo}>
-                      <View style={styles.codeRow}>
-                        <Text style={[styles.versionCode, isSelected && styles.versionCodeSelected]}>
-                          {item.code}
+                  return (
+                    <TouchableOpacity
+                      key={item.id || item.code}
+                      style={[styles.versionRow, isSelected && styles.versionRowSelected]}
+                      onPress={() => handleSelectVersion(item.code)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.versionInfo}>
+                        <View style={styles.codeRow}>
+                          <Text style={[styles.versionCode, isSelected && styles.versionCodeSelected]}>
+                            {item.code}
+                          </Text>
+
+                          {item.hasAudio && (
+                            <View style={styles.audioBadge}>
+                              <Ionicons name="volume-medium" size={13} color="#4B5563" />
+                            </View>
+                          )}
+
+                          {item.isDownloaded && (
+                            <View style={styles.offlineBadge}>
+                              <Ionicons name="checkmark-circle" size={11} color="#059669" style={{ marginRight: 3 }} />
+                              <Text style={styles.offlineBadgeText}>Offline</Text>
+                            </View>
+                          )}
+
+                          {isSelected && (
+                            <View style={styles.activePill}>
+                              <Text style={styles.activePillText}>Active</Text>
+                            </View>
+                          )}
+                        </View>
+
+                        <Text style={styles.versionName} numberOfLines={2}>
+                          {item.name}
                         </Text>
-                        {item.hasAudio && (
-                          <View style={styles.audioBadge}>
-                            <Ionicons name="volume-medium" size={13} color="#666666" />
-                          </View>
-                        )}
-                        {isSelected && (
-                          <View style={styles.activePill}>
-                            <Text style={styles.activePillText}>Active</Text>
-                          </View>
-                        )}
                       </View>
-                      <Text style={styles.versionName} numberOfLines={2}>
-                        {item.name}
-                      </Text>
-                    </View>
 
-                    <Ionicons
-                      name={isSelected ? "radio-button-on" : "radio-button-off"}
-                      size={20}
-                      color={isSelected ? "#8B1E1E" : "#9CA3AF"}
-                    />
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
-
-          {/* Available for Download Section */}
-          {availableList.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionHeading}>Available for Offline Download ({availableList.length})</Text>
-              {availableList.map((item) => {
-                const isDownloading = downloadingCode === item.code;
-                const isSelected = currentVersion.toUpperCase() === item.code.toUpperCase();
-                return (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[styles.versionRow, isSelected && styles.versionRowSelected]}
-                    onPress={() => handleSelect(item.code)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.versionInfo}>
-                      <View style={styles.codeRow}>
-                        <Text style={[styles.versionCode, isSelected && styles.versionCodeSelected]}>{item.code}</Text>
-                        {item.hasAudio && (
-                          <View style={styles.audioBadge}>
-                            <Ionicons name="volume-medium" size={13} color="#666666" />
-                          </View>
+                      {/* Right Action: Download or Selection Check */}
+                      <View style={styles.rightAction}>
+                        {!item.isDownloaded && (
+                          <TouchableOpacity
+                            style={styles.downloadBtn}
+                            onPress={() => handleDownload(item)}
+                            disabled={isDownloading}
+                            activeOpacity={0.7}
+                          >
+                            {isDownloading ? (
+                              <ActivityIndicator size="small" color="#111111" />
+                            ) : (
+                              <Ionicons name="cloud-download-outline" size={20} color="#6B7280" />
+                            )}
+                          </TouchableOpacity>
                         )}
-                        {isSelected && (
-                          <View style={styles.activePill}>
-                            <Text style={styles.activePillText}>Active</Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text style={styles.versionName} numberOfLines={2}>
-                        {item.name}
-                      </Text>
-                    </View>
 
-                    {isDownloading ? (
-                      <View style={styles.downloadProgressWrap}>
-                        <ActivityIndicator size="small" color="#8B1E1E" />
-                        <Text style={styles.progressPercentText}>{downloadProgress}%</Text>
+                        <Ionicons
+                          name={isSelected ? "checkmark-circle" : "radio-button-off"}
+                          size={22}
+                          color={isSelected ? "#111111" : "#D1D5DB"}
+                          style={{ marginLeft: 8 }}
+                        />
                       </View>
-                    ) : (
-                      <TouchableOpacity
-                        style={styles.downloadBtn}
-                        onPress={() => handleDownload(item)}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons name="cloud-download-outline" size={16} color="#8B1E1E" style={{ marginRight: 4 }} />
-                        <Text style={styles.downloadBtnText}>Save</Text>
-                      </TouchableOpacity>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
-        </ScrollView>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+            <View style={{ height: 32 }} />
+          </ScrollView>
+        )}
+
+        {/* Language Picker Sub-Modal */}
+        <LanguagePickerModal
+          visible={showLanguagePicker}
+          onClose={() => setShowLanguagePicker(false)}
+          onLanguageSelected={(newLang) => {
+            setSelectedLangFilter(newLang);
+            loadVersionsForLanguage(newLang);
+          }}
+        />
       </SafeAreaView>
-
-      <LanguagePickerModal
-        visible={showLanguagePicker}
-        onClose={() => setShowLanguagePicker(false)}
-        onLanguageSelected={(lang) => {
-          setLanguage(lang);
-          setShowLanguagePicker(false);
-        }}
-      />
     </Modal>
   );
 };
@@ -272,119 +304,155 @@ export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F3F5',
+    backgroundColor: '#F8F9FA',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 18,
-    paddingTop: 14,
-    paddingBottom: 12,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-    backgroundColor: '#F3F3F5',
+    borderBottomColor: '#F0F0F0',
   },
-  backBtn: {
+  headerCloseBtn: {
     padding: 6,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
   },
   headerTitle: {
-    fontFamily: Typography.fontSerif,
-    fontSize: 24,
-    color: Colors.textPrimary,
+    fontFamily: Typography.fontSansBold,
+    fontSize: 16,
+    color: '#111827',
   },
-  searchBtn: {
-    padding: 6,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 60,
-  },
-  languagePill: {
+  headerLangBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#DCDCE1',
-    borderRadius: 20,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    marginBottom: 16,
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
   },
-  languageLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  languageLabel: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 15,
-    color: Colors.textPrimary,
-  },
-  languageRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  languageValue: {
-    fontFamily: Typography.fontSansRegular,
+  headerLangText: {
     fontSize: 14,
-    color: '#555555',
+  },
+  searchWrapper: {
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 6,
+    backgroundColor: '#FFFFFF',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#DCDCE1',
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 20,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   searchInput: {
     flex: 1,
     fontFamily: Typography.fontSansRegular,
-    fontSize: 14,
-    color: Colors.textPrimary,
-  },
-  section: {
-    marginBottom: 26,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  sectionHeading: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 16,
+    fontSize: 13,
     color: '#111827',
   },
-  offlineBadge: {
+  langTabsWrapper: {
+    backgroundColor: '#FFFFFF',
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  langTabsScroll: {
+    paddingHorizontal: 18,
+    gap: 8,
+  },
+  langTabPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#DEF7EC',
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    gap: 3,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  offlineBadgeText: {
+  langTabPillActive: {
+    backgroundColor: '#111827',
+    borderColor: '#111827',
+  },
+  langTabFlag: {
+    fontSize: 13,
+    marginRight: 5,
+  },
+  langTabText: {
     fontFamily: Typography.fontSansMedium,
-    fontSize: 11,
-    color: '#059669',
+    fontSize: 12,
+    color: '#4B5563',
+  },
+  langTabTextActive: {
+    color: '#FFFFFF',
+    fontFamily: Typography.fontSansSemiBold,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 80,
+    paddingHorizontal: 30,
+  },
+  loadingText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  scrollContent: {
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 30,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 80,
+    paddingHorizontal: 30,
+  },
+  emptyTitle: {
+    fontFamily: Typography.fontSansBold,
+    fontSize: 15,
+    color: '#374151',
+    marginTop: 12,
+  },
+  emptySubtitle: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 13,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  listCardWrap: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
   },
   versionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#DCDCE1',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
   versionRowSelected: {
-    borderWidth: 1.5,
-    borderColor: '#8B1E1E',
-    backgroundColor: '#E8E8EE',
+    backgroundColor: '#F9FAFB',
   },
   versionInfo: {
     flex: 1,
@@ -393,62 +461,58 @@ const styles = StyleSheet.create({
   codeRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
     marginBottom: 3,
   },
   versionCode: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 16,
+    fontFamily: Typography.fontSansBold,
+    fontSize: 14,
     color: '#111827',
   },
   versionCodeSelected: {
-    color: '#8B1E1E',
+    color: '#111827',
+  },
+  audioBadge: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  offlineBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  offlineBadgeText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 10,
+    color: '#059669',
   },
   activePill: {
-    backgroundColor: '#8B1E1E',
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-    marginLeft: 8,
+    backgroundColor: '#111827',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
   },
   activePillText: {
-    fontFamily: Typography.fontSansMedium,
+    fontFamily: Typography.fontSansSemiBold,
     fontSize: 10,
     color: '#FFFFFF',
   },
-  audioBadge: {
-    backgroundColor: 'rgba(0,0,0,0.06)',
-    borderRadius: 10,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    marginLeft: 6,
-  },
-  downloadBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ECECF0',
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  downloadBtnText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 12,
-    color: '#8B1E1E',
-  },
-  downloadProgressWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  progressPercentText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 12,
-    color: '#8B1E1E',
-  },
   versionName: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 13,
-    color: '#555555',
+    fontSize: 12.5,
+    color: '#4B5563',
     lineHeight: 17,
-  }
+  },
+  rightAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  downloadBtn: {
+    padding: 6,
+  },
 });

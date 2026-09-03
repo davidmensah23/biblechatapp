@@ -18,6 +18,7 @@ import { clearChatHistory, saveUserProfile, deleteAllUserData } from '../service
 import { getUserAuthProvider, updateRemoteProfile, supabase } from '../services/supabase';
 import { UserProfile } from '../types';
 import { SUPPORTED_LANGUAGES, useTranslation, AppLanguage } from '../services/localizationService';
+import { getLastReadPosition, setPreferredTranslation, subscribeVersionChange } from '../services/readingProgressService';
 import { CustomConfirmationModal } from '../components/CustomConfirmationModal';
 
 interface SettingsScreenProps {
@@ -36,12 +37,35 @@ interface BibleTranslationOption {
 }
 
 const BIBLE_TRANSLATIONS: BibleTranslationOption[] = [
+  // Twi (Akan)
+  { code: 'ASCB', name: 'Asante Twi Contemporary Bible (ASCB)', language: 'Twi', description: 'Twi kasa a ɛfiri YouVersion a ɛmu da hɔ fann' },
+  { code: 'AKCB', name: 'Akuapem Twi Contemporary Bible (AKCB)', language: 'Twi', description: 'Akuapem Twi apam foforɔ ne dada' },
+
+  // English
   { code: 'NIV', name: 'New International Version (NIV)', language: 'English', description: 'Modern, balanced accuracy & readability' },
   { code: 'KJV', name: 'King James Version (KJV)', language: 'English', description: 'Historic, poetic 1611 authorized translation' },
   { code: 'ESV', name: 'English Standard Version (ESV)', language: 'English', description: 'Word-for-word formal equivalence' },
-  { code: 'RVR1960', name: 'Reina-Valera 1960 (RVR)', language: 'Español', description: 'Clásica traducción tradicional en español' },
-  { code: 'LSG', name: 'Louis Segond (LSG 1910)', language: 'Français', description: 'Traduction biblique française historique' },
-  { code: 'LUT', name: 'Lutherbibel (LUT)', language: 'Deutsch', description: 'Klassische deutsche Übersetzung' }
+  { code: 'NLT', name: 'New Living Translation (NLT)', language: 'English', description: 'Clear, warm, accessible living language' },
+
+  // Spanish (Español)
+  { code: 'RVR', name: 'Reina-Valera 1960 (RVR)', language: 'Español', description: 'Clásica traducción tradicional en español' },
+  { code: 'NVI-ES', name: 'Nueva Versión Internacional (NVI)', language: 'Español', description: 'Traducción contemporánea y fiel' },
+
+  // French (Français)
+  { code: 'LSG', name: 'Louis Segond 1910 (LSG)', language: 'Français', description: 'Traduction biblique française historique' },
+  { code: 'BDS', name: 'La Bible du Semeur (BDS)', language: 'Français', description: 'Langage contemporain et vivant' },
+
+  // Portuguese (Português)
+  { code: 'ARC', name: 'Almeida Revista e Corrigida (ARC)', language: 'Português', description: 'Tradução tradicional em português' },
+
+  // Swahili (Kiswahili)
+  { code: 'NEN', name: 'Neno: Kiswahili Contemporary Version', language: 'Kiswahili', description: 'Biblia ya Kiswahili ya kisasa' },
+  { code: 'SUV', name: 'Swahili Union Version (SUV)', language: 'Kiswahili', description: 'Tafsiri ya kawaida ya Kiswahili' },
+
+  // African Continental Editions
+  { code: 'YCB', name: 'Yorùbá Contemporary Bible (YCB)', language: 'Yorùbá', description: 'Bibeli Mimọ ni ede Yoruba' },
+  { code: 'ICB', name: 'Igbo Contemporary Bible (ICB)', language: 'Igbo', description: 'Baibul Nso nʼasusu Igbo' },
+  { code: 'PCM', name: 'Nigerian Pidgin Bible (PCM)', language: 'Pidgin', description: 'God Tok na Di Holy Bible' }
 ];
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({
@@ -86,8 +110,19 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   // FUNCTIONAL SETTINGS STATES
   // ==========================================
 
-  // 1. Language States
+  // 1. Language States (Synchronized with reading progress)
   const [bibleTranslation, setBibleTranslation] = useState<string>('NIV');
+
+  useEffect(() => {
+    getLastReadPosition().then(pos => {
+      if (pos?.translation) setBibleTranslation(pos.translation);
+    });
+
+    const unsub = subscribeVersionChange((newVer) => {
+      setBibleTranslation(newVer);
+    });
+    return unsub;
+  }, []);
 
   // 2. Notifications States
   const [dailyScriptureReminder, setDailyScriptureReminder] = useState(true);
@@ -618,7 +653,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                   <TouchableOpacity
                     key={trans.code}
                     style={[styles.radioItemRow, isSelected && styles.radioItemRowSelected]}
-                    onPress={() => setBibleTranslation(trans.code)}
+                    onPress={async () => {
+                      setBibleTranslation(trans.code);
+                      await setPreferredTranslation(trans.code);
+                    }}
                     activeOpacity={0.7}
                   >
                     <View style={{ flex: 1, paddingRight: 10 }}>

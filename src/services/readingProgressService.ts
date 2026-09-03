@@ -102,3 +102,29 @@ export const saveLastReadPosition = async (
     console.warn('Error saving last read position:', err);
   }
 };
+
+type VersionChangeListener = (version: string) => void;
+const versionListeners: VersionChangeListener[] = [];
+
+export const subscribeVersionChange = (cb: VersionChangeListener): (() => void) => {
+  versionListeners.push(cb);
+  return () => {
+    const idx = versionListeners.indexOf(cb);
+    if (idx !== -1) versionListeners.splice(idx, 1);
+  };
+};
+
+export const setPreferredTranslation = async (translation: string): Promise<void> => {
+  try {
+    const current = await getLastReadPosition();
+    await saveLastReadPosition(
+      current.book,
+      current.chapter,
+      translation,
+      current.verse,
+      current.snippet,
+      current.estimatedMinutesRemaining
+    );
+  } catch (e) {}
+  versionListeners.forEach(cb => cb(translation));
+};

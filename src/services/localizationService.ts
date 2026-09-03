@@ -1,3 +1,4 @@
+import { setPreferredTranslation } from './readingProgressService';
 import { useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
@@ -414,9 +415,29 @@ const listeners: Array<(lang: AppLanguage) => void> = [];
 
 export const getAppLanguage = (): AppLanguage => currentLanguage;
 
+export const LANGUAGE_TO_DEFAULT_BIBLE: Record<string, string> = {
+  en: 'NIV',
+  tw: 'ASCB',  // Asante Twi Contemporary Bible
+  es: 'RVR',   // Reina-Valera 1960
+  fr: 'LSG',   // Louis Segond 1910
+  pt: 'ARC',   // Almeida Revista e Corrigida
+  sw: 'NEN',   // Kiswahili Contemporary Version (Neno)
+  pcm: 'PCM',  // Nigerian Pidgin English
+  yo: 'YCB',   // Yoruba Contemporary Bible
+  ig: 'ICB',   // Igbo Contemporary Bible
+};
+
 export const setAppLanguage = async (lang: AppLanguage): Promise<void> => {
   currentLanguage = lang;
   listeners.forEach(cb => cb(lang));
+
+  // Auto-switch active Bible version to match selected language!
+  const defaultBible = LANGUAGE_TO_DEFAULT_BIBLE[lang];
+  if (defaultBible) {
+    try {
+      await setPreferredTranslation(defaultBible);
+    } catch (e) {}
+  }
 
   // 1. SecureStore / LocalStorage persistence
   try {
