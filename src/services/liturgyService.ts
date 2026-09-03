@@ -193,7 +193,7 @@ export const isLiturgyCompletedForToday = async (): Promise<boolean> => {
   }
 };
 
-export const markLiturgyCompleted = async (liturgyId: string): Promise<void> => {
+export const markLiturgyCompleted = async (liturgyId?: string): Promise<void> => {
   const db = await getDB();
   if (!db) return;
 
@@ -204,9 +204,11 @@ export const markLiturgyCompleted = async (liturgyId: string): Promise<void> => 
     await db.runAsync(
       `INSERT OR REPLACE INTO liturgy_completions (id, liturgy_id, date_str, period, completed_at)
        VALUES (?, ?, ?, ?, ?);`,
-      [`${today}_${period}`, liturgyId, today, period, Date.now()]
+      [`${today}_${period}`, liturgyId || `prayer_${today}_${period}`, today, period, Date.now()]
     );
   } catch (err) {
     console.warn('Error saving prayer completion:', err);
   }
 };
+
+export const markTodayLiturgyCompleted = markLiturgyCompleted;
