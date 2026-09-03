@@ -149,13 +149,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
           </TouchableOpacity>
         </View>
 
-        {/* Right Header Actions: Streak Pill & Notification Bell */}
+        {/* Right Header Action: Notification Bell */}
         <View style={styles.headerRightActions}>
-          <View style={styles.streakPill}>
-            <Ionicons name="flash" size={14} color="#111111" />
-            <Text style={styles.streakPillText}>{growthProfile?.streakDays || 1}</Text>
-          </View>
-
           <TouchableOpacity
             style={styles.notificationBtn}
             onPress={() => setNotificationsOpen(true)}
