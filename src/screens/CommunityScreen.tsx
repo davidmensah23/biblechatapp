@@ -12,7 +12,9 @@ import {
   SafeAreaView,
   Image,
   Dimensions,
-  KeyboardAvoidingView
+  KeyboardAvoidingView,
+  RefreshControl,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -31,6 +33,7 @@ import {
 import { getAvatarEmblem } from '../services/avatarService';
 import { MascotAssets } from '../services/mascotAssets';
 import { InteractiveGestureSheet } from '../components/InteractiveGestureSheet';
+import { CustomConfirmationModal } from '../components/CustomConfirmationModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -43,6 +46,11 @@ export const CommunityScreen: React.FC<CommunityScreenProps> = ({
   initialSegment = 'community'
 }) => {
   const [activeTab, setActiveTab] = useState<'community' | 'my_prayers'>(initialSegment);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hiddenRequestIds, setHiddenRequestIds] = useState<Set<string>>(new Set());
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [selectedRequestForReport, setSelectedRequestForReport] = useState<PrayerRequest | null>(null);
+  const [cardActionSheetReq, setCardActionSheetReq] = useState<PrayerRequest | null>(null);
   const [requests, setRequests] = useState<PrayerRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -86,6 +94,71 @@ export const CommunityScreen: React.FC<CommunityScreenProps> = ({
   useEffect(() => {
     loadData(selectedCategory);
   }, [selectedCategory]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (e) {}
+    await loadData(selectedCategory);
+    setIsRefreshing(false);
+  };
+
+  const handleOpenReportModal = (req: PrayerRequest) => {
+    setSelectedRequestForReport(req);
+    setReportModalVisible(true);
+  };
+
+  const handleConfirmReport = () => {
+    if (selectedRequestForReport) {
+      setHiddenRequestIds(prev => new Set(prev).add(selectedRequestForReport.id));
+      setReportModalVisible(false);
+      try {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch (e) {}
+      Alert.alert(
+        "Prayer Reported",
+        "Thank you for keeping our fellowship sacred. This prayer has been hidden from your feed and sent for moderation review."
+      );
+    }
+  };
+
+  const handleCardOptions = (req: PrayerRequest) => {
+    if (req.isUserAuthor) {
+      Alert.alert(
+        "Prayer Options",
+        `“${req.title}”`,
+        [
+          { text: "Share Prayer", onPress: () => handleSharePrayer(req) },
+          {
+            text: "Remove from Prayer Wall",
+            style: "destructive",
+            onPress: () => {
+              setHiddenRequestIds(prev => new Set(prev).add(req.id));
+            }
+          },
+          { text: "Cancel", style: "cancel" }
+        ]
+      );
+    } else {
+      Alert.alert(
+        "Prayer Options",
+        `“${req.title}”`,
+        [
+          { text: "Share Prayer", onPress: () => handleSharePrayer(req) },
+          { text: "Report Inappropriate Content", style: "destructive", onPress: () => handleOpenReportModal(req) },
+          {
+            text: "Hide from My Feed",
+            onPress: () => {
+              setHiddenRequestIds(prev => new Set(prev).add(req.id));
+            }
+          },
+          { text: "Cancel", style: "cancel" }
+        ]
+      );
+    }
+  };
+
 
   const handleTogglePrayed = async (req: PrayerRequest) => {
     try {
@@ -240,8 +313,9 @@ ${shareUrl}`,
     { id: 'thanksgiving', label: '🙏 Thanksgiving' },
   ];
 
-  const myRequests = requests.filter(r => r.isUserAuthor);
-  const displayRequests = activeTab === 'my_prayers' ? myRequests : requests;
+  const visibleRequests = requests.filter(r => !hiddenRequestIds.has(r.id));
+  const myRequests = visibleRequests.filter(r => r.isUserAuthor);
+  const displayRequests = activeTab === 'my_prayers' ? myRequests : visibleRequests;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -266,6 +340,14 @@ ${shareUrl}`,
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor="#111827"
+            colors={['#111827']}
+          />
+        }
       >
         {/* Horizontal Mascot Hero Card with Galatians 6:2 Scripture & Rounded Dark Filled Button */}
         <View style={styles.mascotHeroCard}>
@@ -382,9 +464,14 @@ ${shareUrl}`,
                     </View>
                   </View>
 
-                  <TouchableOpacity onPress={() => handleSharePrayer(req)} activeOpacity={0.7} style={styles.shareBtn}>
-                    <Ionicons name="share-outline" size={17} color="#6B7280" />
-                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <TouchableOpacity onPress={() => handleSharePrayer(req)} activeOpacity={0.7} style={styles.shareBtn}>
+                      <Ionicons name="share-outline" size={17} color="#6B7280" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleCardOptions(req)} activeOpacity={0.7} style={styles.moreBtn}>
+                      <Ionicons name="ellipsis-horizontal" size={17} color="#6B7280" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 {/* Title & Request Body */}
@@ -725,6 +812,19 @@ ${shareUrl}`,
           </View>
         </KeyboardAvoidingView>
       </InteractiveGestureSheet>
+      {/* UGC Content Moderation & Reporting Modal (App Store Guideline 1.2) */}
+      <CustomConfirmationModal
+        visible={reportModalVisible}
+        title="Report Prayer"
+        message="Thank you for keeping our fellowship sacred and uplifting. Would you like to report this prayer for moderation review and hide it from your feed?"
+        confirmText="Report & Hide"
+        cancelText="Cancel"
+        confirmStyle="destructive"
+        icon="flag-outline"
+        onConfirm={handleConfirmReport}
+        onCancel={() => setReportModalVisible(false)}
+        onClose={() => setReportModalVisible(false)}
+      />
     </SafeAreaView>
   );
 };
@@ -957,6 +1057,10 @@ const styles = StyleSheet.create({
   },
   shareBtn: {
     padding: 6,
+  },
+  moreBtn: {
+    padding: 6,
+    marginLeft: 2,
   },
   requestTitle: {
     fontFamily: Typography.fontSansBold,
