@@ -2,7 +2,7 @@ import { getDB } from './database';
 import { APOSTLE_PERSONAS } from './personas';
 import { ApostlePersona } from '../types';
 
-export type LiturgyPeriod = 'morning' | 'evening';
+export type LiturgyPeriod = 'morning' | 'midday' | 'evening';
 
 export interface DailyLiturgy {
   id: string;
@@ -18,14 +18,14 @@ export interface DailyLiturgy {
   fullSpokenScript: string;
 }
 
-// Simple, clear morning prayers rotating through ALL characters
+// 1. Morning Prayers (4:00 AM - 11:59 AM)
 const MORNING_PRAYERS = [
   {
     theme: "Start Your Day with Peace",
     apostleId: "peter",
     scriptureRef: "Psalm 143:8",
     scriptureText: "Let the morning bring me word of your unfailing love, for I have put my trust in you. Show me the way I should go, for to you I entrust my life.",
-    reflection: "Peace be with you, my friend. Simon Peter here. Every morning by the Sea of Galilee, before the sun came up, we had to decide whether we would trust our own strength or trust the Master. Today, do not rush into the day alone. Jesus walks with you.",
+    reflection: "Peace be with you, my friend. Simon Peter here. Every morning by the Sea of Galilee, before the sun broke over the water, we had to decide whether we would trust our own strength or trust the Master. Today, do not rush into the day alone. Jesus walks with you.",
     prayer: "Lord Jesus, I give You my worries, my plans, and my fears this morning. Guide my steps, give me kind words, and give me courage to do what is right.",
     blessing: "May God give you peace today, and may His Holy Spirit guide every step you take."
   },
@@ -64,19 +64,41 @@ const MORNING_PRAYERS = [
     reflection: "Thomas here with you. Never be afraid to be honest with God about what you do not understand. Jesus never turned me away when I had questions; He reached out His hands. Bring your honest heart to Him today.",
     prayer: "Lord, You know my thoughts and my questions. Increase my faith today, and let me feel Your calm presence beside me.",
     blessing: "May the Lord reveal His living truth to you and give you unwavering faith."
-  },
-  {
-    theme: "Share Kindness with Someone Today",
-    apostleId: "andrew",
-    scriptureRef: "John 1:41",
-    scriptureText: "The first thing Andrew did was to find his brother Simon and tell him, 'We have found the Messiah.'",
-    reflection: "Andrew here. Faith grows when we share it simply. Even bringing one person to Jesus or offering a cup of water in His name matters in heaven. Keep your eyes open today for who you can encourage.",
-    prayer: "Lord Jesus, make me a helper today. Show me who needs a kind word, a helping hand, or a prayer.",
-    blessing: "May God use your hands and words to bring joy and hope to others today."
   }
 ];
 
-// Simple, clear evening prayers rotating through ALL characters
+// 2. Midday Pause Prayers (12:00 PM - 4:59 PM)
+const MIDDAY_PRAYERS = [
+  {
+    theme: "A 60-Second Breather with Jesus",
+    apostleId: "peter",
+    scriptureRef: "Psalm 46:10",
+    scriptureText: "Be still, and know that I am God; I will be exalted among the nations, I will be exalted in the earth.",
+    reflection: "Peter here. In the middle of hauling heavy nets at noon, the heat was intense and tempers ran short. In the middle of your workday, pause for just one minute. Take a deep breath. God is in control of your afternoon.",
+    prayer: "Lord Jesus, I pause right now in the middle of my busy day. Calms my rushing thoughts, refresh my energy, and help me treat everyone I speak to with kindness.",
+    blessing: "May the peace of Christ guard your heart through the rest of this afternoon."
+  },
+  {
+    theme: "Peace in the Middle of Your Day",
+    apostleId: "john",
+    scriptureRef: "Isaiah 26:3",
+    scriptureText: "You will keep in perfect peace those whose minds are steadfast, because they trust in you.",
+    reflection: "John here. The day can get noisy with demands, messages, and deadlines. But inside your spirit, Jesus offers a quiet sanctuary. Drop your shoulders, breathe in His grace, and remember you are loved.",
+    prayer: "Father, thank You for carrying me through this morning. As I step into this afternoon, let Your joy be my strength.",
+    blessing: "The Lord brighten your path and give you renewed focus and grace today."
+  },
+  {
+    theme: "Strength for Your Afternoon",
+    apostleId: "paul",
+    scriptureRef: "Philippians 4:13",
+    scriptureText: "I can do all this through him who gives me strength.",
+    reflection: "Paul here. Fatigue often sets in halfway through our labors. Do not lean only on your own stamina. The same Spirit that raised Christ from the dead lives in you. You have divine help for the rest of today.",
+    prayer: "Lord, renew my strength where I feel tired. Keep my eyes focused on what truly matters, and let my work honor You.",
+    blessing: "May God's grace empower you through every conversation and task this afternoon."
+  }
+];
+
+// 3. Evening Prayers (5:00 PM - 3:59 AM)
 const EVENING_PRAYERS = [
   {
     theme: "Let Go of Your Worries Tonight",
@@ -133,12 +155,15 @@ const getLocalDateString = (d: Date = new Date()): string => {
 };
 
 /**
- * 4:00 AM to 11:59 AM is Morning Prayer
- * 12:00 PM (noon) onwards is Evening Prayer
+ * 4:00 AM - 11:59 AM: Morning Prayer
+ * 12:00 PM - 4:59 PM: Midday Pause
+ * 5:00 PM - 3:59 AM: Evening Prayer
  */
 export const getCurrentLiturgyPeriod = (): LiturgyPeriod => {
   const hour = new Date().getHours();
-  return (hour >= 4 && hour < 12) ? 'morning' : 'evening';
+  if (hour >= 4 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 17) return 'midday';
+  return 'evening';
 };
 
 export const getTodayLiturgy = (): DailyLiturgy => {
@@ -146,15 +171,16 @@ export const getTodayLiturgy = (): DailyLiturgy => {
   const now = new Date();
   const dateStr = getLocalDateString(now);
 
-  // Day of year calculation for rotating through all Apostles
   const start = new Date(now.getFullYear(), 0, 0);
   const diff = now.getTime() - start.getTime();
   const oneDay = 1000 * 60 * 60 * 24;
   const dayOfYear = Math.floor(diff / oneDay);
 
-  const list = period === 'morning' ? MORNING_PRAYERS : EVENING_PRAYERS;
-  const template = list[dayOfYear % list.length];
+  let list = MORNING_PRAYERS;
+  if (period === 'midday') list = MIDDAY_PRAYERS;
+  if (period === 'evening') list = EVENING_PRAYERS;
 
+  const template = list[dayOfYear % list.length];
   const apostle = APOSTLE_PERSONAS.find(a => a.id === template.apostleId) || APOSTLE_PERSONAS[0];
 
   const fullSpokenScript = `${template.reflection} Now, let us bring our hearts together in prayer. ${template.prayer} And hear this blessing over your walk: ${template.blessing}`;

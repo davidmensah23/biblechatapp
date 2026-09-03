@@ -464,34 +464,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
             );
           })()}
 
-          {/* Faith Companions & Fruits of the Spirit Showcase */}
-          <View style={styles.faithCompanionsSection}>
-            <View style={styles.sectionHeadingRow}>
-              <Text style={styles.sectionHeading}>Faith Companions</Text>
-              <Text style={styles.sectionSubheading}>Fruits of the Spirit</Text>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mascotsScroll}>
-              {[
-                { id: 'cloud', name: 'Cotton Cloud', fruit: 'Peace', img: MascotAssets.cloud },
-                { id: 'bread', name: 'Daily Manna', fruit: 'Truth', img: MascotAssets.bread },
-                { id: 'flame', name: 'Holy Flame', fruit: 'Zeal', img: MascotAssets.flame },
-                { id: 'dewdrop', name: 'Living Dew', fruit: 'Grace', img: MascotAssets.dewdrop },
-                { id: 'rock', name: 'Cornerstone', fruit: 'Faith', img: MascotAssets.rock },
-                { id: 'cedar', name: 'Cedar', fruit: 'Strength', img: MascotAssets.cedar },
-                { id: 'blossom', name: 'Lily', fruit: 'Joy', img: MascotAssets.blossom },
-                { id: 'group', name: 'Fellowship', fruit: 'Love', img: MascotAssets.group },
-              ].map((m) => (
-                <View key={m.id} style={styles.mascotCompanionCard}>
-                  <View style={styles.mascotImgWrapper}>
-                    <Image source={m.img} style={styles.mascotImg} />
-                  </View>
-                  <Text style={styles.mascotName}>{m.name}</Text>
-                  <Text style={styles.mascotFruit}>{m.fruit}</Text>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-
           <View style={{ height: 24 }} />
         </ScrollView>
       ) : (

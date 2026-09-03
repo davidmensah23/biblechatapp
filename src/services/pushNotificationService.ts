@@ -52,38 +52,55 @@ export const initializePushNotifications = async (): Promise<boolean> => {
       });
     }
 
-    // 3. Schedule Recurring Morning Prayer (7:00 AM) & Evening Prayer (8:00 PM)
+    // 3. Schedule 3-Moment Daily Rhythm: Morning (5:30 AM), Midday (12:30 PM), Evening (6:00 PM)
     try {
       await Notifications.cancelAllScheduledNotificationsAsync();
 
-      // 🌅 Morning Prayer (7:00 AM)
+      // 🌅 Early Morning Prayer (5:30 AM)
       await Notifications.scheduleNotificationAsync({
         content: {
           title: '🌅 Morning Prayer',
-          body: 'Start your day with peace. Tap for your 2-minute prayer.',
+          body: 'Start your day with peace. Tap for your 2-minute morning prayer.',
           data: { type: 'daily_prayer', period: 'morning' },
           sound: true,
           badge: 1
         },
         trigger: {
-          hour: 7,
-          minute: 0,
+          hour: 5,
+          minute: 30,
           repeats: true,
           channelId: 'daily-devotion'
         } as any
       });
 
-      // 🌙 Evening Prayer (8:00 PM)
+      // ☀️ Midday Pause with God (12:30 PM)
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: '🌙 Evening Prayer',
-          body: 'Let go of your worries tonight. Tap to pray and rest in God’s peace.',
+          title: '☀️ Midday Pause with God',
+          body: 'Take a 60-second breather. God is with you in the middle of your busy day.',
+          data: { type: 'daily_prayer', period: 'midday' },
+          sound: true,
+          badge: 1
+        },
+        trigger: {
+          hour: 12,
+          minute: 30,
+          repeats: true,
+          channelId: 'daily-devotion'
+        } as any
+      });
+
+      // 🌙 Evening Prayer & Rest (6:00 PM)
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '🌙 Evening Prayer & Rest',
+          body: 'Unwind and let go of today\'s worries. Rest in God\'s peace tonight.',
           data: { type: 'daily_prayer', period: 'evening' },
           sound: true,
           badge: 1
         },
         trigger: {
-          hour: 20,
+          hour: 18,
           minute: 0,
           repeats: true,
           channelId: 'daily-devotion'

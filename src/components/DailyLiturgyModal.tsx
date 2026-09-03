@@ -9,6 +9,7 @@ import {
   Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Typography } from '../theme/typography';
 import { InteractiveGestureSheet } from './InteractiveGestureSheet';
@@ -26,6 +27,13 @@ interface DailyLiturgyModalProps {
   isAlreadyCompleted?: boolean;
   onCompleted?: () => void;
 }
+
+
+const THEME_IMAGES = {
+  morning: require('../../assets/images/morning_prayer_bg.jpg'),
+  midday: require('../../assets/images/afternoon_prayer_bg.jpg'),
+  evening: require('../../assets/images/evening_prayer_bg.jpg'),
+};
 
 export const DailyLiturgyModal: React.FC<DailyLiturgyModalProps> = ({
   visible,
@@ -96,11 +104,24 @@ export const DailyLiturgyModal: React.FC<DailyLiturgyModalProps> = ({
       midHeightRatio={0.70}
       showGrabBar={true}
     >
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={styles.sheetContentWrapper}>
+        {/* Full 9:16 Illustrated Background with Progressive Scrim */}
+        <Image
+          source={THEME_IMAGES[liturgy.period] || THEME_IMAGES.morning}
+          style={StyleSheet.absoluteFillObject}
+          resizeMode="cover"
+        />
+        <LinearGradient
+          colors={['rgba(0, 0, 0, 0.45)', 'rgba(0, 0, 0, 0.10)', 'rgba(0, 0, 0, 0.65)']}
+          locations={[0, 0.4, 1]}
+          style={StyleSheet.absoluteFillObject}
+        />
+
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
         {/* Top Liturgy Header */}
         <View style={styles.topBar}>
           <View style={[styles.periodBadge, isMorning ? styles.periodMorning : styles.periodEvening]}>
@@ -111,7 +132,13 @@ export const DailyLiturgyModal: React.FC<DailyLiturgyModalProps> = ({
               style={{ marginRight: 5 }}
             />
             <Text style={[styles.periodText, isMorning ? styles.periodTextMorning : styles.periodTextEvening]}>
-              {isMorning ? 'Morning Liturgy • 2 Min' : 'Evening Liturgy • 2 Min'}
+              {
+              liturgy.period === 'morning'
+                ? 'Morning Prayer • 2 Min'
+                : liturgy.period === 'midday'
+                ? 'Midday Pause • 1 Min'
+                : 'Evening Prayer • 2 Min'
+            }
             </Text>
           </View>
 
@@ -236,13 +263,20 @@ export const DailyLiturgyModal: React.FC<DailyLiturgyModalProps> = ({
           </View>
         )}
       </ScrollView>
+      </View>
     </InteractiveGestureSheet>
   );
 };
 
 const styles = StyleSheet.create({
+  sheetContentWrapper: {
+    flex: 1,
+    position: 'relative',
+    overflow: 'hidden',
+  },
   container: {
     flex: 1,
+    backgroundColor: 'transparent',
   },
   scrollContent: {
     paddingHorizontal: 22,
