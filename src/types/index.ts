@@ -55,6 +55,8 @@ export interface SavedBookmark {
   timestamp: number;
 }
 
+export type ChurchRole = 'pastor' | 'leader' | 'member' | 'seeker';
+
 export interface UserProfile {
   id?: string;
   fullName: string;
@@ -64,6 +66,8 @@ export interface UserProfile {
   dateOfBirth: string;
   avatarUrl?: string;
   gender?: 'brother' | 'sister' | 'neutral' | string;
+  churchRole?: ChurchRole;
+  churchName?: string;
 }
 
 export interface AppNotification {

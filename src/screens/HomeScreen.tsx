@@ -26,12 +26,16 @@ import { DailyLiturgyCard } from '../components/DailyLiturgyCard';
 import { DailyLiturgyModal } from '../components/DailyLiturgyModal';
 import { getTodayLiturgy, isLiturgyCompletedForToday, DailyLiturgy } from '../services/liturgyService';
 import { getLastReadPosition, LastReadProgress } from '../services/readingProgressService';
+import { ChurchRoleModal } from '../components/ChurchRoleModal';
+import { fetchUserProfile, incrementAndGetSessionCount } from '../services/database';
+import { ChurchRole } from '../types';
 
 interface HomeScreenProps {
   onSelectApostle: (
     apostle: ApostlePersona,
     initialMessage?: string,
-    contextQuote?: { text: string; reference: string }
+    contextQuote?: { text: string; reference: string },
+    ministryObjective?: 'sermon_prep' | 'small_group' | 'personal_reflection' | 'seeker_explore'
   ) => void;
   onOpenBible?: (book?: string, chapter?: number) => void;
 }
@@ -44,6 +48,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
   const [badgesModalOpen, setBadgesModalOpen] = useState(false);
   const [selectedBadgeForDetail, setSelectedBadgeForDetail] = useState<FaithBadge | null>(null);
   const [shareBannerDismissed, setShareBannerDismissed] = useState(false);
+  const [sundayCardDismissed, setSundayCardDismissed] = useState(false);
+  const [showChurchRoleModal, setShowChurchRoleModal] = useState(false);
+  const [userChurchRole, setUserChurchRole] = useState<ChurchRole | undefined>(undefined);
   const [growthProfile, setGrowthProfile] = useState<SpiritualGrowthProfile | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
 
@@ -381,30 +388,81 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
             </View>
           </View>
 
-          {/* Interactive Sunday Sermon Preparation Hub */}
-          <TouchableOpacity
-            style={styles.sermonPrepCard}
-            onPress={() => {
-              const paul = APOSTLE_PERSONAS.find(a => a.id === 'paul') || APOSTLE_PERSONAS[0];
-              onSelectApostle(paul);
-            }}
-            activeOpacity={0.85}
-          >
-            <View style={styles.sermonPrepHeader}>
-              <View style={styles.sermonIconBadge}>
-                <Ionicons name="book-outline" size={18} color="#FFFFFF" />
+          {/* Adaptive & Dismissible Sunday Ministry Preparation Card */}
+          {!sundayCardDismissed && (() => {
+            const role = userChurchRole || 'member';
+            const roleConfig = {
+              pastor: {
+                badge: "SUNDAY SERMON BUILDER",
+                icon: "mic-outline" as const,
+                title: "Preparing this Sunday's message?",
+                subtitle: "Outline your message, study original Greek & Hebrew meanings, or find powerful illustrations with Paul.",
+                action: "Build Sermon with Paul",
+                objective: "sermon_prep" as const
+              },
+              leader: {
+                badge: "BIBLE STUDY BUILDER",
+                icon: "people-outline" as const,
+                title: "Leading your next Bible group?",
+                subtitle: "Generate thoughtful discussion questions and biblical life lessons with Paul.",
+                action: "Prepare Study with Paul",
+                objective: "small_group" as const
+              },
+              member: {
+                badge: "SUNDAY SERVICE PREPARATION",
+                icon: "book-outline" as const,
+                title: "Preparing your heart for church?",
+                subtitle: "Read this week's passage early and ask questions so you arrive ready for Sunday.",
+                action: "Study with Paul",
+                objective: "personal_reflection" as const
+              },
+              seeker: {
+                badge: "EXPLORE GOD'S WORD",
+                icon: "compass-outline" as const,
+                title: "Have questions about the Bible?",
+                subtitle: "Ask Paul anything about Jesus, faith, or church in a safe and open space.",
+                action: "Ask Paul Anything",
+                objective: "seeker_explore" as const
+              }
+            }[role];
+
+            return (
+              <View style={styles.sermonPrepCard}>
+                <View style={styles.sermonCardTopBar}>
+                  <View style={styles.sermonPrepHeader}>
+                    <View style={styles.sermonIconBadge}>
+                      <Ionicons name={roleConfig.icon} size={15} color="#FFFFFF" />
+                    </View>
+                    <Text style={styles.sermonPrepBadgeText}>{roleConfig.badge}</Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.dismissCardXBtn}
+                    onPress={() => setSundayCardDismissed(true)}
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="close" size={17} color="#9CA3AF" />
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.sermonPrepTitle}>{roleConfig.title}</Text>
+                <Text style={styles.sermonPrepSubtitle}>{roleConfig.subtitle}</Text>
+
+                <TouchableOpacity
+                  style={styles.sermonActionRow}
+                  onPress={() => {
+                    const paul = APOSTLE_PERSONAS.find(a => a.id === 'paul') || APOSTLE_PERSONAS[0];
+                    onSelectApostle(paul, undefined, undefined, roleConfig.objective);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.sermonActionText}>{roleConfig.action}</Text>
+                  <Ionicons name="arrow-forward" size={15} color="#111111" />
+                </TouchableOpacity>
               </View>
-              <Text style={styles.sermonPrepBadgeText}>Sunday Sermon Workshop</Text>
-            </View>
-            <Text style={styles.sermonPrepTitle}>Preparing a message to feed the flock?</Text>
-            <Text style={styles.sermonPrepSubtitle}>
-              Collaborate step-by-step with the Apostles or generate a complete, Scripture-anchored sermon manuscript.
-            </Text>
-            <View style={styles.sermonActionRow}>
-              <Text style={styles.sermonActionText}>Start Sermon Prep with Paul</Text>
-              <Ionicons name="arrow-forward" size={15} color="#111111" />
-            </View>
-          </TouchableOpacity>
+            );
+          })()}
 
           {/* Faith Companions & Fruits of the Spirit Showcase */}
           <View style={styles.faithCompanionsSection}>
@@ -519,6 +577,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
         onCompleted={() => {
           setIsLiturgyDone(true);
           getSpiritualGrowthProfile().then(setGrowthProfile).catch(console.warn);
+        }}
+      />
+          {/* Progressive Church Role Profiling Modal */}
+      <ChurchRoleModal
+        visible={showChurchRoleModal}
+        onClose={(selected) => {
+          setShowChurchRoleModal(false);
+          if (selected) setUserChurchRole(selected);
         }}
       />
     </SafeAreaView>
@@ -943,6 +1009,20 @@ const styles = StyleSheet.create({
     ...CardStyles.smoothCard,
     padding: 20,
     marginBottom: 20,
+  },
+  sermonCardTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  dismissCardXBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sermonPrepHeader: {
     flexDirection: 'row',

@@ -44,6 +44,7 @@ interface ChatDetailScreenProps {
   onBack: () => void;
   initialMessage?: string;
   contextQuote?: { text: string; reference: string };
+  ministryObjective?: 'sermon_prep' | 'small_group' | 'personal_reflection' | 'seeker_explore';
 }
 
 const BouncingDots: React.FC = () => {
@@ -97,7 +98,7 @@ const BouncingDots: React.FC = () => {
   );
 };
 
-export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onBack, initialMessage, contextQuote }) => {
+export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onBack, initialMessage, contextQuote, ministryObjective }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState(initialMessage || '');
   const [isLoading, setIsLoading] = useState(false);
@@ -136,7 +137,30 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
     const history = await fetchMessages(conversationId);
     let updatedHistory = [...history];
 
-    if (contextQuote) {
+    if (ministryObjective) {
+      const objectiveId = `obj_${apostle.id}_${ministryObjective}_${new Date().toISOString().slice(0, 10)}`;
+      const alreadyHasObjective = updatedHistory.some(m => m.id === objectiveId);
+      if (!alreadyHasObjective) {
+        const greetings = {
+          sermon_prep: `Grace and peace to you, brother! I see you are preparing a sermon message for this Sunday. What Scripture passage or theme has the Holy Spirit placed on your heart? Shall we outline the main points, explore the original context, or craft an illustration together?`,
+          small_group: `Grace and peace to you! I see you are preparing a Bible study for your small group. What chapter or topic are you guiding them through? Let us craft inspiring discussion questions together.`,
+          personal_reflection: `Grace and peace to you, beloved! I am glad you are taking time to study the Word before church this Sunday. What Bible passage or question would you like to explore together?`,
+          seeker_explore: `Grace and peace to you! There are no silly questions when seeking truth. What has been on your mind about God, Jesus, or faith? I am here to walk with you.`
+        };
+
+        const objectiveGreeting: ChatMessage = {
+          id: objectiveId,
+          conversationId: conversationId,
+          sender: 'assistant',
+          content: greetings[ministryObjective] || greetings.personal_reflection,
+          timestamp: Date.now() - 30000
+        };
+        await saveMessage(objectiveGreeting, apostle.title, apostle.id);
+        initialLoadedIdsRef.current.add(objectiveGreeting.id);
+        updatedHistory.push(objectiveGreeting);
+      }
+      setMessages(updatedHistory);
+    } else if (contextQuote) {
       const quoteId = `quote_${apostle.id}_${new Date().toISOString().slice(0, 10)}`;
       const alreadyHasQuote = updatedHistory.some(m => m.id === quoteId || m.content.includes(contextQuote.reference));
       if (!alreadyHasQuote) {

@@ -91,6 +91,7 @@ export default function App() {
   const [bibleInitialTarget, setBibleInitialTarget] = useState<{ book?: string; chapter?: number } | undefined>(undefined);
   const [chatInitialMessage, setChatInitialMessage] = useState<string | undefined>(undefined);
   const [chatContextQuote, setChatContextQuote] = useState<{ text: string; reference: string } | undefined>(undefined);
+  const [chatMinistryObjective, setChatMinistryObjective] = useState<'sermon_prep' | 'small_group' | 'personal_reflection' | 'seeker_explore' | undefined>(undefined);
   const [forceRender, setForceRender] = useState<boolean>(false);
   const [showPrivacyNotice, setShowPrivacyNotice] = useState<boolean>(false);
 
@@ -343,10 +344,11 @@ export default function App() {
           <ScreenTransition transitionKey={activeNavTab}>
             {activeNavTab === 'home' && (
               <HomeScreen
-                onSelectApostle={(apostle, initialMessage, contextQuote) => {
+                onSelectApostle={(apostle, initialMessage, contextQuote, ministryObjective) => {
                   setSelectedApostle(apostle);
                   setChatInitialMessage(initialMessage);
                   setChatContextQuote(contextQuote);
+                  setChatMinistryObjective(ministryObjective);
                   setCurrentView('chat');
                 }}
                 onOpenBible={(book, chapter) => {

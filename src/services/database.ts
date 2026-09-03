@@ -162,6 +162,16 @@ const initTables = async (db: SQLite.SQLiteDatabase) => {
     } catch {
       // Column already exists
     }
+    try {
+      await db.execAsync(`ALTER TABLE user_profile ADD COLUMN church_role TEXT DEFAULT NULL;`);
+    } catch {
+      // Column already exists
+    }
+    try {
+      await db.execAsync(`ALTER TABLE user_profile ADD COLUMN church_name TEXT DEFAULT NULL;`);
+    } catch {
+      // Column already exists
+    }
   } catch (e) {
     console.warn('Table creation note:', e);
   }
@@ -324,7 +334,9 @@ export const fetchUserProfile = async (): Promise<UserProfile> => {
           bio: row.bio,
           location: row.location,
           dateOfBirth: row.date_of_birth,
-          gender: row.gender || 'neutral'
+          gender: row.gender || 'neutral',
+          churchRole: row.church_role || undefined,
+          churchName: row.church_name || undefined
         };
       }
     } catch (e) {
@@ -340,13 +352,48 @@ export const saveUserProfile = async (profile: UserProfile): Promise<void> => {
   if (db) {
     try {
       await db.runAsync(
-        'INSERT OR REPLACE INTO user_profile (id, full_name, email, bio, location, date_of_birth, gender) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        ['current_user', profile.fullName, profile.email, profile.bio, profile.location, profile.dateOfBirth, profile.gender || 'neutral']
+        'INSERT OR REPLACE INTO user_profile (id, full_name, email, bio, location, date_of_birth, gender, church_role, church_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          'current_user',
+          profile.fullName,
+          profile.email,
+          profile.bio,
+          profile.location,
+          profile.dateOfBirth,
+          profile.gender || 'neutral',
+          profile.churchRole || null,
+          profile.churchName || null
+        ]
       );
     } catch (e) {
       console.warn('saveUserProfile SQLite error:', e);
     }
   }
+};
+
+export const incrementAndGetSessionCount = async (): Promise<number> => {
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync(`
+        CREATE TABLE IF NOT EXISTS app_session_tracker (
+          id TEXT PRIMARY KEY NOT NULL,
+          session_count INTEGER NOT NULL,
+          last_opened INTEGER NOT NULL
+        );
+      `);
+      const row = await db.getFirstAsync<any>('SELECT session_count FROM app_session_tracker WHERE id = ?', ['app']);
+      const count = (row ? row.session_count : 0) + 1;
+      await db.runAsync(
+        'INSERT OR REPLACE INTO app_session_tracker (id, session_count, last_opened) VALUES (?, ?, ?)',
+        ['app', count, Date.now()]
+      );
+      return count;
+    } catch (e) {
+      console.warn('incrementAndGetSessionCount error:', e);
+    }
+  }
+  return 2;
 };
 
 export const clearChatHistory = async (): Promise<void> => {
