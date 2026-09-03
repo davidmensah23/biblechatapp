@@ -88,6 +88,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState<'main' | 'chat' | 'groupChat'>('main');
   const [selectedApostle, setSelectedApostle] = useState<ApostlePersona | null>(null);
   const [selectedGroupCouncil, setSelectedGroupCouncil] = useState<GroupCouncilThread | null>(null);
+  const [bibleInitialTarget, setBibleInitialTarget] = useState<{ book?: string; chapter?: number } | undefined>(undefined);
   const [chatInitialMessage, setChatInitialMessage] = useState<string | undefined>(undefined);
   const [forceRender, setForceRender] = useState<boolean>(false);
   const [showPrivacyNotice, setShowPrivacyNotice] = useState<boolean>(false);
