@@ -311,7 +311,7 @@ export default function App() {
         </ScreenTransition>
       ) : currentView === 'chat' && selectedApostle ? (
         /* 3. Chat Detail View */
-        <ScreenTransition transitionKey={`chat_${selectedApostle.id}`}>
+        <ScreenTransition transitionKey={`chat_${selectedApostle.id}`} type="push">
           <View style={styles.flexOne}>
             <StatusBar barStyle="dark-content" backgroundColor="#F6F6F6" />
             <ChatDetailScreen
@@ -326,7 +326,7 @@ export default function App() {
         </ScreenTransition>
       ) : currentView === 'groupChat' && selectedGroupCouncil ? (
         /* 3b. Group Council Detail View */
-        <ScreenTransition transitionKey={`group_${selectedGroupCouncil.id}`}>
+        <ScreenTransition transitionKey={`group_${selectedGroupCouncil.id}`} type="push">
           <View style={styles.flexOne}>
             <StatusBar barStyle="dark-content" backgroundColor="#FAF9F6" />
             <GroupChatDetailScreen
@@ -341,7 +341,7 @@ export default function App() {
           <StatusBar barStyle="dark-content" backgroundColor="#F6F6F6" />
 
           {/* Smooth Screen Transition across Tabs */}
-          <ScreenTransition transitionKey={activeNavTab}>
+          <ScreenTransition transitionKey={activeNavTab} type="tab">
             {activeNavTab === 'home' && (
               <HomeScreen
                 onSelectApostle={(apostle, initialMessage, contextQuote, ministryObjective) => {

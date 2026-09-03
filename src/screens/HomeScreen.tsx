@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, FlatList, Image } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, FlatList, Image, LayoutAnimation, Platform, UIManager } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, FadeOutUp, Layout } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { APOSTLE_PERSONAS } from '../services/personas';
@@ -117,6 +118,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
       undefined,
       { text: todayApostleQuote.quote, reference: todayApostleQuote.scriptureReference }
     );
+  };
+
+  const handleDismissSundayCard = () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (e) {}
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setSundayCardDismissed(true);
   };
 
   return (
@@ -422,7 +434,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
             }[role];
 
             return (
-              <View style={styles.sermonPrepCard}>
+              <Animated.View
+                exiting={FadeOutUp.duration(260)}
+                layout={Layout.springify().damping(18).stiffness(120)}
+                style={styles.sermonPrepCard}
+              >
                 <View style={styles.sermonCardTopBar}>
                   <View style={styles.sermonPrepHeader}>
                     <View style={styles.sermonIconBadge}>
@@ -433,7 +449,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
 
                   <TouchableOpacity
                     style={styles.dismissCardXBtn}
-                    onPress={() => setSundayCardDismissed(true)}
+                    onPress={handleDismissSundayCard}
                     hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                     activeOpacity={0.7}
                   >
@@ -455,7 +471,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
                   <Text style={styles.sermonActionText}>{roleConfig.action}</Text>
                   <Ionicons name="arrow-forward" size={15} color="#111111" />
                 </TouchableOpacity>
-              </View>
+              </Animated.View>
             );
           })()}
 

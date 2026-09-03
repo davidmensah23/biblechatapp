@@ -4,17 +4,22 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
+  withSpring,
   Easing
 } from 'react-native-reanimated';
 
+export type TransitionType = 'tab' | 'push' | 'modal';
+
 interface ScreenTransitionProps {
   transitionKey: string;
+  type?: TransitionType;
   children: React.ReactNode;
   style?: ViewStyle;
 }
 
 export const ScreenTransition: React.FC<ScreenTransitionProps> = ({
   transitionKey,
+  type = 'tab',
   children,
   style
 }) => {
@@ -23,25 +28,50 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = ({
   const scale = useSharedValue(1);
 
   useEffect(() => {
-    opacity.value = 0.45;
-    translateY.value = 8;
-    scale.value = 0.985;
+    if (type === 'push') {
+      // Fluid page push transition (sliding up from bottom with spring physics)
+      opacity.value = 0;
+      translateY.value = 36;
+      scale.value = 0.97;
 
-    opacity.value = withTiming(1, {
-      duration: 220,
-      easing: Easing.out(Easing.cubic)
-    });
+      opacity.value = withTiming(1, {
+        duration: 260,
+        easing: Easing.out(Easing.cubic)
+      });
 
-    translateY.value = withTiming(0, {
-      duration: 220,
-      easing: Easing.out(Easing.cubic)
-    });
+      translateY.value = withSpring(0, {
+        damping: 20,
+        stiffness: 150,
+        mass: 0.8
+      });
 
-    scale.value = withTiming(1, {
-      duration: 220,
-      easing: Easing.out(Easing.cubic)
-    });
-  }, [transitionKey]);
+      scale.value = withSpring(1, {
+        damping: 20,
+        stiffness: 150,
+        mass: 0.8
+      });
+    } else {
+      // Smooth subtle tab cross-fade with micro-glide
+      opacity.value = 0.55;
+      translateY.value = 6;
+      scale.value = 0.99;
+
+      opacity.value = withTiming(1, {
+        duration: 200,
+        easing: Easing.out(Easing.cubic)
+      });
+
+      translateY.value = withTiming(0, {
+        duration: 200,
+        easing: Easing.out(Easing.cubic)
+      });
+
+      scale.value = withTiming(1, {
+        duration: 200,
+        easing: Easing.out(Easing.cubic)
+      });
+    }
+  }, [transitionKey, type]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -61,5 +91,5 @@ export const ScreenTransition: React.FC<ScreenTransitionProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  }
+  },
 });
