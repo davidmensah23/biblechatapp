@@ -61,7 +61,33 @@ function bytesToBase64(bytes: Uint8Array): string {
 }
 
 /**
- * Direct, low-latency neural TTS synthesis via Deepgram Aura
+ * Prepares text specifically for acoustic synthesis with reverent cadence,
+ * breath pauses, and punctuation timing WITHOUT altering visible on-screen text.
+ */
+export function prepareReverentCadenceText(raw: string): string {
+  let spoken = raw.replace(/[*_#"`]/g, '').trim();
+
+  // 1. Give deep breath pauses between major sections/paragraphs
+  spoken = spoken.replace(/\n\s*\n/g, '. ... \n\n');
+
+  // 2. Ensure pauses after sentence-ending punctuation so thoughts don't collide
+  spoken = spoken.replace(/([.!?])\s+/g, '$1 ... ');
+
+  // 3. Ensure natural pauses after semicolons, colons, and em-dashes
+  spoken = spoken.replace(/([:;—–])\s*/g, ', ... ');
+
+  // 4. Add natural breathing pause after common prayer/transition invocations
+  spoken = spoken.replace(/\b(Peace be with you|Grace and peace|Beloved|Lord Jesus|Father God|In Jesus' name|Amen)\b/gi, '$1, ...');
+
+  // 5. Clean up redundant duplicate ellipses or whitespace
+  spoken = spoken.replace(/(\.{3,}\s*){2,}/g, '... ');
+  spoken = spoken.replace(/\s{2,}/g, ' ');
+
+  return spoken.trim();
+}
+
+/**
+ * Direct, low-latency neural TTS synthesis via Deepgram Aura with reverent pacing
  */
 export const playDeepgramSpeech = async (
   audioId: string,
@@ -81,7 +107,8 @@ export const playDeepgramSpeech = async (
     await stopDeepgramSpeech();
 
     const voiceConfig = APOSTLE_VOICE_PROFILES[characterId] || APOSTLE_VOICE_PROFILES.peter;
-    const cleanText = text.replace(/[*_#"`]/g, '').trim();
+    // Acoustic synthesis text with breath pauses (on-screen text is never modified)
+    const cleanText = prepareReverentCadenceText(text);
     if (!cleanText) return;
 
     if (onStart) onStart();
@@ -128,7 +155,7 @@ export const playDeepgramSpeech = async (
 
     const { sound } = await Audio.Sound.createAsync(
       { uri: tempUri },
-      { shouldPlay: true },
+      { shouldPlay: false },
       (status) => {
         if (status.isLoaded && status.didJustFinish) {
           stopDeepgramSpeech();
@@ -138,6 +165,8 @@ export const playDeepgramSpeech = async (
     );
 
     currentSound = sound;
+    // Calm, unhurried, reverent spiritual delivery with natural pitch correction
+    await sound.setRateAsync(0.88, true);
     await sound.playAsync();
   } catch (e) {
     console.error('Deepgram play error:', e);

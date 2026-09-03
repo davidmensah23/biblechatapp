@@ -1,4 +1,4 @@
-import { playDeepgramSpeech, stopDeepgramSpeech } from './deepgramVoices';
+import { playDeepgramSpeech, stopDeepgramSpeech, prepareReverentCadenceText } from './deepgramVoices';
 
 let Speech: any = null;
 try {
@@ -27,7 +27,7 @@ export const speakApostleMessage = async (
   if (onStart) onStart();
 
   try {
-    // 1. Primary: High-Fidelity Deepgram Aura Character Voice
+    // 1. Primary: High-Fidelity Deepgram Aura Character Voice (automatically paced at 0.88x with breath pauses)
     await playDeepgramSpeech(
       messageId,
       text,
@@ -44,10 +44,13 @@ export const speakApostleMessage = async (
   } catch (e) {
     console.warn('Deepgram TTS failed, using fallback TTS:', e);
 
-    // 2. Fallback: On-Device Speech
+    // 2. Fallback: On-Device Speech with reverent cadence and deliberate pacing
     if (Speech && Speech.speak) {
-      Speech.speak(text, {
+      const pacedText = prepareReverentCadenceText(text);
+      Speech.speak(pacedText, {
         language: 'en-US',
+        rate: 0.83, // Calm, reverent, meditative speed
+        pitch: 1.0,
         onDone: () => {
           isSpeakingGlobal = false;
           currentSpeakingId = null;
