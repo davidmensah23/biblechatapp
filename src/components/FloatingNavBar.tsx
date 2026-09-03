@@ -11,7 +11,7 @@ import Animated, {
 import Svg, { Path, Circle } from 'react-native-svg';
 import { SpringConfigs } from '../theme/animations';
 
-export type NavTabType = 'home' | 'chats' | 'bible' | 'profile';
+export type NavTabType = 'home' | 'chats' | 'bible' | 'community' | 'profile';
 
 interface FloatingNavBarProps {
   activeTab: NavTabType;
@@ -237,6 +237,50 @@ const AnimatedProfileIcon: React.FC<{ active: boolean; initial?: string }> = ({ 
 };
 
 // =========================================================================
+// 3b. Community / Fellowship Flame Icon
+const AnimatedCommunityIcon: React.FC<{ active: boolean }> = ({ active }) => {
+  const scale = useSharedValue(1);
+
+  useEffect(() => {
+    if (active) {
+      scale.value = withSequence(
+        withSpring(1.18, { damping: 12, stiffness: 380 }),
+        withSpring(1.0, { damping: 16, stiffness: 280 })
+      );
+    } else {
+      scale.value = withTiming(1.0, { duration: 120 });
+    }
+  }, [active]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <Animated.View style={animatedStyle}>
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+        {active ? (
+          // Solid Black Active Flame
+          <Path
+            d="M12 2C10.5 4.5 8 7.5 8 11.5a4 4 0 008 0c0-4-2.5-7-4-9.5zM7 17a5 5 0 0010 0v-1H7v1zm-2 4h14a1 1 0 010 2H5a1 1 0 010-2z"
+            fill="#000000"
+          />
+        ) : (
+          // Crisp White Outline
+          <Path
+            d="M12 2C10.5 4.5 8 7.5 8 11.5a4 4 0 008 0c0-4-2.5-7-4-9.5zM7 17a5 5 0 0010 0v-1H7v1zm-2 4h14a1 1 0 010 2H5a1 1 0 010-2z"
+            stroke="#FFFFFF"
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        )}
+      </Svg>
+    </Animated.View>
+  );
+};
+
 // MAIN FLOATING NAVIGATION BAR
 // =========================================================================
 export const FloatingNavBar: React.FC<FloatingNavBarProps> = ({ activeTab, onTabChange }) => {
@@ -249,8 +293,10 @@ export const FloatingNavBar: React.FC<FloatingNavBarProps> = ({ activeTab, onTab
       indicatorOffset.value = withSpring(STEP_DISTANCE, FAST_TAB_SPRING);
     } else if (activeTab === 'bible') {
       indicatorOffset.value = withSpring(STEP_DISTANCE * 2, FAST_TAB_SPRING);
-    } else if (activeTab === 'profile') {
+    } else if (activeTab === 'community') {
       indicatorOffset.value = withSpring(STEP_DISTANCE * 3, FAST_TAB_SPRING);
+    } else if (activeTab === 'profile') {
+      indicatorOffset.value = withSpring(STEP_DISTANCE * 4, FAST_TAB_SPRING);
     }
   }, [activeTab]);
 
@@ -291,7 +337,16 @@ export const FloatingNavBar: React.FC<FloatingNavBarProps> = ({ activeTab, onTab
           <AnimatedBibleIcon active={activeTab === 'bible'} />
         </TouchableOpacity>
 
-        {/* 4. Profile Tab */}
+        {/* 4. Community Tab */}
+        <TouchableOpacity
+          style={styles.tabButton}
+          onPress={() => onTabChange('community')}
+          activeOpacity={0.85}
+        >
+          <AnimatedCommunityIcon active={activeTab === 'community'} />
+        </TouchableOpacity>
+
+        {/* 5. Profile Tab */}
         <TouchableOpacity
           style={styles.tabButton}
           onPress={() => onTabChange('profile')}

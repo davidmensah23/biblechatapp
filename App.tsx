@@ -27,6 +27,7 @@ import { ChatListScreen } from './src/screens/ChatListScreen';
 import { ChatDetailScreen } from './src/screens/ChatDetailScreen';
 import { GroupChatDetailScreen } from './src/screens/GroupChatDetailScreen';
 import { BibleReaderScreen } from './src/screens/BibleReaderScreen';
+import { CommunityScreen } from './src/screens/CommunityScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { YouVersionProvider } from './src/components/youversion';
 import { FloatingNavBar, NavTabType } from './src/components/FloatingNavBar';
@@ -364,6 +365,8 @@ export default function App() {
             )}
 
             {activeNavTab === 'bible' && <BibleReaderScreen />}
+
+            {activeNavTab === 'community' && <CommunityScreen />}
 
             {activeNavTab === 'profile' && (
               <ProfileScreen

@@ -34,6 +34,8 @@ import { MascotAssets } from '../services/mascotAssets';
 import { CustomConfirmationModal } from '../components/CustomConfirmationModal';
 import { BadgeDetailModal } from '../components/BadgeDetailModal';
 import { ActivityListSkeleton } from '../components/SoftSkeleton';
+import { AvatarPickerModal } from '../components/AvatarPickerModal';
+import { getUserAvatarEmblem, SacredAvatarEmblem, SACRED_AVATAR_EMBLEMS } from '../services/avatarService';
 
 interface ProfileScreenProps {
   onLogout?: () => void;
@@ -60,6 +62,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [userNotes, setUserNotes] = useState<VerseNote[]>([]);
   const [userHighlights, setUserHighlights] = useState<VerseHighlight[]>([]);
   const [memorizedVerses, setMemorizedVerses] = useState<MemorizedVerse[]>([]);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [userEmblem, setUserEmblem] = useState<SacredAvatarEmblem>(SACRED_AVATAR_EMBLEMS[0]);
   const [confirmModal, setConfirmModal] = useState<{
     visible: boolean;
     title: string;
@@ -91,14 +95,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       const growth = await getSpiritualGrowthProfile();
       setGrowthProfile(growth);
 
-      const [notes, hls, mems] = await Promise.all([
+      const [notes, hls, mems, emb] = await Promise.all([
         fetchAllVerseNotes(),
         fetchAllHighlights(),
-        fetchMemorizedVerses()
+        fetchMemorizedVerses(),
+        getUserAvatarEmblem()
       ]);
       setUserNotes(notes);
       setUserHighlights(hls);
       setMemorizedVerses(mems);
+      setUserEmblem(emb);
 
       try {
         const auth = await getUserAuthProvider();
@@ -183,25 +189,21 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
           </View>
 
-          {/* Large Avatar with Initial & Camera Badge */}
+          {/* Large Avatar with Sacred Emblem & Sparkles Badge */}
           <View style={styles.avatarWrapper}>
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarInitial}>{userInitial}</Text>
-            </View>
             <TouchableOpacity
-              style={styles.cameraBadge}
-              onPress={() => setConfirmModal({
-                visible: true,
-                title: 'Personalize Avatar',
-                message: 'Personalize your profile appearance and disciple companion avatar. Syncs across all your devices.',
-                confirmText: 'Got It',
-                singleButton: true,
-                icon: 'camera-outline',
-                onConfirm: () => {},
-              })}
+              style={[styles.avatarCircle, { backgroundColor: userEmblem.bgColor }]}
+              onPress={() => setShowAvatarModal(true)}
               activeOpacity={0.8}
             >
-              <Ionicons name="camera-outline" size={14} color="#111111" />
+              <Text style={{ fontSize: 32 }}>{userEmblem.emoji}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.cameraBadge}
+              onPress={() => setShowAvatarModal(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="sparkles" size={13} color="#111111" />
             </TouchableOpacity>
           </View>
         </View>
@@ -615,6 +617,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         onConfirm={confirmModal.onConfirm}
         onCancel={() => setConfirmModal(prev => ({ ...prev, visible: false }))}
         onClose={() => setConfirmModal(prev => ({ ...prev, visible: false }))}
+      />
+
+      {/* Sacred Avatar Emblem Picker Sheet */}
+      <AvatarPickerModal
+        visible={showAvatarModal}
+        selectedEmblemId={userEmblem.id}
+        onClose={() => setShowAvatarModal(false)}
+        onSelectEmblem={(emb) => setUserEmblem(emb)}
       />
 
       {/* Settings Modal */}

@@ -126,7 +126,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
             activeOpacity={0.7}
           >
             <Text style={[styles.tabText, activeTab === 'disciples' ? styles.tabTextActive : styles.tabTextInactive]}>
-              {t('tab_companionship', 'Companionship')}
+              'AI Companions'
             </Text>
           </TouchableOpacity>
         </View>
@@ -168,7 +168,58 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
           />
 
           {/* ========================================================================= */}
-          {/* MORE FOR YOU SECTION (YouVersion Alignment) */}
+          {/* 2. YOUR AI COMPANIONS (Horizontal Shelf: 3 Companions + Explore More) */}
+          {/* ========================================================================= */}
+          <View style={styles.companionsSectionWrap}>
+            <View style={styles.companionsHeadingRow}>
+              <Text style={styles.companionsHeading}>Your AI Companions</Text>
+              <TouchableOpacity onPress={() => setActiveTab('disciples')} activeOpacity={0.7}>
+                <Text style={styles.seeAllText}>See all ({APOSTLE_PERSONAS.length})</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.companionsScrollContent}
+            >
+              {APOSTLE_PERSONAS.slice(0, 3).map((apostle) => (
+                <TouchableOpacity
+                  key={apostle.id}
+                  style={styles.companionMiniCard}
+                  onPress={() => onSelectApostle(apostle)}
+                  activeOpacity={0.82}
+                >
+                  <View style={styles.companionAvatarContainer}>
+                    <Image source={apostle.avatar} style={styles.companionMiniAvatar} />
+                    <View style={styles.companionOnlineBadge} />
+                  </View>
+                  <Text style={styles.companionMiniName} numberOfLines={1}>{apostle.name}</Text>
+                  <Text style={styles.companionMiniRole} numberOfLines={1}>{apostle.subtitle}</Text>
+                  <View style={styles.companionChatPill}>
+                    <Ionicons name="chatbubble-ellipses-outline" size={12} color="#111111" style={{ marginRight: 3 }} />
+                    <Text style={styles.companionChatPillText}>Converse</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+
+              {/* 4th Card: Explore More → Switches to AI Companions Tab */}
+              <TouchableOpacity
+                style={styles.exploreMoreCard}
+                onPress={() => setActiveTab('disciples')}
+                activeOpacity={0.82}
+              >
+                <View style={styles.exploreMoreIconCircle}>
+                  <Ionicons name="arrow-forward" size={22} color="#111111" />
+                </View>
+                <Text style={styles.exploreMoreTitle}>Explore More</Text>
+                <Text style={styles.exploreMoreSubtitle}>Meet all 7 Apostles & Biblical mentors</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+
+          {/* ========================================================================= */}
+          {/* 3. DAILY GUIDED AUDIO LITURGY */}
           {/* ========================================================================= */}
           <Text style={styles.moreForYouHeading}>More for you</Text>
 
@@ -358,29 +409,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
             </ScrollView>
           </View>
 
-          {/* Meet Your Heroes Section Heading */}
-          <Text style={styles.sectionHeading}>Meet your heroes</Text>
-
-          {/* 2-Column Grid Rows */}
-          <View style={styles.gridRow}>
-            {APOSTLE_PERSONAS.slice(0, 2).map((apostle) => (
-              <ApostleCard
-                key={apostle.id}
-                apostle={apostle}
-                onPress={onSelectApostle}
-              />
-            ))}
-          </View>
-
-          <View style={styles.gridRow}>
-            {APOSTLE_PERSONAS.slice(2, 4).map((apostle) => (
-              <ApostleCard
-                key={apostle.id}
-                apostle={apostle}
-                onPress={onSelectApostle}
-              />
-            ))}
-          </View>
+          <View style={{ height: 24 }} />
         </ScrollView>
       ) : (
         /* Disciples Full 2-Column Grid Tab */
@@ -956,5 +985,128 @@ const styles = StyleSheet.create({
   disciplesListContent: {
     paddingTop: 16,
     paddingBottom: 110,
+  },
+  companionsSectionWrap: {
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  companionsHeadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  companionsHeading: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 18,
+    color: '#111827',
+  },
+  seeAllText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  companionsScrollContent: {
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  companionMiniCard: {
+    width: 140,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  companionAvatarContainer: {
+    position: 'relative',
+    marginBottom: 10,
+  },
+  companionMiniAvatar: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: '#F3F4F6',
+  },
+  companionOnlineBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#10B981',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  companionMiniName: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 13.5,
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  companionMiniRole: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 11,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  companionChatPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  companionChatPillText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 11,
+    color: '#111827',
+  },
+  exploreMoreCard: {
+    width: 140,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 20,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+  },
+  exploreMoreIconCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  exploreMoreTitle: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 13.5,
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  exploreMoreSubtitle: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 10.5,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    lineHeight: 14,
   },
 });
