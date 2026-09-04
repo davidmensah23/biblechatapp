@@ -1,20 +1,18 @@
 import React from 'react';
 import {
-  Modal,
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   ScrollView,
   Image,
   Share,
-  Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { FaithBadge } from '../services/gamificationService';
 import { MascotAssets } from '../services/mascotAssets';
+import { InteractiveGestureSheet } from './InteractiveGestureSheet';
 
 interface BadgeDetailModalProps {
   visible: boolean;
@@ -50,12 +48,14 @@ export const BadgeDetailModal: React.FC<BadgeDetailModalProps> = ({
   const completedTiers = tiers.filter(t => t <= currentLevel).reverse();
 
   return (
-    <Modal
+    <InteractiveGestureSheet
       visible={visible}
-      animationType="slide"
-      presentationStyle="fullScreen"
-      onRequestClose={onClose}>
-      <SafeAreaView style={styles.safeArea}>
+      onClose={onClose}
+      initialSnap="mid"
+      midHeightRatio={0.78}
+      fullHeightRatio={0.98}
+    >
+      <View style={styles.sheetContent}>
         {/* Top Header Bar */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -63,7 +63,7 @@ export const BadgeDetailModal: React.FC<BadgeDetailModalProps> = ({
             style={styles.headerBtn}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={24} color="#111111" />
+            <Ionicons name="close" size={22} color="#111111" />
           </TouchableOpacity>
 
           <Text style={styles.headerTitle}>{badge.title}</Text>
@@ -73,7 +73,7 @@ export const BadgeDetailModal: React.FC<BadgeDetailModalProps> = ({
             style={styles.headerBtn}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             activeOpacity={0.7}>
-            <Ionicons name="share-social-outline" size={22} color="#111111" />
+            <Ionicons name="share-social-outline" size={20} color="#111111" />
           </TouchableOpacity>
         </View>
 
@@ -100,7 +100,7 @@ export const BadgeDetailModal: React.FC<BadgeDetailModalProps> = ({
           {/* Hairline Divider */}
           <View style={styles.divider} />
 
-          {/* Milestones Section matching Reference Image 2 */}
+          {/* Milestones Section */}
           <View style={styles.milestonesSection}>
             <Text style={styles.milestonesHeading}>Milestones</Text>
 
@@ -126,7 +126,7 @@ export const BadgeDetailModal: React.FC<BadgeDetailModalProps> = ({
 
             {/* Completed Milestone Rows (History) */}
             {completedTiers.map((tier, idx) => {
-              const dateStr = idx === 0 ? 'Apr 28, 2024' : idx === 1 ? 'Apr 7, 2024' : 'Mar 29, 2024';
+              const dateStr = idx === 0 ? 'Recently' : 'Earlier';
               return (
                 <View key={tier} style={styles.milestoneRow}>
                   <View style={styles.milestoneBadgePill}>
@@ -134,20 +134,20 @@ export const BadgeDetailModal: React.FC<BadgeDetailModalProps> = ({
                   </View>
 
                   <View style={styles.milestoneContent}>
-                    <Text style={styles.completedText}>Completed on {dateStr}</Text>
+                    <Text style={styles.completedText}>Completed · Level {tier}</Text>
                   </View>
                 </View>
               );
             })}
           </View>
         </ScrollView>
-      </SafeAreaView>
-    </Modal>
+      </View>
+    </InteractiveGestureSheet>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
+  sheetContent: {
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
@@ -155,133 +155,131 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
   headerBtn: {
     padding: 6,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
   },
   headerTitle: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 18,
+    fontFamily: Typography.fontSansBold,
+    fontSize: 17,
     color: '#111111',
-    letterSpacing: -0.2,
   },
   scrollContent: {
-    paddingBottom: 60,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 40,
   },
   showcaseSection: {
     alignItems: 'center',
-    paddingHorizontal: 32,
-    paddingTop: 18,
-    paddingBottom: 28,
+    marginBottom: 20,
   },
   shieldContainer: {
-    width: 140,
-    height: 154,
-    backgroundColor: '#F3F3F5',
-    borderRadius: 28,
+    position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    marginBottom: 20,
-    position: 'relative',
+    marginBottom: 14,
   },
   emblemCircle: {
-    width: 82,
-    height: 82,
-    borderRadius: 41,
-    overflow: 'hidden',
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     borderWidth: 3,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F9FAFB',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    overflow: 'hidden',
   },
   mascotImage: {
-    width: '100%',
-    height: '100%',
+    width: '85%',
+    height: '85%',
   },
   levelPill: {
-    backgroundColor: '#6B7280',
+    position: 'absolute',
+    bottom: -6,
+    backgroundColor: '#111827',
     paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 12,
-    minWidth: 28,
-    alignItems: 'center',
+    paddingVertical: 2,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   levelPillText: {
-    fontFamily: Typography.fontSansSemiBold,
+    fontFamily: Typography.fontSansBold,
     fontSize: 12,
     color: '#FFFFFF',
   },
   badgeInstructionText: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 15,
-    color: '#111111',
+    fontSize: 14,
+    color: '#4B5563',
     textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: 12,
+    lineHeight: 20,
+    paddingHorizontal: 16,
   },
   divider: {
     height: 1,
     backgroundColor: '#F3F4F6',
-    width: '100%',
-    marginVertical: 4,
+    marginBottom: 20,
   },
   milestonesSection: {
-    paddingHorizontal: 20,
-    paddingTop: 18,
+    marginTop: 4,
   },
   milestonesHeading: {
     fontFamily: Typography.fontSansBold,
-    fontSize: 17,
+    fontSize: 16,
     color: '#111111',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   milestoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 18,
   },
   milestoneBadgePill: {
     width: 44,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F3F3F5',
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginRight: 14,
   },
   milestoneBadgeText: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 13,
-    color: '#374151',
+    fontFamily: Typography.fontSansBold,
+    fontSize: 14,
+    color: '#111827',
   },
   milestoneContent: {
     flex: 1,
   },
   remainingText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 14.5,
-    color: '#111111',
-    marginBottom: 8,
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 13,
+    color: '#111827',
+    marginBottom: 6,
   },
   progressBarTrack: {
-    width: 140,
-    height: 4,
-    borderRadius: 2,
+    height: 6,
     backgroundColor: '#F3F4F6',
+    borderRadius: 3,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#111111',
-    borderRadius: 2,
+    backgroundColor: '#10B981',
+    borderRadius: 3,
   },
   completedText: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 14.5,
-    color: '#111111',
-  }
+    fontSize: 13,
+    color: '#6B7280',
+  },
 });

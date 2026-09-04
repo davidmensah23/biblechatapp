@@ -35,7 +35,8 @@ import { CircularRevealTransition } from './src/components/CircularRevealTransit
 import { ApostlePersona } from './src/types';
 import { APOSTLE_PERSONAS } from './src/services/personas';
 import { GroupCouncilThread } from './src/types/groupChat';
-import { getDB, saveUserProfile, migrateGuestDataToUser } from './src/services/database';
+import { getDB, saveUserProfile, fetchUserProfile, migrateGuestDataToUser } from './src/services/database';
+import { UserProfile } from './src/types';
 import {
   supabase,
   fetchRemoteProfile,
@@ -97,6 +98,13 @@ export default function App() {
   const [forceRender, setForceRender] = useState<boolean>(false);
   const [isNavBarVisible, setIsNavBarVisible] = useState<boolean>(true);
   const [showPrivacyNotice, setShowPrivacyNotice] = useState<boolean>(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    fetchUserProfile().then(p => {
+      if (p) setUserProfile(p);
+    });
+  }, [activeNavTab]);
 
   useEffect(() => {
     let isMounted = true;
@@ -408,6 +416,10 @@ export default function App() {
                   setCommunityInitialSegment(seg || 'my_prayers');
                   setActiveNavTab('community');
                 }}
+                onOpenCommunityPosts={() => {
+                  setCommunityInitialSegment('community');
+                  setActiveNavTab('community');
+                }}
               />
             )}
           </ScreenTransition>
@@ -420,6 +432,8 @@ export default function App() {
               setActiveNavTab(tab);
             }}
             visible={isNavBarVisible}
+            userInitial={userProfile?.fullName?.charAt(0) || 'D'}
+            avatarUrl={userProfile?.avatarUrl}
           />
 
           {/* Auth Modal for Guests upgrading from Profile */}

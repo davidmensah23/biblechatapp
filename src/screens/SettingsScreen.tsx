@@ -20,6 +20,7 @@ import { UserProfile } from '../types';
 import { SUPPORTED_LANGUAGES, useTranslation, AppLanguage } from '../services/localizationService';
 import { getLastReadPosition, setPreferredTranslation, subscribeVersionChange } from '../services/readingProgressService';
 import { CustomConfirmationModal } from '../components/CustomConfirmationModal';
+import { InteractiveGestureSheet } from '../components/InteractiveGestureSheet';
 
 interface SettingsScreenProps {
   visible: boolean;
@@ -268,15 +269,15 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <SafeAreaView style={styles.sheetModal}>
-          {/* Top Grab Handle */}
-          <View style={styles.grabHandleWrap}>
-            <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={styles.grabHandleTouch}>
-              <View style={styles.grabHandle} />
-            </TouchableOpacity>
-          </View>
+    <>
+      <InteractiveGestureSheet
+        visible={visible}
+        onClose={onClose}
+        initialSnap="mid"
+        midHeightRatio={0.70}
+        fullHeightRatio={0.98}
+      >
+        <View style={styles.sheetModal}>
 
           <ScrollView
             style={styles.scrollArea}
@@ -399,8 +400,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
             <View style={{ height: 40 }} />
           </ScrollView>
-        </SafeAreaView>
-      </View>
+        </View>
+      </InteractiveGestureSheet>
 
       {/* ========================================================================= */}
       {/* 1. ACCOUNT SUBMODAL (With Calm Loading State) */}
@@ -1145,7 +1146,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         onCancel={() => setConfirmModal(prev => ({ ...prev, visible: false }))}
         onClose={() => setConfirmModal(prev => ({ ...prev, visible: false }))}
       />
-    </Modal>
+    </>
   );
 };
 
@@ -1159,7 +1160,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    maxHeight: '88%',
+    flex: 1,
   },
   grabHandleWrap: {
     alignItems: 'center',

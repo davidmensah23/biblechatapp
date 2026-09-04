@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Text, Image } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -13,10 +13,12 @@ import { SpringConfigs } from '../theme/animations';
 
 export type NavTabType = 'home' | 'chats' | 'bible' | 'community' | 'profile';
 
-interface FloatingNavBarProps {
+export interface FloatingNavBarProps {
   activeTab: NavTabType;
   onTabChange: (tab: NavTabType) => void;
   visible?: boolean;
+  userInitial?: string;
+  avatarUrl?: string;
 }
 
 const TAB_BTN_SIZE = 46;
@@ -191,8 +193,12 @@ const AnimatedBibleIcon: React.FC<{ active: boolean }> = ({ active }) => {
   );
 };
 
-// 4. Profile Icon (Minimal User Disc with Instant Snap)
-const AnimatedProfileIcon: React.FC<{ active: boolean; initial?: string }> = ({ active, initial = 'D' }) => {
+// 4. Profile Icon (Dynamic Initial / Avatar Image)
+const AnimatedProfileIcon: React.FC<{ active: boolean; userInitial?: string; avatarUrl?: string }> = ({
+  active,
+  userInitial = 'D',
+  avatarUrl
+}) => {
   const scale = useSharedValue(1);
 
   useEffect(() => {
@@ -210,29 +216,22 @@ const AnimatedProfileIcon: React.FC<{ active: boolean; initial?: string }> = ({ 
     transform: [{ scale: scale.value }],
   }));
 
+  const initialLetter = (userInitial || 'D').charAt(0).toUpperCase();
+  const hasValidImage = Boolean(avatarUrl && (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')));
+
   return (
     <Animated.View style={animatedStyle}>
-      <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-        {active ? (
-          // Solid Black Ring with Bold Initial
-          <>
-            <Circle cx="12" cy="12" r="10" stroke="#000000" strokeWidth={2} fill="#FFFFFF" />
-            <Path
-              d="M9 7.5H12C14.2 7.5 15.5 8.8 15.5 12C15.5 15.2 14.2 16.5 12 16.5H9V7.5ZM10.8 14.8H12C13.2 14.8 13.8 13.9 13.8 12C13.8 10.1 13.2 9.2 12 9.2H10.8V14.8Z"
-              fill="#000000"
-            />
-          </>
-        ) : (
-          // Crisp White Outline Ring with White Initial
-          <>
-            <Circle cx="12" cy="12" r="10" stroke="#FFFFFF" strokeWidth={1.8} fill="none" />
-            <Path
-              d="M9 7.5H12C14.2 7.5 15.5 8.8 15.5 12C15.5 15.2 14.2 16.5 12 16.5H9V7.5ZM10.8 14.8H12C13.2 14.8 13.8 13.9 13.8 12C13.8 10.1 13.2 9.2 12 9.2H10.8V14.8Z"
-              fill="#FFFFFF"
-            />
-          </>
-        )}
-      </Svg>
+      {hasValidImage ? (
+        <View style={[styles.navAvatarCircle, active ? styles.navAvatarActive : styles.navAvatarInactive]}>
+          <Image source={{ uri: avatarUrl }} style={styles.navAvatarImage} resizeMode="cover" />
+        </View>
+      ) : (
+        <View style={[styles.navInitialCircle, active ? styles.navInitialActive : styles.navInitialInactive]}>
+          <Text style={[styles.navInitialText, active ? styles.navInitialTextActive : styles.navInitialTextInactive]}>
+            {initialLetter}
+          </Text>
+        </View>
+      )}
     </Animated.View>
   );
 };
@@ -287,7 +286,9 @@ const AnimatedCommunityIcon: React.FC<{ active: boolean }> = ({ active }) => {
 export const FloatingNavBar: React.FC<FloatingNavBarProps> = ({
   activeTab,
   onTabChange,
-  visible = true
+  visible = true,
+  userInitial,
+  avatarUrl
 }) => {
   const indicatorOffset = useSharedValue(0);
   const barTranslateY = useSharedValue(0);
@@ -377,7 +378,11 @@ export const FloatingNavBar: React.FC<FloatingNavBarProps> = ({
           onPress={() => onTabChange('profile')}
           activeOpacity={0.85}
         >
-          <AnimatedProfileIcon active={activeTab === 'profile'} />
+          <AnimatedProfileIcon
+            active={activeTab === 'profile'}
+            userInitial={userInitial}
+            avatarUrl={avatarUrl}
+          />
         </TouchableOpacity>
       </View>
     </Animated.View>
@@ -416,6 +421,49 @@ const styles = StyleSheet.create({
     height: TAB_BTN_SIZE,
     borderRadius: TAB_BTN_SIZE / 2,
     backgroundColor: '#FFFFFF',
+  },
+  navAvatarCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+  },
+  navAvatarActive: {
+    borderColor: '#000000',
+  },
+  navAvatarInactive: {
+    borderColor: '#FFFFFF',
+  },
+  navAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  navInitialCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.8,
+  },
+  navInitialActive: {
+    borderColor: '#000000',
+    backgroundColor: '#FFFFFF',
+  },
+  navInitialInactive: {
+    borderColor: '#FFFFFF',
+    backgroundColor: 'transparent',
+  },
+  navInitialText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  navInitialTextActive: {
+    color: '#000000',
+  },
+  navInitialTextInactive: {
+    color: '#FFFFFF',
   },
   tabButton: {
     width: TAB_BTN_SIZE,
