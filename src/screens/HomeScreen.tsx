@@ -60,6 +60,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
   const [isLiturgyDone, setIsLiturgyDone] = useState(false);
   const [lastRead, setLastRead] = useState<LastReadProgress | null>(null);
   const [showLiturgyModal, setShowLiturgyModal] = useState(false);
+  const [currentUserName, setCurrentUserName] = useState<string>('');
 
   // Daily Kingdom Deed Challenge State
   const [todayDeed, setTodayDeed] = useState<KingdomDeed>(getTodayDeedForUser());
@@ -78,10 +79,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
       initDeedsDatabase().catch(console.error),
       getSpiritualGrowthProfile().then(setGrowthProfile).catch(console.warn),
       isLiturgyCompletedForToday().then(setIsLiturgyDone).catch(console.warn),
-      getLastReadPosition().then(setLastRead).catch(console.warn)
+      getLastReadPosition().then(setLastRead).catch(console.warn),
+      fetchUserProfile().then(p => {
+        const first = p?.fullName?.trim().split(' ')[0] || '';
+        if (first) {
+          setCurrentUserName(first);
+          setTodayLiturgy(getTodayLiturgy(first));
+        }
+      }).catch(console.warn)
     ]).finally(() => {
       setTodayDeed(getTodayDeedForUser());
-      setTodayLiturgy(getTodayLiturgy());
       setTimeout(() => setIsInitializing(false), 200);
     });
   }, []);
@@ -556,6 +563,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
         visible={showLiturgyModal}
         onClose={() => setShowLiturgyModal(false)}
         liturgy={todayLiturgy}
+        userName={currentUserName}
         isAlreadyCompleted={isLiturgyDone}
         onCompleted={() => {
           setIsLiturgyDone(true);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,10 +13,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Typography } from '../theme/typography';
 import { InteractiveGestureSheet } from './InteractiveGestureSheet';
-import { DailyLiturgy, markTodayLiturgyCompleted } from '../services/liturgyService';
+import { DailyLiturgy, markTodayLiturgyCompleted, getTodayLiturgy } from '../services/liturgyService';
 import { playDeepgramSpeech, stopDeepgramSpeech } from '../services/deepgramVoices';
 import { recordDailyActivity } from '../services/gamificationService';
 import { MascotAssets } from '../services/mascotAssets';
+import { fetchUserProfile } from '../services/database';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -26,8 +27,8 @@ interface DailyLiturgyModalProps {
   liturgy: DailyLiturgy;
   isAlreadyCompleted?: boolean;
   onCompleted?: () => void;
+  userName?: string;
 }
-
 
 const THEME_IMAGES = {
   morning: require('../../assets/images/morning_prayer_bg.jpg'),
@@ -40,20 +41,43 @@ export const DailyLiturgyModal: React.FC<DailyLiturgyModalProps> = ({
   onClose,
   liturgy,
   isAlreadyCompleted = false,
-  onCompleted
+  onCompleted,
+  userName
 }) => {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [isCompleted, setIsCompleted] = useState(isAlreadyCompleted);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [activeLiturgy, setActiveLiturgy] = useState<DailyLiturgy>(liturgy);
+  const [resolvedUserName, setResolvedUserName] = useState<string>(userName || '');
+  const scrollViewRef = useRef<ScrollView>(null);
 
+  // Sync liturgy and personalize when opening
   useEffect(() => {
     setIsCompleted(isAlreadyCompleted);
     if (!visible) {
       stopDeepgramSpeech();
       setIsPlayingAudio(false);
       setShowCelebration(false);
+    } else {
+      // Personalize liturgy with user's first name
+      if (userName) {
+        setResolvedUserName(userName);
+        setActiveLiturgy(getTodayLiturgy(userName));
+      } else {
+        fetchUserProfile().then(profile => {
+          const first = profile?.fullName?.trim().split(' ')[0] || '';
+          if (first) {
+            setResolvedUserName(first);
+            setActiveLiturgy(getTodayLiturgy(first));
+          } else {
+            setActiveLiturgy(liturgy);
+          }
+        }).catch(() => {
+          setActiveLiturgy(liturgy);
+        });
+      }
     }
-  }, [visible, isAlreadyCompleted]);
+  }, [visible, isAlreadyCompleted, liturgy, userName]);
 
   const handleToggleAudio = async () => {
     if (isPlayingAudio) {
@@ -66,9 +90,9 @@ export const DailyLiturgyModal: React.FC<DailyLiturgyModalProps> = ({
       } catch (e) {}
 
       await playDeepgramSpeech(
-        liturgy.id,
-        liturgy.fullSpokenScript,
-        liturgy.apostle.id,
+        activeLiturgy.id,
+        activeLiturgy.fullSpokenScript,
+        activeLiturgy.apostle.id,
         () => setIsPlayingAudio(true),
         () => setIsPlayingAudio(false)
       );
@@ -85,6 +109,11 @@ export const DailyLiturgyModal: React.FC<DailyLiturgyModalProps> = ({
     setIsCompleted(true);
     setShowCelebration(true);
     if (onCompleted) onCompleted();
+
+    // Auto-scroll so celebration card is centered and fully visible (no bottom clipping)
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 120);
   };
 
   const handleClose = async () => {
@@ -93,176 +122,195 @@ export const DailyLiturgyModal: React.FC<DailyLiturgyModalProps> = ({
     onClose();
   };
 
-  const isMorning = liturgy.period === 'morning';
+  const isMorning = activeLiturgy.period === 'morning';
+  const isMidday = activeLiturgy.period === 'midday';
 
   return (
     <InteractiveGestureSheet
       visible={visible}
       onClose={handleClose}
       initialSnap="full"
-      fullHeightRatio={0.92}
-      midHeightRatio={0.70}
+      fullHeightRatio={0.96}
+      midHeightRatio={0.68}
       showGrabBar={true}
+      headerTransparent={true}
+      grabBarColor="rgba(255, 255, 255, 0.75)"
     >
       <View style={styles.sheetContentWrapper}>
-        {/* Full 9:16 Illustrated Background with Progressive Scrim */}
+        {/* Full 9:16 Illustrated Landscape Background Edge-to-Edge */}
         <Image
-          source={THEME_IMAGES[liturgy.period] || THEME_IMAGES.morning}
+          source={THEME_IMAGES[activeLiturgy.period] || THEME_IMAGES.morning}
           style={StyleSheet.absoluteFillObject}
           resizeMode="cover"
         />
+
+        {/* Minimal High-Clarity Progressive Gradient Scrim */}
         <LinearGradient
-          colors={['rgba(0, 0, 0, 0.45)', 'rgba(0, 0, 0, 0.10)', 'rgba(0, 0, 0, 0.65)']}
-          locations={[0, 0.4, 1]}
+          colors={['rgba(0, 0, 0, 0.38)', 'rgba(0, 0, 0, 0.08)', 'rgba(0, 0, 0, 0.58)']}
+          locations={[0, 0.42, 1]}
           style={StyleSheet.absoluteFillObject}
         />
 
         <ScrollView
+          ref={scrollViewRef}
           style={styles.container}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-        {/* Top Liturgy Header */}
-        <View style={styles.topBar}>
-          <View style={[styles.periodBadge, isMorning ? styles.periodMorning : styles.periodEvening]}>
-            <Ionicons
-              name={isMorning ? 'sunny' : 'moon'}
-              size={13}
-              color={isMorning ? '#D97706' : '#6366F1'}
-              style={{ marginRight: 5 }}
-            />
-            <Text style={[styles.periodText, isMorning ? styles.periodTextMorning : styles.periodTextEvening]}>
-              {
-              liturgy.period === 'morning'
-                ? 'Morning Prayer • 2 Min'
-                : liturgy.period === 'midday'
-                ? 'Midday Pause • 1 Min'
-                : 'Evening Prayer • 2 Min'
-            }
-            </Text>
+          {/* Top Liturgy Header with Floating Frosted Badges */}
+          <View style={styles.topBar}>
+            <View style={styles.periodBadge}>
+              <Ionicons
+                name={isMorning ? 'sunny' : isMidday ? 'time-outline' : 'moon'}
+                size={14}
+                color={isMorning ? '#FDE047' : isMidday ? '#93C5FD' : '#C7D2FE'}
+                style={{ marginRight: 6 }}
+              />
+              <Text style={styles.periodText}>
+                {isMorning
+                  ? 'Morning Prayer • 2 Min'
+                  : isMidday
+                  ? 'Midday Pause • 1 Min'
+                  : 'Evening Prayer • 2 Min'}
+              </Text>
+            </View>
+
+            <TouchableOpacity onPress={handleClose} style={styles.closeBtn} activeOpacity={0.75}>
+              <Ionicons name="close" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
           </View>
 
-          <TouchableOpacity onPress={handleClose} style={styles.closeBtn} activeOpacity={0.75}>
-            <Ionicons name="close" size={20} color="#111111" />
+          {/* Apostle Companion Header with Frosted Glass Badge */}
+          <View style={styles.companionRow}>
+            <View style={styles.avatarWrap}>
+              <Image source={activeLiturgy.apostle.avatar} style={styles.avatarImg} />
+            </View>
+            <View style={styles.companionMeta}>
+              <Text style={styles.apostleName}>{activeLiturgy.apostle.name}</Text>
+              <Text style={styles.liturgyTheme}>
+                {resolvedUserName ? `Guided for ${resolvedUserName} • ${activeLiturgy.theme}` : activeLiturgy.theme}
+              </Text>
+            </View>
+          </View>
+
+          {/* Audio Player Bar - Apple-Style Frosted Glass */}
+          <TouchableOpacity
+            style={[styles.audioCard, isPlayingAudio && styles.audioCardActive]}
+            onPress={handleToggleAudio}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.audioPlayBtn, isPlayingAudio && styles.audioPlayBtnActive]}>
+              <Ionicons
+                name={isPlayingAudio ? 'pause' : 'play'}
+                size={18}
+                color={isPlayingAudio ? '#FFFFFF' : '#111111'}
+                style={!isPlayingAudio && { marginLeft: 2 }}
+              />
+            </View>
+
+            <View style={styles.audioInfo}>
+              <Text style={styles.audioTitle}>
+                {isPlayingAudio
+                  ? `Listening to Apostle ${activeLiturgy.apostle.name}...`
+                  : `Listen Spoken Prayer (Reverent & Clear)`}
+              </Text>
+              <Text style={styles.audioSub}>
+                {resolvedUserName
+                  ? `Personalized for ${resolvedUserName} • Scripture, reflection & blessing`
+                  : `Neural voice guided reflection & blessing`}
+              </Text>
+            </View>
+
+            {isPlayingAudio && (
+              <View style={styles.playingWaveBadge}>
+                <Ionicons name="volume-high" size={16} color="#FFFFFF" />
+              </View>
+            )}
           </TouchableOpacity>
-        </View>
 
-        {/* Apostle Companion Header */}
-        <View style={styles.companionRow}>
-          <View style={styles.avatarWrap}>
-            <Image source={liturgy.apostle.avatar} style={styles.avatarImg} />
-          </View>
-          <View style={styles.companionMeta}>
-            <Text style={styles.apostleName}>{liturgy.apostle.name}</Text>
-            <Text style={styles.liturgyTheme}>{liturgy.theme}</Text>
-          </View>
-        </View>
-
-        {/* Audio Player Bar */}
-        <TouchableOpacity
-          style={[styles.audioCard, isPlayingAudio && styles.audioCardActive]}
-          onPress={handleToggleAudio}
-          activeOpacity={0.85}
-        >
-          <View style={[styles.audioPlayBtn, isPlayingAudio && styles.audioPlayBtnActive]}>
-            <Ionicons
-              name={isPlayingAudio ? 'pause' : 'play'}
-              size={18}
-              color="#FFFFFF"
-              style={!isPlayingAudio && { marginLeft: 2 }}
-            />
+          {/* Section 1: Scripture Anchor - Liquid Glass Card */}
+          <View style={styles.glassCard}>
+            <View style={styles.scriptureCitationBadge}>
+              <Ionicons name="book-outline" size={12} color="#FFFFFF" style={{ marginRight: 5 }} />
+              <Text style={styles.scriptureCitationText}>{activeLiturgy.scriptureRef}</Text>
+            </View>
+            <Text style={styles.scriptureText}>“{activeLiturgy.scriptureText}”</Text>
           </View>
 
-          <View style={styles.audioInfo}>
-            <Text style={styles.audioTitle}>
-              {isPlayingAudio ? `Listening to Apostle ${liturgy.apostle.name}...` : `Listen Spoken Prayer (2 min)`}
-            </Text>
-            <Text style={styles.audioSub}>Neural voice guided reflection & blessing</Text>
+          {/* Section 2: Pastoral Reflection - Liquid Glass Card */}
+          <View style={styles.glassCard}>
+            <View style={styles.sectionHeaderRow}>
+              <Ionicons name="chatbubble-ellipses-outline" size={13} color="rgba(255, 255, 255, 0.75)" style={{ marginRight: 6 }} />
+              <Text style={styles.sectionHeaderTitle}>Apostle's Reflection</Text>
+            </View>
+            <Text style={styles.uniformBodyText}>{activeLiturgy.reflection}</Text>
           </View>
 
-          {isPlayingAudio && (
-            <View style={styles.playingWaveBadge}>
-              <Ionicons name="volume-high" size={15} color="#8B1E1E" />
+          {/* Section 3: Guided Prayer - Liquid Glass Card */}
+          <View style={styles.glassCard}>
+            <View style={styles.sectionHeaderRow}>
+              <Ionicons name="hand-right-outline" size={13} color="rgba(255, 255, 255, 0.75)" style={{ marginRight: 6 }} />
+              <Text style={styles.sectionHeaderTitle}>Let Us Pray Together</Text>
+            </View>
+            <Text style={[styles.uniformBodyText, styles.prayerBodyText]}>“{activeLiturgy.prayer}”</Text>
+          </View>
+
+          {/* Section 4: Closing Blessing - Warm Amber Glass Card */}
+          <View style={[styles.glassCard, styles.blessingGlassCard]}>
+            <View style={styles.sectionHeaderRow}>
+              <Ionicons name="sparkles-outline" size={13} color="#FDE047" style={{ marginRight: 6 }} />
+              <Text style={styles.blessingLabel}>Apostolic Blessing</Text>
+            </View>
+            <Text style={styles.uniformBodyText}>“{activeLiturgy.blessing}”</Text>
+          </View>
+
+          {/* Completion Section */}
+          {showCelebration ? (
+            /* Joyful Centered Celebration Card with Mascot Assets (Never Clipped) */
+            <View style={styles.celebrationCard}>
+              <View style={styles.mascotSealContainer}>
+                <Image source={MascotAssets.group} style={styles.mascotSealImg} />
+              </View>
+              <Text style={styles.celebrationTitle}>Grace & Peace Be Multiplied!</Text>
+              <Text style={styles.celebrationSub}>
+                {resolvedUserName ? `${resolvedUserName}, you` : 'You'} completed today's liturgy. Your faith streak is moving forward!
+              </Text>
+
+              <View style={styles.rewardsRow}>
+                <View style={styles.rewardPill}>
+                  <Ionicons name="flame" size={16} color="#F97316" style={{ marginRight: 5 }} />
+                  <Text style={styles.rewardPillText}>+1 Streak Day</Text>
+                </View>
+                <View style={[styles.rewardPill, styles.rewardPillGold]}>
+                  <Ionicons name="sparkles" size={15} color="#FDE047" style={{ marginRight: 5 }} />
+                  <Text style={[styles.rewardPillText, { color: '#FEF08A' }]}>+25 Spiritual XP</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity style={styles.amenCloseBtn} onPress={handleClose} activeOpacity={0.85}>
+                <Text style={styles.amenCloseBtnText}>Amen & Close</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.completeBtnWrap}>
+              <TouchableOpacity
+                style={[styles.completeBtn, isCompleted && styles.completeBtnDone]}
+                onPress={isCompleted ? handleClose : handleCompleteLiturgy}
+                activeOpacity={0.85}
+              >
+                <Ionicons
+                  name={isCompleted ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                  size={20}
+                  color={isCompleted ? '#FFFFFF' : '#111111'}
+                  style={{ marginRight: 8 }}
+                />
+                <Text style={isCompleted ? styles.completeBtnDoneText : styles.completeBtnText}>
+                  {isCompleted ? 'Completed Today ✓' : "Complete Today's Liturgy (+25 XP)"}
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
-        </TouchableOpacity>
-
-        {/* Section 1: Scripture Anchor */}
-        <View style={styles.scriptureBlock}>
-          <View style={styles.scriptureCitationBadge}>
-            <Text style={styles.scriptureCitationText}>{liturgy.scriptureRef}</Text>
-          </View>
-          <Text style={styles.scriptureText}>“{liturgy.scriptureText}”</Text>
-        </View>
-
-        {/* Section 2: Pastoral Reflection */}
-        <View style={styles.reflectionCard}>
-          <Text style={styles.sectionHeaderTitle}>Apostle's Reflection</Text>
-          <Text style={styles.bodyText}>{liturgy.reflection}</Text>
-        </View>
-
-        {/* Section 3: Guided Prayer */}
-        <View style={styles.prayerCard}>
-          <View style={styles.prayerHeaderRow}>
-            <Ionicons name="hand-right-outline" size={16} color="#4B5563" style={{ marginRight: 6 }} />
-            <Text style={styles.sectionHeaderTitle}>Let Us Pray Together</Text>
-          </View>
-          <Text style={styles.prayerBodyText}>“{liturgy.prayer}”</Text>
-        </View>
-
-        {/* Section 4: Closing Blessing */}
-        <View style={styles.blessingCard}>
-          <Text style={styles.blessingLabel}>Apostolic Blessing</Text>
-          <Text style={styles.blessingBodyText}>“{liturgy.blessing}”</Text>
-        </View>
-
-        {/* Completion Section */}
-        {showCelebration ? (
-          /* Joyful Celebration Card with Mascot Assets */
-          <View style={styles.celebrationCard}>
-            <View style={styles.mascotSealContainer}>
-              <Image source={MascotAssets.group} style={styles.mascotSealImg} />
-            </View>
-            <Text style={styles.celebrationTitle}>Grace & Peace Be Multiplied!</Text>
-            <Text style={styles.celebrationSub}>
-              You completed today's liturgy. Your faith streak is moving forward!
-            </Text>
-
-            <View style={styles.rewardsRow}>
-              <View style={styles.rewardPill}>
-                <Ionicons name="flame" size={16} color="#F97316" style={{ marginRight: 5 }} />
-                <Text style={styles.rewardPillText}>+1 Streak Day</Text>
-              </View>
-              <View style={[styles.rewardPill, { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' }]}>
-                <Ionicons name="sparkles" size={15} color="#D97706" style={{ marginRight: 5 }} />
-                <Text style={[styles.rewardPillText, { color: '#92400E' }]}>+25 Spiritual XP</Text>
-              </View>
-            </View>
-
-            <TouchableOpacity style={styles.amenCloseBtn} onPress={handleClose} activeOpacity={0.85}>
-              <Text style={styles.amenCloseBtnText}>Amen & Close</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.completeBtnWrap}>
-            <TouchableOpacity
-              style={[styles.completeBtn, isCompleted && styles.completeBtnDone]}
-              onPress={isCompleted ? handleClose : handleCompleteLiturgy}
-              activeOpacity={0.85}
-            >
-              <Ionicons
-                name={isCompleted ? 'checkmark-circle' : 'checkmark-circle-outline'}
-                size={20}
-                color="#FFFFFF"
-                style={{ marginRight: 8 }}
-              />
-              <Text style={styles.completeBtnText}>
-                {isCompleted ? 'Completed Today ✓' : "Complete Today's Liturgy (+25 XP)"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </ScrollView>
+        </ScrollView>
       </View>
     </InteractiveGestureSheet>
   );
@@ -273,15 +321,18 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative',
     overflow: 'hidden',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    backgroundColor: '#0F172A',
   },
   container: {
     flex: 1,
     backgroundColor: 'transparent',
   },
   scrollContent: {
-    paddingHorizontal: 22,
-    paddingTop: 8,
-    paddingBottom: 40,
+    paddingHorizontal: 20,
+    paddingTop: 46,
+    paddingBottom: 90,
   },
   topBar: {
     flexDirection: 'row',
@@ -295,31 +346,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.20)',
     borderWidth: 1,
-  },
-  periodMorning: {
-    backgroundColor: '#FEF3C7',
-    borderColor: '#FDE68A',
-  },
-  periodEvening: {
-    backgroundColor: '#EEF2FF',
-    borderColor: '#E0E7FF',
+    borderColor: 'rgba(255, 255, 255, 0.35)',
   },
   periodText: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 12,
-  },
-  periodTextMorning: {
-    color: '#B45309',
-  },
-  periodTextEvening: {
-    color: '#4338CA',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.65)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   closeBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#F4F4F6',
+    backgroundColor: 'rgba(0, 0, 0, 0.42)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.30)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -329,14 +374,18 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   avatarWrap: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     overflow: 'hidden',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderWidth: 2,
-    borderColor: '#E5E7EB',
+    borderColor: 'rgba(255, 255, 255, 0.90)',
     marginRight: 14,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
   },
   avatarImg: {
     width: '100%',
@@ -347,37 +396,52 @@ const styles = StyleSheet.create({
   },
   apostleName: {
     fontFamily: Typography.fontSansBold,
-    fontSize: 18,
-    color: '#111111',
+    fontSize: 18.5,
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.85)',
+    textShadowOffset: { width: 0, height: 1.5 },
+    textShadowRadius: 4,
   },
   liturgyTheme: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 13.5,
-    color: '#6B7280',
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.90)',
     marginTop: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   audioCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: 'rgba(255, 255, 255, 0.20)',
     borderRadius: 20,
     padding: 14,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    marginBottom: 18,
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    marginBottom: 16,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 3,
   },
   audioCardActive: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#BFDBFE',
+    backgroundColor: 'rgba(255, 255, 255, 0.28)',
+    borderColor: 'rgba(255, 255, 255, 0.55)',
   },
   audioPlayBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#111111',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   audioPlayBtnActive: {
     backgroundColor: '#8B1E1E',
@@ -388,33 +452,53 @@ const styles = StyleSheet.create({
   audioTitle: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 13.5,
-    color: '#111111',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   audioSub: {
     fontFamily: Typography.fontSansRegular,
     fontSize: 11.5,
-    color: '#6B7280',
+    color: 'rgba(255, 255, 255, 0.85)',
     marginTop: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   playingWaveBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#DBEAFE',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  scriptureBlock: {
-    backgroundColor: '#FAF9F6',
-    borderRadius: 20,
+  glassCard: {
+    backgroundColor: 'rgba(15, 23, 42, 0.36)',
+    borderRadius: 22,
     padding: 18,
-    borderWidth: 1,
-    borderColor: '#ECECEE',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
     marginBottom: 14,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  blessingGlassCard: {
+    backgroundColor: 'rgba(30, 25, 15, 0.40)',
+    borderColor: 'rgba(253, 224, 71, 0.35)',
+    marginBottom: 20,
   },
   scriptureCitationBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#F4F4F6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.20)',
+    borderColor: 'rgba(255, 255, 255, 0.32)',
+    borderWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
@@ -422,93 +506,73 @@ const styles = StyleSheet.create({
   },
   scriptureCitationText: {
     fontFamily: Typography.fontSansSemiBold,
-    fontSize: 12,
-    color: '#111111',
+    fontSize: 12.5,
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.65)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   scriptureText: {
     fontFamily: Typography.fontSerif,
     fontSize: 18,
     lineHeight: 27,
-    color: '#1F2937',
+    color: '#FFFFFF',
     fontStyle: 'italic',
+    textShadowColor: 'rgba(0, 0, 0, 0.85)',
+    textShadowOffset: { width: 0, height: 1.5 },
+    textShadowRadius: 4,
   },
-  reflectionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#F0F0F2',
-    marginBottom: 14,
-  },
-  sectionHeaderTitle: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 12,
-    color: '#9CA3AF',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 8,
-  },
-  bodyText: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 15,
-    lineHeight: 23,
-    color: '#374151',
-  },
-  prayerCard: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 20,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 14,
-  },
-  prayerHeaderRow: {
+  sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
   },
-  prayerBodyText: {
-    fontFamily: Typography.fontSerif,
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#334155',
+  sectionHeaderTitle: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 11.5,
+    color: 'rgba(255, 255, 255, 0.80)',
+    textTransform: 'uppercase',
+    letterSpacing: 1.1,
+    textShadowColor: 'rgba(0, 0, 0, 0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
-  blessingCard: {
-    backgroundColor: '#FFFBEB',
-    borderRadius: 20,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#FEF3C7',
-    marginBottom: 20,
+  uniformBodyText: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 15.5,
+    lineHeight: 24.5,
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.85)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  prayerBodyText: {
+    fontStyle: 'italic',
   },
   blessingLabel: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 11.5,
-    color: '#D97706',
+    color: '#FDE047',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 6,
-  },
-  blessingBodyText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 14.5,
-    lineHeight: 22,
-    color: '#92400E',
+    letterSpacing: 1.1,
+    textShadowColor: 'rgba(0, 0, 0, 0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   completeBtnWrap: {
     marginTop: 4,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   completeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#111111',
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     paddingVertical: 16,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.2,
     shadowRadius: 10,
     elevation: 4,
   },
@@ -518,22 +582,32 @@ const styles = StyleSheet.create({
   completeBtnText: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 15,
+    color: '#111111',
+  },
+  completeBtnDoneText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 15,
     color: '#FFFFFF',
   },
   celebrationCard: {
     alignItems: 'center',
-    backgroundColor: '#FAF9F6',
+    backgroundColor: 'rgba(15, 23, 42, 0.90)',
     borderRadius: 24,
     padding: 24,
-    borderWidth: 1,
-    borderColor: '#ECECEE',
+    borderWidth: 1.5,
+    borderColor: 'rgba(253, 224, 71, 0.50)',
     marginTop: 6,
-    marginBottom: 16,
+    marginBottom: 24,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 8,
   },
   mascotSealContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     overflow: 'hidden',
     borderWidth: 3,
     borderColor: '#FEF08A',
@@ -546,17 +620,20 @@ const styles = StyleSheet.create({
   celebrationTitle: {
     fontFamily: Typography.fontSerif,
     fontSize: 22,
-    color: '#111111',
+    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 6,
+    textShadowColor: 'rgba(0, 0, 0, 0.85)',
+    textShadowOffset: { width: 0, height: 1.5 },
+    textShadowRadius: 3,
   },
   celebrationSub: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 13.5,
-    color: '#6B7280',
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.85)',
     textAlign: 'center',
-    lineHeight: 19,
-    marginBottom: 16,
+    lineHeight: 20,
+    marginBottom: 18,
     paddingHorizontal: 12,
   },
   rewardsRow: {
@@ -568,29 +645,38 @@ const styles = StyleSheet.create({
   rewardPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF7ED',
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
     borderWidth: 1,
-    borderColor: '#FED7AA',
+    borderColor: 'rgba(255, 255, 255, 0.30)',
     borderRadius: 14,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
+  },
+  rewardPillGold: {
+    backgroundColor: 'rgba(254, 240, 138, 0.20)',
+    borderColor: 'rgba(254, 240, 138, 0.40)',
   },
   rewardPillText: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 13,
-    color: '#C2410C',
+    color: '#FFFFFF',
   },
   amenCloseBtn: {
     width: '100%',
-    backgroundColor: '#111111',
+    backgroundColor: '#FFFFFF',
     borderRadius: 22,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   amenCloseBtnText: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 15,
-    color: '#FFFFFF',
+    color: '#111111',
   }
 });

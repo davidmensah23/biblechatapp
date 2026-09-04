@@ -23,3 +23,4 @@ web-build/
 *.aab
 .system_generated/
 .agents/
+.idea/

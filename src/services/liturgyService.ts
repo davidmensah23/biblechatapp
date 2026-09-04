@@ -15,6 +15,7 @@ export interface DailyLiturgy {
   reflection: string;
   prayer: string;
   blessing: string;
+  personalGreeting?: string;
   fullSpokenScript: string;
 }
 
@@ -166,7 +167,7 @@ export const getCurrentLiturgyPeriod = (): LiturgyPeriod => {
   return 'evening';
 };
 
-export const getTodayLiturgy = (): DailyLiturgy => {
+export const getTodayLiturgy = (userName?: string): DailyLiturgy => {
   const period = getCurrentLiturgyPeriod();
   const now = new Date();
   const dateStr = getLocalDateString(now);
@@ -183,7 +184,30 @@ export const getTodayLiturgy = (): DailyLiturgy => {
   const template = list[dayOfYear % list.length];
   const apostle = APOSTLE_PERSONAS.find(a => a.id === template.apostleId) || APOSTLE_PERSONAS[0];
 
-  const fullSpokenScript = `${template.reflection} Now, let us bring our hearts together in prayer. ${template.prayer} And hear this blessing over your walk: ${template.blessing}`;
+  const targetName = userName?.trim() ? userName.trim().split(' ')[0] : '';
+
+  let greeting = '';
+  if (period === 'morning') {
+    greeting = targetName
+      ? `Good morning, ${targetName}. It is me, ${apostle.name}. As you start this day, I invite you to pause and listen to God's Word with me.`
+      : `Good morning, my friend. It is me, ${apostle.name}. As you start this day, let us pause and hear God's Word together.`;
+  } else if (period === 'midday') {
+    greeting = targetName
+      ? `Hello ${targetName}, it is me, ${apostle.name}. As you pause in the middle of your afternoon, let us center your heart on Christ.`
+      : `Peace to you. It is me, ${apostle.name}. In the middle of this afternoon, let us pause and center our hearts on Christ.`;
+  } else {
+    greeting = targetName
+      ? `Good evening, ${targetName}. It is me, ${apostle.name}. As this day closes, let us lay down every burden in God's peace.`
+      : `Good evening, beloved. It is me, ${apostle.name}. As this day closes, let us lay down every burden in God's peace.`;
+  }
+
+  // Reverent, unhurried full liturgy spoken script:
+  // 1. Personalized Greeting
+  // 2. Clear Scripture Recitation
+  // 3. Pastoral Reflection
+  // 4. Guided Prayer
+  // 5. Apostolic Blessing
+  const fullSpokenScript = `${greeting} ... First, let us hear the Holy Word of God from ${template.scriptureRef}: "${template.scriptureText}". ... ${template.reflection} ... Now, let us join our hearts together in prayer: "${template.prayer}" Amen. ... Receive this blessing over your walk: "${template.blessing}"`;
 
   return {
     id: `prayer_${dateStr}_${period}`,
@@ -196,6 +220,7 @@ export const getTodayLiturgy = (): DailyLiturgy => {
     reflection: template.reflection,
     prayer: template.prayer,
     blessing: template.blessing,
+    personalGreeting: greeting,
     fullSpokenScript
   };
 };

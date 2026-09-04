@@ -77,7 +77,7 @@ export function prepareReverentCadenceText(raw: string): string {
   spoken = spoken.replace(/([:;—–])\s*/g, ', ... ');
 
   // 4. Add natural breathing pause after common prayer/transition invocations
-  spoken = spoken.replace(/\b(Peace be with you|Grace and peace|Beloved|Lord Jesus|Father God|In Jesus' name|Amen)\b/gi, '$1, ...');
+  spoken = spoken.replace(/\b(Peace be with you|Grace and peace|Good morning|Good evening|Hello|Beloved|Lord Jesus|Father God|In Jesus' name|Amen|First, let us hear|Now, let us join|Receive this blessing)\b/gi, '$1, ... ');
 
   // 5. Clean up redundant duplicate ellipses or whitespace
   spoken = spoken.replace(/(\.{3,}\s*){2,}/g, '... ');
@@ -114,12 +114,12 @@ export const playDeepgramSpeech = async (
     if (onStart) onStart();
     activeAudioId = audioId;
 
-    // Configure Audio Mode for crisp playback
+    // Configure Audio Mode for crisp, loud, immersive playback
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: false,
       playsInSilentModeIOS: true,
       staysActiveInBackground: false,
-      shouldDuckAndroid: true,
+      shouldDuckAndroid: false,
       playThroughEarpieceAndroid: false
     });
 
@@ -165,8 +165,9 @@ export const playDeepgramSpeech = async (
     );
 
     currentSound = sound;
-    // Calm, unhurried, reverent spiritual delivery with natural pitch correction
-    await sound.setRateAsync(0.88, true);
+    // Reverent, unhurried spiritual delivery: 0.85 rate + max clarity volume
+    await sound.setVolumeAsync(1.0);
+    await sound.setRateAsync(0.85, true);
     await sound.playAsync();
   } catch (e) {
     console.error('Deepgram play error:', e);

@@ -28,6 +28,8 @@ interface InteractiveGestureSheetProps {
   showGrabBar?: boolean;
   children: React.ReactNode;
   containerStyle?: object;
+  headerTransparent?: boolean;
+  grabBarColor?: string;
 }
 
 export const InteractiveGestureSheet: React.FC<InteractiveGestureSheetProps> = ({
@@ -38,7 +40,9 @@ export const InteractiveGestureSheet: React.FC<InteractiveGestureSheetProps> = (
   fullHeightRatio = 0.92,
   showGrabBar = true,
   children,
-  containerStyle
+  containerStyle,
+  headerTransparent = false,
+  grabBarColor
 }) => {
   const [modalVisible, setModalVisible] = useState(visible);
   const currentSnapRef = useRef<'mid' | 'full'>(initialSnap);
@@ -215,6 +219,7 @@ export const InteractiveGestureSheet: React.FC<InteractiveGestureSheetProps> = (
         <Animated.View
           style={[
             styles.sheetCard,
+            headerTransparent && { backgroundColor: 'transparent' },
             {
               height: SCREEN_HEIGHT,
               transform: [{ translateY }]
@@ -223,8 +228,22 @@ export const InteractiveGestureSheet: React.FC<InteractiveGestureSheetProps> = (
           ]}
         >
           {/* Draggable Header with Grab Bar */}
-          <View style={styles.dragHeader} {...panResponder.panHandlers}>
-            {showGrabBar && <View style={styles.grabBar} />}
+          <View
+            style={[
+              styles.dragHeader,
+              headerTransparent && styles.dragHeaderTransparent
+            ]}
+            {...panResponder.panHandlers}
+          >
+            {showGrabBar && (
+              <View
+                style={[
+                  styles.grabBar,
+                  headerTransparent && styles.grabBarTransparent,
+                  grabBarColor ? { backgroundColor: grabBarColor } : null
+                ]}
+              />
+            )}
           </View>
 
           {/* Sheet Body Content */}
@@ -265,11 +284,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
   },
+  dragHeaderTransparent: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 25,
+    backgroundColor: 'transparent',
+  },
   grabBar: {
     width: 44,
     height: 5,
     borderRadius: 2.5,
     backgroundColor: '#D1D5DB',
+  },
+  grabBarTransparent: {
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
   },
   sheetContent: {
     flex: 1,
