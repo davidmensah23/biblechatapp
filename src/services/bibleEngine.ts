@@ -119,23 +119,23 @@ export const ALL_BIBLE_BOOKS: BibleBook[] = [
 
 export const INITIAL_BIBLE_VERSIONS: BibleVersionInfo[] = [
   // English (Historic & Modern)
-  { id: '1', code: 'NIV', name: 'New International Version', language: 'en', hasAudio: true, isDownloaded: true, apiTranslationKey: 'web' },
+  { id: '1', code: 'NIV', name: 'New International Version', language: 'en', hasAudio: true, isDownloaded: true, apiTranslationKey: 'youversion:111' },
   { id: '2', code: 'KJV', name: 'King James Version (1611)', language: 'en', hasAudio: true, isDownloaded: true, apiTranslationKey: 'kjv' },
-  { id: '3', code: 'ESV', name: 'English Standard Version', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:59' },
+  { id: '3', code: 'ESV', name: 'English Standard Version', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'bolls:ESV' },
   { id: '4', code: 'GNV', name: 'Geneva Bible (1599)', language: 'en', hasAudio: true, isDownloaded: true, apiTranslationKey: 'youversion:2163' },
-  { id: '5', code: 'NKJV', name: 'New King James Version', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:114' },
-  { id: '6', code: 'NLT', name: 'New Living Translation', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:116' },
+  { id: '5', code: 'NKJV', name: 'New King James Version', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'bolls:NKJV' },
+  { id: '6', code: 'NLT', name: 'New Living Translation', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'bolls:NLT' },
   { id: '7', code: 'NASB', name: 'New American Standard Bible (NASB 2020)', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:2692' },
   { id: '8', code: 'CSB', name: 'Christian Standard Bible', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:1713' },
   { id: '9', code: 'AMP', name: 'Amplified Bible', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:1588' },
-  { id: '10', code: 'MSG', name: 'The Message (Eugene Peterson)', language: 'en', hasAudio: false, isDownloaded: false, apiTranslationKey: 'youversion:97' },
+  { id: '10', code: 'MSG', name: 'The Message (Eugene Peterson)', language: 'en', hasAudio: false, isDownloaded: false, apiTranslationKey: 'bolls:MSG' },
   { id: '11', code: 'NET', name: 'New English Translation', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:107' },
   { id: '12', code: 'BSB', name: 'Berean Standard Bible', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:3034' },
   { id: '13', code: 'WEB', name: 'World English Bible', language: 'en', hasAudio: true, isDownloaded: true, apiTranslationKey: 'web' },
   { id: '14', code: 'CEV', name: 'Contemporary English Version', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:392' },
   { id: '15', code: 'GNT', name: 'Good News Translation', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:68' },
   { id: '16', code: 'BBE', name: 'Bible in Basic English', language: 'en', hasAudio: false, isDownloaded: false, apiTranslationKey: 'bbe' },
-  { id: '17', code: 'ASV', name: 'American Standard Version (1901)', language: 'en', hasAudio: false, isDownloaded: false, apiTranslationKey: 'asv' },
+  { id: '17', code: 'ASV', name: 'American Standard Version (1901)', language: 'en', hasAudio: false, isDownloaded: false, apiTranslationKey: 'youversion:12' },
   { id: '18', code: 'YLT', name: 'Young\'s Literal Translation (1898)', language: 'en', hasAudio: false, isDownloaded: false, apiTranslationKey: 'youversion:821' },
   { id: '19', code: 'DBY', name: 'Darby Translation (1890)', language: 'en', hasAudio: false, isDownloaded: false, apiTranslationKey: 'youversion:478' },
 
@@ -461,6 +461,49 @@ export async function fetchChapter(
     }
   }
 
+  // 2.5 Dynamic Live Fetching from Bolls.life for NLT, ESV, NKJV, MSG
+  if (versionMeta?.apiTranslationKey?.startsWith('bolls:') || ['NLT', 'ESV', 'NKJV', 'MSG'].includes(transCode)) {
+    const transId = versionMeta?.apiTranslationKey?.startsWith('bolls:')
+      ? versionMeta.apiTranslationKey.split(':')[1]
+      : transCode;
+    const bookIndex = ALL_BIBLE_BOOKS.findIndex(b => b.name.toLowerCase() === book.toLowerCase()) + 1;
+    if (bookIndex > 0) {
+      try {
+        const res = await fetch(`https://bolls.life/get-chapter/${transId}/${bookIndex}/${chapter}/`);
+        if (res.ok) {
+          const items = await res.json();
+          if (Array.isArray(items) && items.length > 0) {
+            const parsedVerses: ChapterVerse[] = items.map((it: any) => ({
+              verseNumber: it.verse,
+              text: it.text.replace(/<[^>]*>/g, '').trim()
+            }));
+
+            const result: BibleChapterData = {
+              book,
+              chapter,
+              sectionTitle: `${book} Chapter ${chapter}`,
+              translation: transCode,
+              verses: parsedVerses
+            };
+
+            if (db) {
+              try {
+                await db.runAsync(
+                  'INSERT OR REPLACE INTO offline_bible_chapters (id, translation, book, chapter, section_title, verses_json, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                  [cacheKey, transCode, book, chapter, result.sectionTitle || '', JSON.stringify(parsedVerses), Date.now()]
+                );
+              } catch (e) {}
+            }
+
+            return result;
+          }
+        }
+      } catch (err) {
+        console.warn(`Bolls API fetch error for ${book} ${chapter} (${transCode}):`, err);
+      }
+    }
+  }
+
   // 3. Dynamic Live Fetching from Bible-API for standard English/Spanish/French/Portuguese
   try {
     const apiTransKey = versionMeta?.apiTranslationKey || (transCode === 'KJV' ? 'kjv' : 'web');
@@ -512,3 +555,85 @@ export async function fetchChapter(
     ]
   };
 }
+
+/**
+ * Real Multi-Translation Specific Verse Fetcher for Instant Accurate Comparisons
+ */
+export async function fetchSpecificVerse(
+  book: string,
+  chapter: number,
+  verseNumber: number,
+  translation: string = 'NIV'
+): Promise<string | null> {
+  const transCode = translation.toUpperCase();
+  const versionMeta = INITIAL_BIBLE_VERSIONS.find(v => v.code.toUpperCase() === transCode);
+
+  // 1. Check Bolls.life (NLT, ESV, NKJV, MSG, etc.)
+  if (versionMeta?.apiTranslationKey?.startsWith('bolls:') || ['NLT', 'ESV', 'NKJV', 'MSG'].includes(transCode)) {
+    const transId = versionMeta?.apiTranslationKey?.startsWith('bolls:')
+      ? versionMeta.apiTranslationKey.split(':')[1]
+      : transCode;
+    const bookIndex = ALL_BIBLE_BOOKS.findIndex(b => b.name.toLowerCase() === book.toLowerCase()) + 1;
+    if (bookIndex > 0) {
+      try {
+        const res = await fetch(`https://bolls.life/get-verse/${transId}/${bookIndex}/${chapter}/${verseNumber}/`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.text) {
+            return data.text.replace(/<[^>]*>/g, '').trim();
+          }
+        }
+      } catch (e) {}
+    }
+  }
+
+  // 2. Check YouVersion (NIV, AMP, NASB, BSB, GNV, Asante Twi, Yoruba, etc.)
+  let bibleId = versionMeta?.apiTranslationKey?.startsWith('youversion:')
+    ? versionMeta.apiTranslationKey.split(':')[1]
+    : null;
+  if (!bibleId) {
+    if (transCode === 'NIV') bibleId = '111';
+    else if (transCode === 'AMP') bibleId = '1588';
+    else if (transCode === 'NASB') bibleId = '2692';
+    else if (transCode === 'BSB') bibleId = '3034';
+    else if (transCode === 'GNV') bibleId = '2163';
+    else if (transCode === 'TWI' || transCode === 'ASCB') bibleId = '2094';
+    else if (transCode === 'AKCB') bibleId = '1631';
+    else if (transCode === 'YOR' || transCode === 'YCB') bibleId = '911';
+    else if (transCode === 'ASV') bibleId = '12';
+  }
+
+  if (bibleId) {
+    const usfmBook = BOOK_TO_USFM[book] || book.substring(0, 3).toUpperCase();
+    const passageId = `${usfmBook}.${chapter}.${verseNumber}`;
+    try {
+      const yvPassage = await fetchYouVersionPassage(passageId, bibleId);
+      if (yvPassage && yvPassage.content) {
+        return yvPassage.content.replace(/\r\n/g, ' ').replace(/<[^>]*>/g, '').trim();
+      }
+    } catch (e) {}
+  }
+
+  // 3. Check Bible-API (KJV, WEB, etc.)
+  try {
+    const apiTransKey = (transCode === 'KJV' ? 'kjv' : 'web');
+    const formattedBook = encodeURIComponent(book);
+    const res = await fetch(`https://bible-api.com/${formattedBook}+${chapter}:${verseNumber}?translation=${apiTransKey}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.text) {
+        return data.text.trim();
+      }
+    }
+  } catch (e) {}
+
+  // 4. Fallback: Fetch chapter and match verse
+  try {
+    const chapterData = await fetchChapter(book, chapter, translation);
+    const matched = chapterData.verses.find(v => v.verseNumber === verseNumber);
+    return matched ? matched.text : null;
+  } catch (e) {
+    return null;
+  }
+}
+

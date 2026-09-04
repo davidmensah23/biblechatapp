@@ -10,7 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { InteractiveGestureSheet } from './InteractiveGestureSheet';
-import { fetchChapter } from '../services/bibleEngine';
+import { fetchChapter, fetchSpecificVerse } from '../services/bibleEngine';
 
 export const HIGHLIGHT_COLORS = [
   { id: 'yellow', hex: '#FEF08A', name: 'Amber' },
@@ -94,12 +94,13 @@ export const VerseActionSheet: React.FC<VerseActionSheetProps> = ({
     setLoadingCompare(true);
 
     try {
-      const data = await fetchChapter(book, chapter, versionCode);
-      const matched = data.verses.find(v => v.verseNumber === verseNumber);
-      if (matched) {
-        setCompareVerseText(matched.text);
+      const text = await fetchSpecificVerse(book, chapter, verseNumber, versionCode);
+      if (text) {
+        setCompareVerseText(text);
       } else {
-        setCompareVerseText(null);
+        const data = await fetchChapter(book, chapter, versionCode);
+        const matched = data.verses.find(v => v.verseNumber === verseNumber);
+        setCompareVerseText(matched ? matched.text : null);
       }
     } catch (e) {
       console.warn('Compare translation error:', e);
