@@ -1,6 +1,7 @@
 import { BibleBook } from '../types';
 import { getDB } from './database';
 import { fetchYouVersionPassage, fetchYouVersionBibles } from './youversionService';
+import { getLocalizedBookName, isVernacularVersion } from './bibleBookTranslations';
 
 export interface ChapterVerse {
   verseNumber: number;
@@ -292,30 +293,34 @@ export const downloadBibleVersion = async (
       );
     `);
 
-    // Foundational books to download directly onto device
-    const booksToDownload: { book: string; chapters: number[] }[] = [
-      { book: 'John', chapters: [1, 2, 3, 4, 14, 15, 21] },
-      { book: 'Matthew', chapters: [1, 5, 6, 7, 28] },
-      { book: 'Psalms', chapters: [1, 23, 91, 100, 121, 139] },
-      { book: 'Genesis', chapters: [1, 2, 3] },
-      { book: 'Romans', chapters: [8, 12] }
-    ];
+    // Complete Bible Download across all 66 books (all 1,189 chapters)
+    const allChaptersList: { book: string; chapter: number }[] = [];
+    for (const book of ALL_BIBLE_BOOKS) {
+      for (let ch = 1; ch <= book.chaptersCount; ch++) {
+        allChaptersList.push({ book: book.name, chapter: ch });
+      }
+    }
 
-    const totalChapters = booksToDownload.reduce((acc, b) => acc + b.chapters.length, 0);
+    const totalChapters = allChaptersList.length;
     let downloadedCount = 0;
+    const CHUNK_SIZE = 5;
 
-    for (const b of booksToDownload) {
-      for (const ch of b.chapters) {
-        try {
-          await fetchChapter(b.book, ch, version.code);
-          downloadedCount++;
-          if (onProgress) {
-            const percent = Math.min(99, Math.round((downloadedCount / totalChapters) * 100));
-            onProgress(percent);
+    for (let i = 0; i < allChaptersList.length; i += CHUNK_SIZE) {
+      const chunk = allChaptersList.slice(i, i + CHUNK_SIZE);
+      await Promise.all(
+        chunk.map(async (item) => {
+          try {
+            await fetchChapter(item.book, item.chapter, version.code);
+          } catch (err) {
+            // Non-fatal, keep downloading rest
           }
-        } catch (err) {
-          console.warn(`Note downloading ${b.book} ${ch}:`, err);
-        }
+          downloadedCount++;
+        })
+      );
+
+      if (onProgress) {
+        const percent = Math.min(99, Math.round((downloadedCount / totalChapters) * 100));
+        onProgress(percent);
       }
     }
 
@@ -410,7 +415,11 @@ export async function fetchChapter(
         const result: BibleChapterData = {
           book,
           chapter,
-          sectionTitle: yvPassage.reference || `${book} Chapter ${chapter}`,
+          sectionTitle: (() => {
+          const isVern = isVernacularVersion(transCode, versionMeta?.language);
+          const localBook = getLocalizedBookName(book, versionMeta?.language || 'en');
+          return yvPassage.reference || (isVern ? `${localBook} ${chapter}` : `${book} Chapter ${chapter}`);
+        })(),
           translation: transCode,
           verses
         };

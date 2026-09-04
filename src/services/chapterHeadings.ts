@@ -487,10 +487,35 @@ const CANONICAL_PERICOPES: Record<string, Record<number, ChapterPericopeData>> =
   }
 };
 
+import { isVernacularVersion } from './bibleBookTranslations';
+
 /**
  * Returns the primary chapter title for display at the top under the chapter number.
+ * When viewing a vernacular translation (such as Twi), English pericopes are suppressed
+ * unless an authentic localized section title is available.
  */
-export function getChapterHeading(book: string, chapter: number, rawSectionTitle?: string): string | null {
+export function getChapterHeading(
+  book: string,
+  chapter: number,
+  rawSectionTitle?: string,
+  translation?: string,
+  language?: string
+): string | null {
+  const isVernacular = isVernacularVersion(translation, language);
+
+  // If viewing vernacular (like Twi), do not display English pericope headers
+  if (isVernacular) {
+    if (rawSectionTitle) {
+      const isRedundant =
+        rawSectionTitle.toLowerCase().trim() === `${book} ${chapter}`.toLowerCase().trim() ||
+        rawSectionTitle.toLowerCase().trim() === `${book} chapter ${chapter}`.toLowerCase().trim();
+      if (!isRedundant) {
+        return rawSectionTitle;
+      }
+    }
+    return null;
+  }
+
   const bookData = CANONICAL_PERICOPES[book];
   if (bookData && bookData[chapter]) {
     return bookData[chapter].title;
@@ -498,7 +523,8 @@ export function getChapterHeading(book: string, chapter: number, rawSectionTitle
 
   // If raw section title from Bible API or YouVersion is a real topical title (not just "Book Chapter X")
   if (rawSectionTitle) {
-    const isRedundant = rawSectionTitle.toLowerCase().trim() === `${book} ${chapter}`.toLowerCase().trim() ||
+    const isRedundant =
+      rawSectionTitle.toLowerCase().trim() === `${book} ${chapter}`.toLowerCase().trim() ||
       rawSectionTitle.toLowerCase().trim() === `${book} chapter ${chapter}`.toLowerCase().trim();
     if (!isRedundant) {
       return rawSectionTitle;
@@ -510,11 +536,22 @@ export function getChapterHeading(book: string, chapter: number, rawSectionTitle
 
 /**
  * Returns canonical pericope section headings mapped by verse number for inline rendering.
+ * Suppressed for vernacular versions (Twi, Pidgin, Yoruba, Igbo) so English headings don't clash.
  */
-export function getChapterSections(book: string, chapter: number): Record<number, string> {
+export function getChapterSections(
+  book: string,
+  chapter: number,
+  translation?: string,
+  language?: string
+): Record<number, string> {
+  if (isVernacularVersion(translation, language)) {
+    return {};
+  }
+
   const bookData = CANONICAL_PERICOPES[book];
   if (bookData && bookData[chapter] && bookData[chapter].sections) {
     return bookData[chapter].sections;
   }
   return {};
 }
+

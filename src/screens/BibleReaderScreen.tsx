@@ -33,6 +33,7 @@ import { VerseNoteModal } from '../components/VerseNoteModal';
 import { BibleChapterSkeleton } from '../components/SoftSkeleton';
 import { ScriptureMemoryModal } from '../components/ScriptureMemoryModal';
 import { getChapterHeading, getChapterSections } from '../services/chapterHeadings';
+import { getLocalizedBookName } from '../services/bibleBookTranslations';
 import { getLastReadPosition, saveLastReadPosition, subscribeVersionChange, setPreferredTranslation } from '../services/readingProgressService';
 import { useTranslation, LANGUAGE_TO_DEFAULT_BIBLE } from '../services/localizationService';
 import { ApostleSelectSheet } from '../components/ApostleSelectSheet';
@@ -177,6 +178,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
   };
 
   const { currentLanguage, t } = useTranslation();
+  const localizedBookName = getLocalizedBookName(currentBook, currentLanguage);
 
   // Listen to version changes across the entire app
   useEffect(() => {
@@ -477,7 +479,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
           onPress={() => setShowBookPicker(true)}
           activeOpacity={0.75}
         >
-          <Text style={styles.bookSelectorText}>{currentBook} {currentChapter}</Text>
+          <Text style={styles.bookSelectorText}>{localizedBookName} {currentChapter}</Text>
           <Ionicons name="chevron-down" size={14} color="#111111" style={{ marginLeft: 5 }} />
         </TouchableOpacity>
 
@@ -505,11 +507,18 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
           <BibleChapterSkeleton />
         ) : chapterData ? (
           <View style={styles.chapterWrapper}>
-            {/* Left-Aligned Clean Hero Heading (No Redundant Text) */}
+            {/* Left-Aligned Clean Hero Heading (With Book Name Eyebrow) */}
             <View style={styles.heroHeader}>
+              <Text style={styles.heroBookName}>{localizedBookName.toUpperCase()}</Text>
               <Text style={styles.heroChapterNumber}>{chapterData.chapter}</Text>
               {(() => {
-                const heading = getChapterHeading(chapterData.book, chapterData.chapter, chapterData.sectionTitle);
+                const heading = getChapterHeading(
+                  chapterData.book,
+                  chapterData.chapter,
+                  chapterData.sectionTitle,
+                  translation,
+                  currentLanguage
+                );
                 return heading ? (
                   <Text style={styles.heroSectionTitle}>{heading}</Text>
                 ) : null;
@@ -519,7 +528,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
             {/* Verses List with Canonical Pericope Sub-Headings */}
             <View style={styles.versesContainer}>
               {(() => {
-                const chapterSections = getChapterSections(chapterData.book, chapterData.chapter);
+                const chapterSections = getChapterSections(chapterData.book, chapterData.chapter, translation, currentLanguage);
                 return chapterData.verses.map((v) => {
                   const isSelected = selectedVerseNumber === v.verseNumber;
                   const highlightColor = chapterHighlights[v.verseNumber];
@@ -614,7 +623,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
 
           <TouchableOpacity onPress={() => setShowBookPicker(true)} style={styles.chapterNavCenter} activeOpacity={0.7}>
             <Text style={styles.floatingChapterText} numberOfLines={1}>
-              {currentBook} {currentChapter}
+              {localizedBookName} {currentChapter}
             </Text>
           </TouchableOpacity>
 
@@ -810,6 +819,14 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingHorizontal: 6,
   },
+  heroBookName: {
+    fontFamily: Typography.fontSansBold,
+    fontSize: 13,
+    color: '#8B1E1E',
+    letterSpacing: 2,
+    marginBottom: 4,
+    textAlign: 'left',
+  },
   heroChapterNumber: {
     fontFamily: Typography.fontYouVersionSerifBold,
     fontSize: 58,
@@ -896,7 +913,7 @@ const styles = StyleSheet.create({
   },
   floatingControlsWrapper: {
     position: 'absolute',
-    bottom: 86,
+    bottom: 94,
     left: 16,
     right: 16,
     flexDirection: 'row',
