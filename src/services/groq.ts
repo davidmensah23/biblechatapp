@@ -41,8 +41,8 @@ export const generateApostleReply = async (
     // 4. Append current user message
     messages.push({ role: 'user', content: userPrompt });
 
-    // Ensure generous token count so thoughts are never cut off mid-sentence
-    const maxTokens = mode === 'greeting' ? 120 : mode === 'casual' ? 220 : mode === 'sermon_preparation' ? 700 : 380;
+    // Ensure generous token count so thoughts and deep exegesis are never cut off mid-sentence
+    const maxTokens = mode === 'greeting' ? 120 : mode === 'casual' ? 220 : mode === 'sermon_preparation' ? 750 : 580;
 
     // 5. Direct Low-Latency Groq Engine Call
     if (GROQ_API_KEY) {
