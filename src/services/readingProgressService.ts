@@ -128,3 +128,17 @@ export const setPreferredTranslation = async (translation: string): Promise<void
   } catch (e) {}
   versionListeners.forEach(cb => cb(translation));
 };
+
+export const clearReadingProgressSession = async (): Promise<void> => {
+  memoryProgress = { ...DEFAULT_PROGRESS };
+  try {
+    if (Platform.OS === 'web') {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(READING_PROGRESS_KEY);
+      }
+    } else {
+      await SecureStore.deleteItemAsync(READING_PROGRESS_KEY);
+    }
+  } catch (e) {}
+};
+

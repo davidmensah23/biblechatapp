@@ -456,8 +456,8 @@ export const migrateGuestDataToUser = async (newUserId: string): Promise<{
   };
 };
 
-// Delete all user data completely (Account Deletion)
-export const deleteAllUserData = async (): Promise<void> => {
+// Clear all personal user data upon sign-out to prevent data bleeding across multiple accounts
+export const clearLocalUserSession = async (): Promise<void> => {
   memoryConversations = [];
   memoryMessages = {};
   memoryBookmarks = [];
@@ -470,13 +470,18 @@ export const deleteAllUserData = async (): Promise<void> => {
       await db.runAsync('DELETE FROM conversations');
       await db.runAsync('DELETE FROM bookmarks');
       await db.runAsync('DELETE FROM user_profile');
+      await db.runAsync('DELETE FROM verse_highlights');
+      await db.runAsync('DELETE FROM verse_notes');
+      await db.runAsync('DELETE FROM user_reading_progress');
       await db.runAsync('DELETE FROM group_messages');
       await db.runAsync('DELETE FROM group_conversations');
     } catch (e) {
-      console.warn('deleteAllUserData SQLite error:', e);
+      console.warn('clearLocalUserSession SQLite error:', e);
     }
   }
 };
+
+export const deleteAllUserData = clearLocalUserSession;
 
 // =========================================================================
 // COUNCIL OF FAITH (GROUP CHAT) DATABASE OPERATIONS

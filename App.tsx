@@ -35,7 +35,8 @@ import { CircularRevealTransition } from './src/components/CircularRevealTransit
 import { ApostlePersona } from './src/types';
 import { APOSTLE_PERSONAS } from './src/services/personas';
 import { GroupCouncilThread } from './src/types/groupChat';
-import { getDB, saveUserProfile, fetchUserProfile, migrateGuestDataToUser } from './src/services/database';
+import { getDB, saveUserProfile, fetchUserProfile, migrateGuestDataToUser, clearLocalUserSession } from './src/services/database';
+import { clearReadingProgressSession } from './src/services/readingProgressService';
 import { UserProfile } from './src/types';
 import {
   supabase,
@@ -260,7 +261,10 @@ export default function App() {
   };
 
   const handleLogout = async () => {
+    await clearLocalUserSession();
+    await clearReadingProgressSession();
     await signOutUser();
+    setUserProfile(null);
     setAppStage('auth');
     setActiveNavTab('home');
     setCurrentView('main');

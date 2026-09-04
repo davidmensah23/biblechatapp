@@ -26,7 +26,6 @@ import {
   updateUserPassword,
   resendVerificationEmail
 } from '../services/supabase';
-import { signInWithYouVersion } from '../services/youversionService';
 import { MascotAssets } from '../services/mascotAssets';
 
 interface AuthScreenProps {
@@ -84,7 +83,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
-  const [youversionLoading, setYouversionLoading] = useState(false);
 
   // Refs for 6 OTP input boxes
   const otpInputRefs = useRef<Array<TextInput | null>>([]);
@@ -131,23 +129,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
       Alert.alert('Sign In Error', err?.message || 'An unexpected error occurred.');
     } finally {
       setAppleLoading(false);
-    }
-  };
-
-  // YouVersion Platform Sign In
-  const handleYouVersionAuth = async () => {
-    setYouversionLoading(true);
-    try {
-      const res = await signInWithYouVersion();
-      if (res.success) {
-        onAuthSuccess();
-      } else if (res.error && !res.error.includes('cancelled')) {
-        Alert.alert('YouVersion Connect', res.error);
-      }
-    } catch (err: any) {
-      Alert.alert('YouVersion Error', err?.message || 'Could not connect to YouVersion.');
-    } finally {
-      setYouversionLoading(false);
     }
   };
 
@@ -420,7 +401,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
                     style={[styles.pillButton, { backgroundColor: '#000000', borderColor: '#000000' }]}
                     onPress={handleAppleAuth}
                     activeOpacity={0.85}
-                    disabled={googleLoading || appleLoading || youversionLoading || loading}
+                    disabled={googleLoading || appleLoading || loading}
                   >
                     {appleLoading ? (
                       <ActivityIndicator size="small" color="#FFFFFF" />
@@ -434,25 +415,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
                     )}
                   </TouchableOpacity>
                 )}
-
-                {/* YouVersion Sign In Button */}
-                <TouchableOpacity
-                  style={[styles.pillButton, { backgroundColor: '#8B1E1E', borderColor: '#8B1E1E' }]}
-                  onPress={handleYouVersionAuth}
-                  activeOpacity={0.85}
-                  disabled={googleLoading || appleLoading || youversionLoading || loading}
-                >
-                  {youversionLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <>
-                      <Ionicons name="book" size={19} color="#FFFFFF" />
-                      <Text style={[styles.pillButtonText, { color: '#FFFFFF' }]}>
-                        {isSignUp ? 'Sign up with YouVersion' : 'Sign in with YouVersion'}
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity>
 
                 {/* Email Sign In / Sign Up Button */}
                 <TouchableOpacity
