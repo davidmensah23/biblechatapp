@@ -330,7 +330,7 @@ export const ScriptureMemoryModal: React.FC<ScriptureMemoryModalProps> = ({
         {/* Top Header Row with Progress Tracker */}
         <View style={styles.topHeader}>
           <View style={styles.badgePill}>
-            <Ionicons name="ribbon" size={13} color="#92400E" />
+            <Ionicons name="bookmark-outline" size={13} color="#374151" />
             <Text style={styles.badgePillText}>HIDE GOD'S WORD</Text>
           </View>
           <View style={styles.stageIndicatorRow}>
@@ -365,7 +365,7 @@ export const ScriptureMemoryModal: React.FC<ScriptureMemoryModalProps> = ({
             </Text>
 
             <View style={styles.verseCard}>
-              <Text style={styles.verseBodyText}>"{verseText}"</Text>
+              <Text style={styles.verseBodyText}>"{verseText || 'Thy word is a lamp unto my feet, and a light unto my path.'}"</Text>
             </View>
 
             {/* Audio Recitation Button */}
@@ -588,7 +588,9 @@ const styles = StyleSheet.create({
   badgePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
     paddingHorizontal: 10,
     paddingVertical: 4.5,
     borderRadius: 8,
@@ -598,7 +600,7 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontSansBold,
     fontSize: 10,
     letterSpacing: 0.8,
-    color: '#92400E',
+    color: '#374151',
   },
   stageIndicatorRow: {
     flexDirection: 'row',
@@ -613,7 +615,7 @@ const styles = StyleSheet.create({
   },
   stageDotActive: {
     width: 22,
-    backgroundColor: '#8B1E1E',
+    backgroundColor: '#DC2626',
   },
   stageDotCompleted: {
     backgroundColor: '#10B981',
@@ -663,9 +665,9 @@ const styles = StyleSheet.create({
   },
   verseBodyText: {
     fontFamily: Typography.fontYouVersionSerif,
-    fontSize: 18,
-    lineHeight: 28,
-    color: '#1F2937',
+    fontSize: 19,
+    lineHeight: 29,
+    color: '#111111',
   },
   tokensFlowWrap: {
     flexDirection: 'row',
@@ -718,8 +720,8 @@ const styles = StyleSheet.create({
     borderColor: '#D1D5DB',
   },
   currentBlankPill: {
-    backgroundColor: '#FEF3C7',
-    borderColor: '#D97706',
+    backgroundColor: '#F3F4F6',
+    borderColor: '#111111',
     borderWidth: 1.5,
   },
   emptyBlankText: {
@@ -729,7 +731,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
   },
   currentBlankText: {
-    color: '#B45309',
+    color: '#111111',
   },
   masterLetterText: {
     fontFamily: Typography.fontSansBold,
@@ -749,7 +751,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   audioBtnPlaying: {
-    backgroundColor: '#8B1E1E',
+    backgroundColor: '#DC2626',
   },
   audioBtnText: {
     fontFamily: Typography.fontSansSemiBold,
@@ -887,7 +889,7 @@ const styles = StyleSheet.create({
   summaryRef: {
     fontFamily: Typography.fontSansBold,
     fontSize: 12.5,
-    color: '#8B1E1E',
+    color: '#DC2626',
     marginBottom: 6,
   },
   summaryBody: {

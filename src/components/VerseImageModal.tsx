@@ -196,9 +196,8 @@ export const VerseImageModal: React.FC<VerseImageModalProps> = ({
           </TouchableOpacity>
 
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Create Verse Image</Text>
+            <Text style={styles.headerTitle}>Verse Image</Text>
             <View style={styles.quotaPill}>
-              <Ionicons name="color-wand" size={11} color="#D97706" style={{ marginRight: 4 }} />
               <Text style={styles.quotaText}>
                 {quota.remaining} of {quota.total} left today
               </Text>
@@ -228,7 +227,7 @@ export const VerseImageModal: React.FC<VerseImageModalProps> = ({
                 <Ionicons
                   name={ratio.icon}
                   size={14}
-                  color={aspectRatio === ratio.id ? '#111111' : '#6B7280'}
+                  color={aspectRatio === ratio.id ? '#FFFFFF' : '#6B7280'}
                   style={{ marginRight: 5 }}
                 />
                 <Text style={[styles.ratioText, aspectRatio === ratio.id && styles.ratioTextActive]}>
@@ -266,14 +265,14 @@ export const VerseImageModal: React.FC<VerseImageModalProps> = ({
                 <Text
                   style={[
                     styles.cardVerseText,
-                    aspectRatio === '16:9' ? { fontSize: 13, lineHeight: 18 } : { fontSize: 16, lineHeight: 23 }
+                    aspectRatio === '16:9' ? { fontSize: 14, lineHeight: 20 } : { fontSize: 18, lineHeight: 26 }
                   ]}
-                  numberOfLines={aspectRatio === '16:9' ? 3 : 6}
+                  numberOfLines={aspectRatio === '16:9' ? 4 : 7}
                 >
-                  “{verseText}”
+                  “{verseText || 'Thy word is a lamp unto my feet, and a light unto my path.'}”
                 </Text>
                 <Text style={styles.cardCitation}>
-                  — {verseCitation} ({translation})
+                  — {verseCitation || 'Psalm 119:105'} ({translation})
                 </Text>
               </View>
 
@@ -321,7 +320,7 @@ export const VerseImageModal: React.FC<VerseImageModalProps> = ({
           <View style={styles.aiGenSection}>
             <View style={styles.aiHeaderRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="brush" size={16} color="#D97706" />
+                <Ionicons name="image-outline" size={16} color="#111827" />
                 <Text style={styles.sectionHeaderTitle}>Generate Custom Background</Text>
               </View>
               <Text style={styles.dailyQuotaHint}>{quota.remaining} left</Text>
@@ -354,7 +353,7 @@ export const VerseImageModal: React.FC<VerseImageModalProps> = ({
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <>
-                    <Ionicons name="brush" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Ionicons name="image-outline" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
                     <Text style={styles.generateBtnText}>Generate</Text>
                   </>
                 )}
@@ -422,16 +421,18 @@ const styles = StyleSheet.create({
   quotaPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 2.5,
     borderRadius: 10,
     marginTop: 2,
   },
   quotaText: {
-    fontFamily: Typography.fontSansSemiBold,
+    fontFamily: Typography.fontSansMedium,
     fontSize: 10.5,
-    color: '#B45309',
+    color: '#4B5563',
   },
   shareBtn: {
     flexDirection: 'row',
@@ -463,21 +464,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 16,
-    backgroundColor: '#E5E7EB',
-  },
-  ratioPillActive: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#111827',
+    borderColor: '#E5E5EA',
+  },
+  ratioPillActive: {
+    backgroundColor: '#111111',
+    borderColor: '#111111',
   },
   ratioText: {
     fontFamily: Typography.fontSansMedium,
     fontSize: 11.5,
-    color: '#6B7280',
+    color: '#111111',
   },
   ratioTextActive: {
     fontFamily: Typography.fontSansSemiBold,
-    color: '#111827',
+    color: '#FFFFFF',
   },
   previewCanvasWrapper: {
     alignItems: 'center',
@@ -499,7 +501,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   cardVerseText: {
-    fontFamily: Typography.fontSerif,
+    fontFamily: Typography.fontYouVersionSerifBold || Typography.fontSerifBold,
     color: '#FFFFFF',
     marginBottom: 10,
     textShadowColor: 'rgba(0, 0, 0, 0.55)',

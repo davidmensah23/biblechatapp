@@ -59,7 +59,7 @@ export const VerseOfTheDay: React.FC<VerseOfTheDayProps> = ({
   if (loading) {
     return (
       <View style={[styles.container, styles.loadingWrap, style]}>
-        <ActivityIndicator size="small" color="#8B1E1E" />
+        <ActivityIndicator size="small" color="#DC2626" />
       </View>
     );
   }
@@ -119,12 +119,12 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontSansBold,
     fontSize: 10,
     letterSpacing: 0.8,
-    color: '#8B1E1E',
+    color: '#DC2626',
   },
   content: {
     fontFamily: Typography.fontYouVersionSerif,
-    fontSize: 17,
-    lineHeight: 26,
+    fontSize: 18,
+    lineHeight: 28,
     color: '#111827',
     marginBottom: 10,
   },

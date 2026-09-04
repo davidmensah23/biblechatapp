@@ -61,7 +61,7 @@ export const BibleCard: React.FC<BibleCardProps> = ({
   if (loading) {
     return (
       <View style={[styles.cardContainer, styles.loadingWrap, style]}>
-        <ActivityIndicator size="small" color="#8B1E1E" />
+        <ActivityIndicator size="small" color="#DC2626" />
         <Text style={styles.loadingText}>Loading Scripture...</Text>
       </View>
     );
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#8B1E1E',
+    backgroundColor: '#DC2626',
   },
   referenceText: {
     fontFamily: Typography.fontSansSemiBold,
@@ -147,9 +147,9 @@ const styles = StyleSheet.create({
   },
   bodyText: {
     fontFamily: Typography.fontYouVersionSerif,
-    fontSize: 16.5,
-    lineHeight: 25,
-    color: '#1F2937',
+    fontSize: 18,
+    lineHeight: 28,
+    color: '#111827',
     letterSpacing: 0.1,
   },
 });

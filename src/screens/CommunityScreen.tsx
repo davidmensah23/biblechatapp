@@ -1188,7 +1188,7 @@ ${url}`,
               <Ionicons
                 name={isAnonymousPrayer ? "checkbox" : "square-outline"}
                 size={20}
-                color={isAnonymousPrayer ? "#8B1E1E" : "#9CA3AF"}
+                color={isAnonymousPrayer ? "#DC2626" : "#9CA3AF"}
                 style={{ marginRight: 8 }}
               />
               <Text style={styles.anonToggleText}>Post Anonymously (as "A Fellow Pilgrim")</Text>

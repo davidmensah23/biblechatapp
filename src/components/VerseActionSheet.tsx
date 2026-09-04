@@ -182,10 +182,7 @@ export const VerseActionSheet: React.FC<VerseActionSheetProps> = ({
           {/* 1. Create Image */}
           <TouchableOpacity
             style={styles.actionBtn}
-            onPress={() => {
-              onClose();
-              onOpenCreateImage();
-            }}
+            onPress={onOpenCreateImage}
             activeOpacity={0.75}
           >
             <View style={styles.actionIconCircle}>
@@ -197,17 +194,14 @@ export const VerseActionSheet: React.FC<VerseActionSheetProps> = ({
           {/* 2. Add / Edit Note */}
           <TouchableOpacity
             style={styles.actionBtn}
-            onPress={() => {
-              onClose();
-              onOpenAddNote();
-            }}
+            onPress={onOpenAddNote}
             activeOpacity={0.75}
           >
             <View style={[styles.actionIconCircle, hasNote && styles.actionIconCircleActive]}>
               <Ionicons
                 name={hasNote ? 'document-text' : 'document-text-outline'}
                 size={19}
-                color={hasNote ? '#8B1E1E' : '#111111'}
+                color={hasNote ? '#DC2626' : '#111111'}
               />
             </View>
             <Text style={[styles.actionLabel, hasNote && styles.actionLabelActive]}>
@@ -218,10 +212,7 @@ export const VerseActionSheet: React.FC<VerseActionSheetProps> = ({
           {/* 3. Ask Apostle */}
           <TouchableOpacity
             style={styles.actionBtn}
-            onPress={() => {
-              onClose();
-              onAskApostle();
-            }}
+            onPress={onAskApostle}
             activeOpacity={0.75}
           >
             <View style={styles.actionIconCircle}>
@@ -264,14 +255,11 @@ export const VerseActionSheet: React.FC<VerseActionSheetProps> = ({
           {onMemorize && (
             <TouchableOpacity
               style={styles.actionBtn}
-              onPress={() => {
-                onClose();
-                onMemorize();
-              }}
+              onPress={onMemorize}
               activeOpacity={0.75}
             >
               <View style={styles.actionIconCircle}>
-                <Ionicons name="bookmark-outline" size={19} color="#D97706" />
+                <Ionicons name="heart-outline" size={19} color="#111111" />
               </View>
               <Text style={styles.actionLabel}>Memorize</Text>
             </TouchableOpacity>
@@ -366,10 +354,10 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   verseSnippet: {
-    fontFamily: Typography.fontSerifItalic,
-    fontSize: 14.5,
-    lineHeight: 21,
-    color: '#1F2937',
+    fontFamily: Typography.fontYouVersionSerif,
+    fontSize: 15.5,
+    lineHeight: 23,
+    color: '#111111',
     marginBottom: 6,
   },
   versionTag: {
@@ -453,7 +441,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   actionLabelActive: {
-    color: '#8B1E1E',
+    color: '#DC2626',
     fontFamily: Typography.fontSansSemiBold,
   },
   compareSection: {
@@ -511,10 +499,10 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   compareVerseText: {
-    fontFamily: Typography.fontSerifItalic,
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#1F2937',
+    fontFamily: Typography.fontYouVersionSerif,
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#111111',
   },
   compareNotFoundText: {
     fontFamily: Typography.fontSansRegular,

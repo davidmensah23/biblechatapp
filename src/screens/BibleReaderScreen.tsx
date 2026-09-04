@@ -69,6 +69,14 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
   // Verse Interaction Sheet State
   const [selectedVerseNumber, setSelectedVerseNumber] = useState<number | null>(null);
   const [showActionSheet, setShowActionSheet] = useState(false);
+  const [modalVerseData, setModalVerseData] = useState<{
+    citation: string;
+    text: string;
+    book: string;
+    chapter: number;
+    verseNumber: number;
+    version: string;
+  } | null>(null);
 
   // Highlights & Notes state
   const [chapterHighlights, setChapterHighlights] = useState<Record<number, string>>({});
@@ -291,6 +299,17 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
   // Handle Verse Tap
   const handleVerseTap = (verseNum: number) => {
     setSelectedVerseNumber(verseNum);
+    const vObj = chapterData?.verses.find(v => v.verseNumber === verseNum);
+    if (vObj) {
+      setModalVerseData({
+        citation: `${currentBook} ${currentChapter}:${verseNum}`,
+        text: vObj.text,
+        book: currentBook,
+        chapter: currentChapter,
+        verseNumber: verseNum,
+        version: translation,
+      });
+    }
 
     // If audio is currently playing, seek narration to this tapped verse!
     if (isPlayingAudio) {
@@ -641,62 +660,94 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
           setShowActionSheet(false);
           setSelectedVerseNumber(null);
         }}
-        verseCitation={selectedCitation}
-        verseText={selectedVerseObj?.text || ''}
-        book={currentBook}
-        chapter={currentChapter}
-        verseNumber={selectedVerseNumber || undefined}
+        verseCitation={modalVerseData?.citation || selectedCitation}
+        verseText={modalVerseData?.text || selectedVerseObj?.text || ''}
+        book={modalVerseData?.book || currentBook}
+        chapter={modalVerseData?.chapter || currentChapter}
+        verseNumber={modalVerseData?.verseNumber || selectedVerseNumber || undefined}
         currentTranslation={translation}
-        currentColor={selectedVerseNumber ? chapterHighlights[selectedVerseNumber] : undefined}
-        hasNote={Boolean(selectedVerseNumber && chapterNotes[selectedVerseNumber])}
+        currentColor={modalVerseData?.verseNumber ? chapterHighlights[modalVerseData.verseNumber] : undefined}
+        hasNote={Boolean(modalVerseData?.verseNumber && chapterNotes[modalVerseData.verseNumber])}
         onSelectHighlight={handleSelectHighlight}
-        onOpenCreateImage={() => setShowImageModal(true)}
-        onOpenAddNote={() => setShowNoteModal(true)}
-        onAskApostle={() => setShowApostleSelectSheet(true)}
+        onOpenCreateImage={() => {
+          setShowActionSheet(false);
+          setShowImageModal(true);
+        }}
+        onOpenAddNote={() => {
+          setShowActionSheet(false);
+          setShowNoteModal(true);
+        }}
+        onAskApostle={() => {
+          setShowActionSheet(false);
+          setShowApostleSelectSheet(true);
+        }}
         onBookmark={handleBookmarkSelectedVerse}
         onCopy={handleCopyVerse}
-        onMemorize={() => setShowMemoryModal(true)}
+        onMemorize={() => {
+          setShowActionSheet(false);
+          setShowMemoryModal(true);
+        }}
       />
 
       {/* Apostle Select Sheet */}
       <ApostleSelectSheet
         visible={showApostleSelectSheet}
-        onClose={() => setShowApostleSelectSheet(false)}
-        verseCitation={selectedCitation}
-        verseText={selectedVerseObj?.text || ''}
+        onClose={() => {
+          setShowApostleSelectSheet(false);
+          setSelectedVerseNumber(null);
+          setModalVerseData(null);
+        }}
+        verseCitation={modalVerseData?.citation || selectedCitation}
+        verseText={modalVerseData?.text || selectedVerseObj?.text || ''}
         onSelectApostle={(apostle) => {
           setShowApostleSelectSheet(false);
-          if (selectedVerseObj && onAskApostleWithVerse) {
-            onAskApostleWithVerse(selectedVerseObj.text, selectedCitation, apostle);
+          const text = modalVerseData?.text || selectedVerseObj?.text;
+          const citation = modalVerseData?.citation || selectedCitation;
+          if (text && onAskApostleWithVerse) {
+            onAskApostleWithVerse(text, citation, apostle);
           }
+          setSelectedVerseNumber(null);
+          setModalVerseData(null);
         }}
       />
 
       {/* Scripture Memorization Modal */}
       <ScriptureMemoryModal
         visible={showMemoryModal}
-        reference={selectedCitation}
-        verseText={selectedVerseObj?.text || ''}
-        version={translation}
-        onClose={() => setShowMemoryModal(false)}
+        reference={modalVerseData?.citation || selectedCitation}
+        verseText={modalVerseData?.text || selectedVerseObj?.text || ''}
+        version={modalVerseData?.version || translation}
+        onClose={() => {
+          setShowMemoryModal(false);
+          setSelectedVerseNumber(null);
+          setModalVerseData(null);
+        }}
       />
 
       {/* Create Verse Image Modal with AI & Presets */}
       <VerseImageModal
         visible={showImageModal}
-        onClose={() => setShowImageModal(false)}
-        verseCitation={selectedCitation}
-        verseText={selectedVerseObj?.text || ''}
-        translation={translation}
+        onClose={() => {
+          setShowImageModal(false);
+          setSelectedVerseNumber(null);
+          setModalVerseData(null);
+        }}
+        verseCitation={modalVerseData?.citation || selectedCitation}
+        verseText={modalVerseData?.text || selectedVerseObj?.text || ''}
+        translation={modalVerseData?.version || translation}
       />
 
       {/* Verse Note Modal */}
       <VerseNoteModal
         visible={showNoteModal}
-        onClose={() => setShowNoteModal(false)}
-        verseCitation={selectedCitation}
-        verseText={selectedVerseObj?.text || ''}
-        existingNote={selectedVerseNumber ? chapterNotes[selectedVerseNumber] : undefined}
+        onClose={() => {
+          setShowNoteModal(false);
+          setSelectedVerseNumber(null);
+          setModalVerseData(null);
+        }}
+        verseCitation={modalVerseData?.citation || selectedCitation}
+        verseText={modalVerseData?.text || selectedVerseObj?.text || ''}
+        existingNote={modalVerseData?.verseNumber ? chapterNotes[modalVerseData.verseNumber] : undefined}
         onSaveNote={handleSaveNote}
         onDeleteNote={handleDeleteNote}
       />

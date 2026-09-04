@@ -271,7 +271,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
             <View style={styles.resumeContent}>
               <View style={styles.resumeTagRow}>
                 <View style={styles.resumePill}>
-                  <Ionicons name="bookmark" size={11} color="#8B1E1E" style={{ marginRight: 4 }} />
+                  <Ionicons name="bookmark" size={11} color="#DC2626" style={{ marginRight: 4 }} />
                   <Text style={styles.resumePillText}>{t('continue_reading', 'CONTINUE READING')}</Text>
                 </View>
                 <Text style={styles.resumeEstTime}>
@@ -715,7 +715,7 @@ const styles = StyleSheet.create({
   resumePillText: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 10,
-    color: '#8B1E1E',
+    color: '#DC2626',
     letterSpacing: 0.5,
   },
   resumeEstTime: {
@@ -952,7 +952,7 @@ const styles = StyleSheet.create({
   },
   apostleQuoteName: {
     fontFamily: Typography.fontSerifBold,
-    fontSize: 21,
+    fontSize: 22,
     letterSpacing: -0.5,
     color: '#111111',
   },
@@ -963,10 +963,10 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   apostleQuoteBody: {
-    fontFamily: Typography.fontSansRegular,
-    fontSize: 15.5,
-    lineHeight: 23,
-    color: '#222222',
+    fontFamily: Typography.fontYouVersionSerif,
+    fontSize: 18,
+    lineHeight: 27,
+    color: '#111111',
     marginBottom: 12,
   },
   apostleQuoteFooter: {
