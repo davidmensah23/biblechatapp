@@ -48,6 +48,7 @@ import { getAvatarEmblem } from '../services/avatarService';
 import { MascotAssets } from '../services/mascotAssets';
 import { InteractiveGestureSheet } from '../components/InteractiveGestureSheet';
 import { CustomConfirmationModal } from '../components/CustomConfirmationModal';
+import { CustomActionMenuModal, ActionMenuItem } from '../components/CustomActionMenuModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -98,6 +99,18 @@ export const CommunityScreen: React.FC<CommunityScreenProps> = ({
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [reportedItemTitle, setReportedItemTitle] = useState('');
   const [reportedItemId, setReportedItemId] = useState('');
+
+  // 3-Dot Options Action Menu State
+  const [actionMenuState, setActionMenuState] = useState<{
+    visible: boolean;
+    title: string;
+    subtitle?: string;
+    options: ActionMenuItem[];
+  }>({
+    visible: false,
+    title: '',
+    options: []
+  });
 
   // Create Community Post Modal State
   const [showCreatePostModal, setShowCreatePostModal] = useState(false);
@@ -572,16 +585,29 @@ ${url}`,
                       {/* 3-Dot Moderation & Share */}
                       <TouchableOpacity
                         onPress={() => {
-                          Alert.alert(
-                            "Community Options",
-                            post.caption.slice(0, 50) + '...',
-                            [
-                              { text: "Share Post", onPress: () => handleShare(post.authorName, post.caption, `https://biblechatapp.com/community/${post.id}`) },
-                              { text: "Report Inappropriate Content", style: "destructive", onPress: () => handleOpenReportModal(post.id, post.caption) },
-                              { text: "Hide Post", onPress: () => setHiddenIds(prev => new Set(prev).add(post.id)) },
-                              { text: "Cancel", style: "cancel" }
+                          setActionMenuState({
+                            visible: true,
+                            title: "Community Options",
+                            subtitle: post.caption?.slice(0, 60) + '...',
+                            options: [
+                              {
+                                label: "Share Post",
+                                icon: "share-social-outline",
+                                onPress: () => handleShare(post.authorName, post.caption, `https://biblechatapp.com/community/${post.id}`)
+                              },
+                              {
+                                label: "Hide Post",
+                                icon: "eye-off-outline",
+                                onPress: () => setHiddenIds(prev => new Set(prev).add(post.id))
+                              },
+                              {
+                                label: "Report Inappropriate Content",
+                                icon: "flag-outline",
+                                isDestructive: true,
+                                onPress: () => handleOpenReportModal(post.id, post.caption)
+                              }
                             ]
-                          );
+                          });
                         }}
                         activeOpacity={0.7}
                         style={styles.moreBtn}
@@ -765,16 +791,29 @@ ${url}`,
                       {/* 3-Dot Card Options */}
                       <TouchableOpacity
                         onPress={() => {
-                          Alert.alert(
-                            "Prayer Options",
-                            `“${req.title}”`,
-                            [
-                              { text: "Share Prayer", onPress: () => handleShare(req.title, req.requestText, `https://biblechatapp.com/prayer/${req.id}`) },
-                              { text: "Report Content", style: "destructive", onPress: () => handleOpenReportModal(req.id, req.title) },
-                              { text: "Hide from Feed", onPress: () => setHiddenIds(prev => new Set(prev).add(req.id)) },
-                              { text: "Cancel", style: "cancel" }
+                          setActionMenuState({
+                            visible: true,
+                            title: "Prayer Options",
+                            subtitle: `“${req.title}”`,
+                            options: [
+                              {
+                                label: "Share Prayer",
+                                icon: "share-social-outline",
+                                onPress: () => handleShare(req.title, req.requestText, `https://biblechatapp.com/prayer/${req.id}`)
+                              },
+                              {
+                                label: "Hide from Feed",
+                                icon: "eye-off-outline",
+                                onPress: () => setHiddenIds(prev => new Set(prev).add(req.id))
+                              },
+                              {
+                                label: "Report Content",
+                                icon: "flag-outline",
+                                isDestructive: true,
+                                onPress: () => handleOpenReportModal(req.id, req.title)
+                              }
                             ]
-                          );
+                          });
                         }}
                         activeOpacity={0.7}
                         style={styles.moreBtn}
@@ -1221,6 +1260,15 @@ ${url}`,
         onConfirm={handleConfirmReport}
         onCancel={() => setReportModalVisible(false)}
         onClose={() => setReportModalVisible(false)}
+      />
+
+      {/* 3-Dot Custom Action Menu Modal */}
+      <CustomActionMenuModal
+        visible={actionMenuState.visible}
+        title={actionMenuState.title}
+        subtitle={actionMenuState.subtitle}
+        options={actionMenuState.options}
+        onClose={() => setActionMenuState(prev => ({ ...prev, visible: false }))}
       />
     </SafeAreaView>
   );

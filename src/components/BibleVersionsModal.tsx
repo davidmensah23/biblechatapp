@@ -22,6 +22,7 @@ import {
 import { useTranslation, SUPPORTED_LANGUAGES, AppLanguage } from '../services/localizationService';
 import { setPreferredTranslation } from '../services/readingProgressService';
 import { LanguagePickerModal } from './LanguagePickerModal';
+import { CustomConfirmationModal } from './CustomConfirmationModal';
 
 interface BibleVersionsModalProps {
   visible: boolean;
@@ -63,6 +64,16 @@ export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
   const [downloadingCode, setDownloadingCode] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  const [feedbackModal, setFeedbackModal] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    isError?: boolean;
+  }>({
+    visible: false,
+    title: '',
+    message: ''
+  });
 
   // When modal opens, auto-detect active app language and select that filter tab!
   useEffect(() => {
@@ -105,12 +116,18 @@ export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
       setVersions(prev =>
         prev.map(v => (v.code === item.code ? { ...v, isDownloaded: true } : v))
       );
-      Alert.alert(
-        'Offline Ready',
-        `${item.code} (${item.name}) is saved onto your device for 100% offline reading.`
-      );
+      setFeedbackModal({
+        visible: true,
+        title: 'Offline Ready',
+        message: `${item.code} (${item.name}) is saved onto your device for 100% offline reading.`
+      });
     } else {
-      Alert.alert('Download Error', 'Could not complete download. Please check your internet connection.');
+      setFeedbackModal({
+        visible: true,
+        title: 'Download Error',
+        message: 'Could not complete download. Please check your internet connection.',
+        isError: true
+      });
     }
   };
 
@@ -295,6 +312,18 @@ export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
             setSelectedLangFilter(newLang);
             loadVersionsForLanguage(newLang);
           }}
+        />
+
+        {/* Custom Confirmation / Alert Modal */}
+        <CustomConfirmationModal
+          visible={feedbackModal.visible}
+          title={feedbackModal.title}
+          message={feedbackModal.message}
+          icon={feedbackModal.isError ? 'alert-circle-outline' : 'checkmark-circle-outline'}
+          confirmText="OK"
+          singleButton={true}
+          onConfirm={() => setFeedbackModal(prev => ({ ...prev, visible: false }))}
+          onClose={() => setFeedbackModal(prev => ({ ...prev, visible: false }))}
         />
       </SafeAreaView>
     </Modal>

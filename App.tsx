@@ -51,6 +51,11 @@ import { PrivacyOnboardingModal } from './src/components/PrivacyOnboardingModal'
 import { initReferralsTable, extractReferralFromUrl, claimReferralCode } from './src/services/referralsService';
 
 import { ScreenTransition } from './src/components/ScreenTransition';
+import { GlobalAlertModal } from './src/components/GlobalAlertModal';
+import { installAlertInterceptor } from './src/services/alertService';
+
+// Automatically routes all Alert.alert() calls to our custom branded modal
+installAlertInterceptor();
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -462,6 +467,9 @@ export default function App() {
           />
         </View>
       )}
+
+      {/* Universal Custom Alert & Action Sheet Modal */}
+      <GlobalAlertModal />
       </YouVersionProvider>
     </SafeAreaProvider>
   );
