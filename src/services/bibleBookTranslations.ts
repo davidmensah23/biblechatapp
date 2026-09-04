@@ -116,19 +116,67 @@ export function getLocalizedBookName(englishBookName: string, languageCode: stri
   }
 }
 
+export const TRANSLATION_TO_LANGUAGE: Record<string, string> = {
+  // Twi
+  'ASCB': 'tw',
+  'AKCB': 'tw',
+  // Pidgin
+  'PCM': 'pcm',
+  // Yoruba
+  'YCB': 'yo',
+  // Igbo
+  'ICB': 'ig',
+  // Swahili
+  'SUV': 'sw',
+  'NEN': 'sw',
+  // Spanish
+  'RVR': 'es',
+  'NVI-ES': 'es',
+  // French
+  'LSG': 'fr',
+  'BDS': 'fr',
+  // Portuguese
+  'ARC': 'pt',
+  'NVI-PT': 'pt',
+  // English
+  'NIV': 'en',
+  'KJV': 'en',
+  'WEB': 'en',
+  'ESV': 'en',
+  'NLT': 'en',
+  'BBE': 'en',
+  'ASV': 'en',
+};
+
 /**
- * Determines whether the active translation or language is a non-English vernacular
+ * Resolves the primary language code for a given Bible translation code,
+ * falling back to the UI language or 'en'.
+ */
+export function getLanguageForTranslation(translationCode: string = '', fallbackLanguage: string = 'en'): string {
+  const code = translationCode.toUpperCase().trim();
+  if (TRANSLATION_TO_LANGUAGE[code]) {
+    return TRANSLATION_TO_LANGUAGE[code];
+  }
+  return fallbackLanguage || 'en';
+}
+
+const ENGLISH_VERSIONS = ['NIV', 'KJV', 'WEB', 'ESV', 'NLT', 'BBE', 'ASV'];
+
+/**
+ * Determines whether the active translation or language is non-English
+ * (e.g. Spanish, French, Portuguese, Swahili, Yoruba, Igbo, Twi, Pidgin)
  * where English pericope headings should be suppressed to avoid language clashes.
  */
 export function isVernacularVersion(translationCode: string = '', languageCode: string = ''): boolean {
   const code = translationCode.toUpperCase().trim();
-  const lang = languageCode.toLowerCase().trim();
+  const lang = (languageCode || getLanguageForTranslation(code, 'en')).toLowerCase().trim();
 
-  // Known vernacular codes
-  const vernacularCodes = ['ASCB', 'AKCB', 'PCM', 'YCB', 'ICB', 'NEN', 'SUV'];
-  if (vernacularCodes.includes(code)) return true;
+  // Any non-English language is non-English
+  if (lang && lang !== 'en') return true;
 
-  if (lang === 'tw' || lang === 'yo' || lang === 'ig' || lang === 'pcm') return true;
+  // Any translation not in standard English versions is non-English
+  if (code && !ENGLISH_VERSIONS.includes(code)) return true;
 
   return false;
 }
+

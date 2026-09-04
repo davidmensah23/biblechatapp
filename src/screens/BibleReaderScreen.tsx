@@ -33,7 +33,7 @@ import { VerseNoteModal } from '../components/VerseNoteModal';
 import { BibleChapterSkeleton } from '../components/SoftSkeleton';
 import { ScriptureMemoryModal } from '../components/ScriptureMemoryModal';
 import { getChapterHeading, getChapterSections } from '../services/chapterHeadings';
-import { getLocalizedBookName } from '../services/bibleBookTranslations';
+import { getLocalizedBookName, getLanguageForTranslation } from '../services/bibleBookTranslations';
 import { getLastReadPosition, saveLastReadPosition, subscribeVersionChange, setPreferredTranslation } from '../services/readingProgressService';
 import { useTranslation, LANGUAGE_TO_DEFAULT_BIBLE } from '../services/localizationService';
 import { ApostleSelectSheet } from '../components/ApostleSelectSheet';
@@ -178,7 +178,8 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
   };
 
   const { currentLanguage, t } = useTranslation();
-  const localizedBookName = getLocalizedBookName(currentBook, currentLanguage);
+  const activeScriptureLanguage = getLanguageForTranslation(translation, currentLanguage);
+  const localizedBookName = getLocalizedBookName(currentBook, activeScriptureLanguage);
 
   // Listen to version changes across the entire app
   useEffect(() => {
@@ -706,6 +707,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
         onClose={() => setShowBookPicker(false)}
         currentBook={currentBook}
         currentChapter={currentChapter}
+        currentTranslation={translation}
         onSelect={(book, chapter) => {
           setCurrentBook(book);
           setCurrentChapter(chapter);

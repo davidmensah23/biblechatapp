@@ -17,12 +17,13 @@ import { Typography } from '../theme/typography';
 import { ALL_BIBLE_BOOKS } from '../services/bibleEngine';
 import { BibleBook } from '../types';
 import { useTranslation } from '../services/localizationService';
-import { getLocalizedBookName } from '../services/bibleBookTranslations';
+import { getLocalizedBookName, getLanguageForTranslation } from '../services/bibleBookTranslations';
 
 interface BibleBookPickerModalProps {
   visible: boolean;
   currentBook: string;
   currentChapter: number;
+  currentTranslation?: string;
   onSelect: (book: string, chapter: number) => void;
   onClose: () => void;
 }
@@ -38,10 +39,12 @@ export const BibleBookPickerModal: React.FC<BibleBookPickerModalProps> = ({
   visible,
   currentBook,
   currentChapter,
+  currentTranslation,
   onSelect,
   onClose
 }) => {
   const { currentLanguage } = useTranslation();
+  const activePickerLanguage = getLanguageForTranslation(currentTranslation, currentLanguage);
   // Tab 1: Old Testament (39), Tab 2: New Testament (27) - Biblical Order
   const [testamentTab, setTestamentTab] = useState<'OT' | 'NT'>('OT');
   const [selectedBook, setSelectedBook] = useState<BibleBook | null>(null);
@@ -53,10 +56,11 @@ export const BibleBookPickerModal: React.FC<BibleBookPickerModalProps> = ({
     return ALL_BIBLE_BOOKS.filter((b) => {
       if (b.testament !== testamentTab) return false;
       if (!q) return true;
-      const localized = getLocalizedBookName(b.name, currentLanguage).toLowerCase();
+      const localized = getLocalizedBookName(b.name, activePickerLanguage).toLowerCase();
       return b.name.toLowerCase().includes(q) || localized.includes(q);
     });
-  }, [testamentTab, searchQuery, currentLanguage]);
+  }, [testamentTab, searchQuery, activePickerLanguage]);
+
 
   const handleBookClick = (book: BibleBook) => {
     setSelectedBook(book);
@@ -75,7 +79,7 @@ export const BibleBookPickerModal: React.FC<BibleBookPickerModalProps> = ({
   };
 
   const selectedBookLocalized = selectedBook
-    ? getLocalizedBookName(selectedBook.name, currentLanguage)
+    ? getLocalizedBookName(selectedBook.name, activePickerLanguage)
     : '';
 
   return (
@@ -245,7 +249,7 @@ export const BibleBookPickerModal: React.FC<BibleBookPickerModalProps> = ({
               showsVerticalScrollIndicator={false}
               renderItem={({ item }) => {
                 const isCurrent = item.name === currentBook;
-                const localized = getLocalizedBookName(item.name, currentLanguage);
+                const localized = getLocalizedBookName(item.name, activePickerLanguage);
                 const hasLocalTranslation = localized !== item.name;
 
                 return (
