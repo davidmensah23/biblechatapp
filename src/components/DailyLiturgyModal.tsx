@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 5,
   },
   prayerBodyText: {
-    fontFamily: Typography.fontSerifItalic,
+    fontFamily: Typography.fontYouVersionSerif,
     fontSize: 18,
     lineHeight: 28,
     color: '#FFFFFF',

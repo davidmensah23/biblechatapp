@@ -182,10 +182,10 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   verseSnippet: {
-    fontFamily: Typography.fontSerifItalic,
-    fontSize: 14.5,
-    lineHeight: 22,
-    color: '#4B5563',
+    fontFamily: Typography.fontYouVersionSerif,
+    fontSize: 17,
+    lineHeight: 26,
+    color: '#111111',
   },
   inputHeading: {
     fontFamily: Typography.fontSansSemiBold,

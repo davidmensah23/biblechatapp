@@ -822,7 +822,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   italicAccent: {
-    fontFamily: Typography.fontSerifItalic,
+    fontFamily: Typography.fontYouVersionSerifItalic,
     color: '#FFFFFF',
   },
   subtitle: {

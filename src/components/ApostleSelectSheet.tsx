@@ -127,10 +127,10 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   quoteText: {
-    fontFamily: Typography.fontSerifItalic,
-    fontSize: 13,
-    lineHeight: 18,
-    color: '#374151',
+    fontFamily: Typography.fontYouVersionSerif,
+    fontSize: 16.5,
+    lineHeight: 24.5,
+    color: '#111111',
   },
   quoteRef: {
     fontFamily: Typography.fontSansSemiBold,

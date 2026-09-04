@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   italicText: {
-    fontFamily: Typography.fontSerifItalic,
+    fontFamily: Typography.fontYouVersionSerifItalic,
     color: Colors.textPrimary,
   },
   scriptureQuoteCard: {
@@ -114,7 +114,9 @@ const styles = StyleSheet.create({
     marginVertical: 6,
   },
   scriptureQuoteText: {
-    fontFamily: Typography.fontSerifItalic,
-    color: '#1E293B',
+    fontFamily: Typography.fontYouVersionSerif,
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#111111',
   }
 });

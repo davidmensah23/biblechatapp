@@ -356,10 +356,10 @@ const styles = StyleSheet.create({
   },
   verseSnippet: {
     fontFamily: Typography.fontYouVersionSerif,
-    fontSize: 15.5,
-    lineHeight: 23,
+    fontSize: 17.5,
+    lineHeight: 26,
     color: '#111111',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   versionTag: {
     fontFamily: Typography.fontSansSemiBold,
@@ -501,8 +501,8 @@ const styles = StyleSheet.create({
   },
   compareVerseText: {
     fontFamily: Typography.fontYouVersionSerif,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 17,
+    lineHeight: 25.5,
     color: '#111111',
   },
   compareNotFoundText: {

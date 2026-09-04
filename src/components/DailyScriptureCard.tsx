@@ -169,8 +169,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   readMoreText: {
-    fontFamily: Typography.fontSerifItalic,
-    fontSize: 17,
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 13.5,
     color: '#FFFFFF',
     textDecorationLine: 'underline',
   },
