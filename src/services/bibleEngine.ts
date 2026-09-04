@@ -118,43 +118,60 @@ export const ALL_BIBLE_BOOKS: BibleBook[] = [
 ];
 
 export const INITIAL_BIBLE_VERSIONS: BibleVersionInfo[] = [
-  // English
+  // English (Historic & Modern)
   { id: '1', code: 'NIV', name: 'New International Version', language: 'en', hasAudio: true, isDownloaded: true, apiTranslationKey: 'web' },
   { id: '2', code: 'KJV', name: 'King James Version (1611)', language: 'en', hasAudio: true, isDownloaded: true, apiTranslationKey: 'kjv' },
-  { id: '3', code: 'WEB', name: 'World English Bible', language: 'en', hasAudio: true, isDownloaded: true, apiTranslationKey: 'web' },
-  { id: '4', code: 'ESV', name: 'English Standard Version', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'web' },
-  { id: '5', code: 'NLT', name: 'New Living Translation', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'web' },
-  { id: '6', code: 'BBE', name: 'Bible in Basic English', language: 'en', hasAudio: false, isDownloaded: false, apiTranslationKey: 'bbe' },
-  { id: '7', code: 'ASV', name: 'American Standard Version', language: 'en', hasAudio: false, isDownloaded: false, apiTranslationKey: 'asv' },
+  { id: '3', code: 'ESV', name: 'English Standard Version', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:59' },
+  { id: '4', code: 'GNV', name: 'Geneva Bible (1599)', language: 'en', hasAudio: true, isDownloaded: true, apiTranslationKey: 'youversion:2163' },
+  { id: '5', code: 'NKJV', name: 'New King James Version', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:114' },
+  { id: '6', code: 'NLT', name: 'New Living Translation', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:116' },
+  { id: '7', code: 'NASB', name: 'New American Standard Bible (NASB 2020)', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:2692' },
+  { id: '8', code: 'CSB', name: 'Christian Standard Bible', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:1713' },
+  { id: '9', code: 'AMP', name: 'Amplified Bible', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:1588' },
+  { id: '10', code: 'MSG', name: 'The Message (Eugene Peterson)', language: 'en', hasAudio: false, isDownloaded: false, apiTranslationKey: 'youversion:97' },
+  { id: '11', code: 'NET', name: 'New English Translation', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:107' },
+  { id: '12', code: 'BSB', name: 'Berean Standard Bible', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:3034' },
+  { id: '13', code: 'WEB', name: 'World English Bible', language: 'en', hasAudio: true, isDownloaded: true, apiTranslationKey: 'web' },
+  { id: '14', code: 'CEV', name: 'Contemporary English Version', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:392' },
+  { id: '15', code: 'GNT', name: 'Good News Translation', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:68' },
+  { id: '16', code: 'BBE', name: 'Bible in Basic English', language: 'en', hasAudio: false, isDownloaded: false, apiTranslationKey: 'bbe' },
+  { id: '17', code: 'ASV', name: 'American Standard Version (1901)', language: 'en', hasAudio: false, isDownloaded: false, apiTranslationKey: 'asv' },
+  { id: '18', code: 'YLT', name: 'Young\'s Literal Translation (1898)', language: 'en', hasAudio: false, isDownloaded: false, apiTranslationKey: 'youversion:821' },
+  { id: '19', code: 'DBY', name: 'Darby Translation (1890)', language: 'en', hasAudio: false, isDownloaded: false, apiTranslationKey: 'youversion:478' },
 
-  // Twi (Akan - Ghana)
-  { id: '40', code: 'ASCB', name: 'Asante Twi Contemporary Bible (YouVersion)', language: 'tw', hasAudio: true, isDownloaded: true, apiTranslationKey: 'youversion:2094' },
-  { id: '41', code: 'AKCB', name: 'Akuapem Twi Contemporary Bible (YouVersion)', language: 'tw', hasAudio: true, isDownloaded: true, apiTranslationKey: 'youversion:1631' },
+  // Ghanaian & West African (Akan, Twi, Fante, Ga, Ewe)
+  { id: '40', code: 'ASCB', name: 'Asante Twi Contemporary Bible (Biblica)', language: 'tw', hasAudio: true, isDownloaded: true, apiTranslationKey: 'youversion:2094' },
+  { id: '41', code: 'AKCB', name: 'Akuapem Twi Contemporary Bible (Biblica)', language: 'tw', hasAudio: true, isDownloaded: true, apiTranslationKey: 'youversion:1631' },
+  { id: '42', code: 'FAT', name: 'Fante Bible (Mfantse Baebor No)', language: 'tw', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:1755' },
+  { id: '43', code: 'GA', name: 'Ga Bible (Ngmami Kpotu)', language: 'tw', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:1981' },
+  { id: '44', code: 'EWE', name: 'Ewe Bible (Biblia)', language: 'tw', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:1539' },
 
-  // Nigerian Pidgin (West Africa)
+  // Nigerian & West African
   { id: '45', code: 'PCM', name: 'Holy Bible Nigerian Pidgin English (YouVersion)', language: 'pcm', hasAudio: true, isDownloaded: true, apiTranslationKey: 'youversion:2516' },
-
-  // Yoruba (Nigeria / Benin)
   { id: '46', code: 'YCB', name: 'Yoruba Contemporary Bible (YouVersion)', language: 'yo', hasAudio: true, isDownloaded: true, apiTranslationKey: 'youversion:911' },
-
-  // Igbo (Nigeria)
   { id: '47', code: 'ICB', name: 'Igbo Contemporary Bible (YouVersion)', language: 'ig', hasAudio: true, isDownloaded: true, apiTranslationKey: 'youversion:1624' },
+  { id: '48', code: 'HAU', name: 'Hausa Bible (Littafi Mai Tsarki)', language: 'yo', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:1626' },
 
-  // Swahili (Kiswahili - East Africa)
-  { id: '50', code: 'SUV', name: 'Swahili Union Version (Biblia)', language: 'sw', hasAudio: true, isDownloaded: true, apiTranslationKey: 'web' },
+  // East Africa (Swahili)
+  { id: '50', code: 'SUV', name: 'Swahili Union Version (Biblia Takatifu)', language: 'sw', hasAudio: true, isDownloaded: true, apiTranslationKey: 'web' },
   { id: '51', code: 'NEN', name: 'Kiswahili Contemporary Version - Neno (YouVersion)', language: 'sw', hasAudio: true, isDownloaded: true, apiTranslationKey: 'youversion:1627' },
 
   // Spanish (Español)
-  { id: '10', code: 'RVR', name: 'Reina-Valera 1960', language: 'es', hasAudio: true, isDownloaded: true, apiTranslationKey: 'rvr' },
-  { id: '11', code: 'NVI-ES', name: 'Nueva Versión Internacional (YouVersion)', language: 'es', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:128' },
+  { id: '52', code: 'RVR', name: 'Reina-Valera 1960', language: 'es', hasAudio: true, isDownloaded: true, apiTranslationKey: 'rvr' },
+  { id: '53', code: 'NVI-ES', name: 'Nueva Versión Internacional (YouVersion)', language: 'es', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:128' },
 
   // French (Français)
-  { id: '20', code: 'LSG', name: 'Louis Segond 1910', language: 'fr', hasAudio: true, isDownloaded: true, apiTranslationKey: 'lsg' },
-  { id: '21', code: 'BDS', name: 'La Bible du Semeur (YouVersion)', language: 'fr', hasAudio: false, isDownloaded: false, apiTranslationKey: 'youversion:21' },
+  { id: '54', code: 'LSG', name: 'Louis Segond 1910', language: 'fr', hasAudio: true, isDownloaded: true, apiTranslationKey: 'lsg' },
+  { id: '55', code: 'BDS', name: 'La Bible du Semeur (YouVersion)', language: 'fr', hasAudio: false, isDownloaded: false, apiTranslationKey: 'youversion:21' },
 
   // Portuguese (Português)
-  { id: '30', code: 'ARC', name: 'Almeida Revista e Corrigida', language: 'pt', hasAudio: true, isDownloaded: true, apiTranslationKey: 'almeida' },
-  { id: '31', code: 'NVI-PT', name: 'Nova Versão Internacional (YouVersion)', language: 'pt', hasAudio: false, isDownloaded: false, apiTranslationKey: 'youversion:129' },
+  { id: '56', code: 'ARC', name: 'Almeida Revista e Corrigida', language: 'pt', hasAudio: true, isDownloaded: true, apiTranslationKey: 'almeida' },
+  { id: '57', code: 'NVI-PT', name: 'Nova Versão Internacional (YouVersion)', language: 'pt', hasAudio: false, isDownloaded: false, apiTranslationKey: 'youversion:129' },
+
+  // European & Global
+  { id: '60', code: 'LUT', name: 'Lutherbibel 1912 (Deutsch)', language: 'de', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:157' },
+  { id: '61', code: 'RIV', name: 'La Sacra Bibbia Riveduta 1927 (Italiano)', language: 'it', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:1130' },
+  { id: '62', code: 'TAB', name: 'Ang Biblia 1905 (Tagalog)', language: 'tl', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:399' }
 ];
 
 let memoryVersionsState: BibleVersionInfo[] = [...INITIAL_BIBLE_VERSIONS];
@@ -193,6 +210,9 @@ export const fetchBibleVersionsForLanguage = async (
       yo: 'yor',
       ig: 'ibo',
       pcm: 'pcm',
+      de: 'deu',
+      it: 'ita',
+      tl: 'tgl',
       en: 'eng',
       all: 'eng'
     };

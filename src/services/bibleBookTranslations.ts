@@ -117,35 +117,58 @@ export function getLocalizedBookName(englishBookName: string, languageCode: stri
 }
 
 export const TRANSLATION_TO_LANGUAGE: Record<string, string> = {
-  // Twi
-  'ASCB': 'tw',
-  'AKCB': 'tw',
-  // Pidgin
-  'PCM': 'pcm',
-  // Yoruba
-  'YCB': 'yo',
-  // Igbo
-  'ICB': 'ig',
-  // Swahili
+  // English (Modern & Historic)
+  'NIV': 'en',
+  'ESV': 'en',
+  'KJV': 'en',
+  'NKJV': 'en',
+  'NLT': 'en',
+  'NASB': 'en',
+  'CSB': 'en',
+  'AMP': 'en',
+  'MSG': 'en',
+  'NET': 'en',
+  'BSB': 'en',
+  'GNV': 'en', // Geneva Bible 1599
+  'WEB': 'en',
+  'CEV': 'en',
+  'GNT': 'en',
+  'BBE': 'en',
+  'ASV': 'en',
+  'DBY': 'en',
+  'YLT': 'en',
+
+  // Ghanaian & West African
+  'ASCB': 'tw', // Asante Twi
+  'AKCB': 'tw', // Akuapem Twi
+  'FAT': 'tw',  // Fante
+  'GA': 'tw',   // Ga
+  'EWE': 'tw',  // Ewe
+  'PCM': 'pcm', // Nigerian Pidgin
+  'YCB': 'yo',  // Yoruba
+  'ICB': 'ig',  // Igbo
+  'HAU': 'hau', // Hausa
+
+  // East Africa
   'SUV': 'sw',
   'NEN': 'sw',
+
   // Spanish
   'RVR': 'es',
   'NVI-ES': 'es',
+
   // French
   'LSG': 'fr',
   'BDS': 'fr',
+
   // Portuguese
   'ARC': 'pt',
   'NVI-PT': 'pt',
-  // English
-  'NIV': 'en',
-  'KJV': 'en',
-  'WEB': 'en',
-  'ESV': 'en',
-  'NLT': 'en',
-  'BBE': 'en',
-  'ASV': 'en',
+
+  // European & Global
+  'LUT': 'de', // German Lutherbibel
+  'RIV': 'it', // Italian Riveduta
+  'TAB': 'tl', // Tagalog Ang Biblia
 };
 
 /**
@@ -160,7 +183,11 @@ export function getLanguageForTranslation(translationCode: string = '', fallback
   return fallbackLanguage || 'en';
 }
 
-const ENGLISH_VERSIONS = ['NIV', 'KJV', 'WEB', 'ESV', 'NLT', 'BBE', 'ASV'];
+const ENGLISH_VERSIONS = [
+  'NIV', 'ESV', 'KJV', 'NKJV', 'NLT', 'NASB', 'CSB', 'AMP', 'MSG',
+  'NET', 'BSB', 'GNV', 'WEB', 'CEV', 'GNT', 'BBE', 'ASV', 'DBY', 'YLT'
+];
+
 
 /**
  * Determines whether the active translation or language is non-English

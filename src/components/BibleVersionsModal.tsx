@@ -39,15 +39,18 @@ interface LanguageFilterTab {
 
 const LANGUAGE_FILTER_TABS: LanguageFilterTab[] = [
   { code: 'all', label: 'All', flag: '🌐' },
-  { code: 'tw', label: 'Twi', flag: '🇬🇭' },
   { code: 'en', label: 'English', flag: '🇺🇸' },
+  { code: 'tw', label: 'Ghana', flag: '🇬🇭' },
+  { code: 'pcm', label: 'Pidgin', flag: '🇳🇬' },
+  { code: 'yo', label: 'Yorùbá', flag: '🇳🇬' },
+  { code: 'ig', label: 'Igbo', flag: '🇳🇬' },
+  { code: 'sw', label: 'Kiswahili', flag: '🇰🇪' },
   { code: 'es', label: 'Español', flag: '🇪🇸' },
   { code: 'fr', label: 'Français', flag: '🇫🇷' },
   { code: 'pt', label: 'Português', flag: '🇵🇹' },
-  { code: 'sw', label: 'Kiswahili', flag: '🇰🇪' },
-  { code: 'yo', label: 'Yorùbá', flag: '🇳🇬' },
-  { code: 'ig', label: 'Igbo', flag: '🇳🇬' },
-  { code: 'pcm', label: 'Pidgin', flag: '🇳🇬' },
+  { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
+  { code: 'it', label: 'Italiano', flag: '🇮🇹' },
+  { code: 'tl', label: 'Tagalog', flag: '🇵🇭' },
 ];
 
 export const BibleVersionsModal: React.FC<BibleVersionsModalProps> = ({
