@@ -271,7 +271,7 @@ export const VerseActionSheet: React.FC<VerseActionSheetProps> = ({
               activeOpacity={0.75}
             >
               <View style={styles.actionIconCircle}>
-                <Ionicons name="sparkles-outline" size={19} color="#D97706" />
+                <Ionicons name="bookmark-outline" size={19} color="#D97706" />
               </View>
               <Text style={styles.actionLabel}>Memorize</Text>
             </TouchableOpacity>

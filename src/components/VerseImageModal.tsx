@@ -198,7 +198,7 @@ export const VerseImageModal: React.FC<VerseImageModalProps> = ({
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Create Verse Image</Text>
             <View style={styles.quotaPill}>
-              <Ionicons name="sparkles" size={11} color="#D97706" style={{ marginRight: 4 }} />
+              <Ionicons name="color-wand" size={11} color="#D97706" style={{ marginRight: 4 }} />
               <Text style={styles.quotaText}>
                 {quota.remaining} of {quota.total} left today
               </Text>
@@ -321,7 +321,7 @@ export const VerseImageModal: React.FC<VerseImageModalProps> = ({
           <View style={styles.aiGenSection}>
             <View style={styles.aiHeaderRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="sparkles" size={16} color="#D97706" />
+                <Ionicons name="brush" size={16} color="#D97706" />
                 <Text style={styles.sectionHeaderTitle}>Generate Custom Background</Text>
               </View>
               <Text style={styles.dailyQuotaHint}>{quota.remaining} left</Text>
@@ -354,7 +354,7 @@ export const VerseImageModal: React.FC<VerseImageModalProps> = ({
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <>
-                    <Ionicons name="sparkles" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Ionicons name="brush" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
                     <Text style={styles.generateBtnText}>Generate</Text>
                   </>
                 )}

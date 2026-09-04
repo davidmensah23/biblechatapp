@@ -327,7 +327,7 @@ export const GroupChatDetailScreen: React.FC<GroupChatDetailScreenProps> = ({ th
                 onPress={() => handleInsertMention('all')}
                 activeOpacity={0.8}
               >
-                <Text style={styles.mentionPillText}>✨ @all (Whole Council)</Text>
+                <Text style={styles.mentionPillText}>@all (Whole Council)</Text>
               </TouchableOpacity>
               {memberApostles.map(a => (
                 <TouchableOpacity

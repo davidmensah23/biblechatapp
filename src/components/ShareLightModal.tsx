@@ -118,7 +118,7 @@ export const ShareLightModal: React.FC<ShareLightModalProps> = ({
 
             {/* Full-width Obsidian Pill Button */}
             <TouchableOpacity style={styles.shareBtn} onPress={handleShare} activeOpacity={0.85}>
-              <Ionicons name="sparkles" size={17} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Ionicons name="share-social" size={17} color="#FFFFFF" style={{ marginRight: 6 }} />
               <Text style={styles.shareBtnText}>Share the Light</Text>
             </TouchableOpacity>
           </View>

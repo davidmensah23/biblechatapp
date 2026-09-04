@@ -119,7 +119,7 @@ export const CreateGroupCouncilModal: React.FC<CreateGroupCouncilModalProps> = (
               activeOpacity={0.8}
             >
               <Text style={[styles.segmentText, tab === 'custom' && styles.segmentTextActive]}>
-                ✨ Custom Room
+                Custom Room
               </Text>
             </TouchableOpacity>
           </View>

@@ -79,7 +79,7 @@ export const DeedsChronicleView: React.FC<DeedsChronicleViewProps> = ({ onOpenNe
             <Text style={styles.summaryTitle}>Acts of Grace Chronicle</Text>
           </View>
           <View style={styles.trophyCircle}>
-            <Ionicons name="sparkles" size={20} color="#F59E0B" />
+            <Ionicons name="trophy" size={20} color="#F59E0B" />
           </View>
         </View>
 

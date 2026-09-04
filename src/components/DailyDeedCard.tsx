@@ -33,7 +33,7 @@ export const DailyDeedCard: React.FC<DailyDeedCardProps> = ({
         </View>
 
         <View style={styles.xpPill}>
-          <Ionicons name="sparkles" size={13} color="#F59E0B" style={{ marginRight: 4 }} />
+          <Ionicons name="flame" size={13} color="#F59E0B" style={{ marginRight: 4 }} />
           <Text style={styles.xpText}>+{deed.xpReward} XP</Text>
         </View>
       </View>

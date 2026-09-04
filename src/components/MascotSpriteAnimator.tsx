@@ -150,10 +150,10 @@ export const MascotSpriteAnimator: React.FC<MascotSpriteAnimatorProps> = ({
       {action === 'welcome_wave' && (
         <>
           <Animated.View style={[styles.sparkleTopLeft, animatedSparkleStyle]}>
-            <Ionicons name="sparkles" size={18} color="#F59E0B" />
+            <Ionicons name="star" size={16} color="#F59E0B" />
           </Animated.View>
           <Animated.View style={[styles.sparkleTopRight, animatedSparkleStyle]}>
-            <Ionicons name="sparkles" size={14} color="#EC4899" />
+            <Ionicons name="star" size={13} color="#EC4899" />
           </Animated.View>
         </>
       )}

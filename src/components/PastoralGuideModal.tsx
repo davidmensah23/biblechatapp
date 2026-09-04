@@ -99,7 +99,7 @@ export const PastoralGuideModal: React.FC<PastoralGuideModalProps> = ({
         {/* Guided Heartfelt Prayer */}
         <View style={styles.prayerCard}>
           <View style={styles.prayerHeaderRow}>
-            <Ionicons name="sparkles" size={16} color="#D97706" />
+            <Ionicons name="heart" size={16} color="#D97706" />
             <Text style={styles.prayerHeaderText}>PRAYER FOR YOUR SPIRIT</Text>
           </View>
           <Text style={styles.prayerText}>{guide.guidedPrayer}</Text>

@@ -330,7 +330,7 @@ export const ScriptureMemoryModal: React.FC<ScriptureMemoryModalProps> = ({
         {/* Top Header Row with Progress Tracker */}
         <View style={styles.topHeader}>
           <View style={styles.badgePill}>
-            <Ionicons name="sparkles" size={13} color="#92400E" />
+            <Ionicons name="ribbon" size={13} color="#92400E" />
             <Text style={styles.badgePillText}>HIDE GOD'S WORD</Text>
           </View>
           <View style={styles.stageIndicatorRow}>

@@ -210,7 +210,7 @@ export const DailyLiturgyModal: React.FC<DailyLiturgyModalProps> = ({
                   <Text style={styles.rewardPillText}>+1 Day Streak</Text>
                 </View>
                 <View style={[styles.rewardPill, styles.rewardPillGold]}>
-                  <Ionicons name="sparkles" size={16} color="#FDE047" style={{ marginRight: 6 }} />
+                  <Ionicons name="trophy" size={16} color="#FDE047" style={{ marginRight: 6 }} />
                   <Text style={[styles.rewardPillText, { color: '#FEF08A' }]}>+25 Spiritual XP</Text>
                 </View>
               </View>

@@ -74,7 +74,7 @@ export const DeedCompletionModal: React.FC<DeedCompletionModalProps> = ({
               /* Success Celebration Blessing */
               <View style={styles.blessingWrap}>
                 <View style={styles.blessingIconCircle}>
-                  <Ionicons name="sparkles" size={32} color="#F59E0B" />
+                  <Ionicons name="trophy" size={32} color="#F59E0B" />
                 </View>
                 <Text style={styles.blessingEyebrow}>DEED SEALED IN GRACE</Text>
                 <Text style={styles.blessingTitle}>+{deed.xpReward} Grace XP Awarded!</Text>
@@ -148,7 +148,7 @@ export const DeedCompletionModal: React.FC<DeedCompletionModalProps> = ({
                   disabled={isSubmitting}
                   activeOpacity={0.85}
                 >
-                  <Ionicons name="sparkles" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
                   <Text style={styles.sealBtnText}>
                     {isSubmitting ? 'Sealing in Grace...' : `Seal Deed (+${deed.xpReward} XP)`}
                   </Text>
