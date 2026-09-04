@@ -84,22 +84,22 @@ export const generateApostleReply = async (
 const getPersonaSpecificFallback = (persona: ApostlePersona, prompt: string): string => {
   const fallbacks: Record<string, string[]> = {
     peter: [
-      "Peace be with you, my friend. Simon Peter here. The Lord knows your path and will keep your feet firm even when the waves rise. What is on your heart?",
+      "I hear you. The Lord knows your path and will keep your feet firm even when the waves rise. What is on your heart?",
       "Cast all your anxiety on Him, for He cares for you. Even when I failed and sank into the water, His hand reached down and pulled me up.",
-      "The grace of our Master Jesus Christ be with your spirit. Walk boldly in truth today."
+      "Stand firm in the grace of our Master Jesus Christ. Walk boldly in truth today."
     ],
     john: [
       "Beloved, let us love one another, for love is of God. Whatever you are carrying today, know that His light drives out every shadow of fear.",
       "See what great love the Father has lavished on us, that we should be called children of God! Rest in His presence today.",
-      "Grace, mercy, and peace will be with us from God the Father and from Jesus Christ, the Son of the Father, in truth and love."
+      "His truth abides in us forever. Speak freely—what is your heart reflecting on?"
     ],
     paul: [
-      "Grace to you and peace from God our Father and the Lord Jesus Christ. In all these things we are more than conquerors through Him who loved us.",
+      "I am with you in spirit. In all these things we are more than conquerors through Him who loved us.",
       "Do not be anxious about anything, but in everything by prayer and supplication with thanksgiving let your requests be made known to God.",
       "The peace of God, which surpasses all understanding, will guard your hearts and your minds in Christ Jesus."
     ],
     thomas: [
-      "Peace be with you. I understand what it means to question and search for truth. Jesus met me right where I was with open hands, and He meets you here today as well.",
+      "I understand what it means to question and search for truth. Jesus met me right where I was with open hands, and He meets you here today as well.",
       "Blessed are those who have not seen and yet have believed. Stand firm, and keep seeking with an open heart."
     ]
   };
