@@ -46,6 +46,9 @@ export const InteractiveGestureSheet: React.FC<InteractiveGestureSheetProps> = (
 }) => {
   const [modalVisible, setModalVisible] = useState(visible);
   const currentSnapRef = useRef<'mid' | 'full'>(initialSnap);
+  const [currentHeightRatio, setCurrentHeightRatio] = useState<number>(
+    initialSnap === 'full' ? fullHeightRatio : midHeightRatio
+  );
 
   const MID_Y = SCREEN_HEIGHT * (1 - midHeightRatio);
   const FULL_Y = SCREEN_HEIGHT * (1 - fullHeightRatio);
@@ -58,6 +61,7 @@ export const InteractiveGestureSheet: React.FC<InteractiveGestureSheetProps> = (
     if (visible) {
       setModalVisible(true);
       currentSnapRef.current = initialSnap;
+      setCurrentHeightRatio(initialSnap === 'full' ? fullHeightRatio : midHeightRatio);
       const targetY = initialSnap === 'full' ? FULL_Y : MID_Y;
 
       Animated.parallel([
@@ -116,6 +120,7 @@ export const InteractiveGestureSheet: React.FC<InteractiveGestureSheetProps> = (
 
   const snapTo = (target: 'mid' | 'full') => {
     currentSnapRef.current = target;
+    setCurrentHeightRatio(target === 'full' ? fullHeightRatio : midHeightRatio);
     const targetY = target === 'full' ? FULL_Y : MID_Y;
 
     try {
@@ -246,8 +251,15 @@ export const InteractiveGestureSheet: React.FC<InteractiveGestureSheetProps> = (
             )}
           </View>
 
-          {/* Sheet Body Content */}
-          <View style={styles.sheetContent}>
+          {/* Sheet Body Content: Exactly sized to the visible screen area */}
+          <View
+            style={[
+              styles.sheetContent,
+              {
+                height: (SCREEN_HEIGHT * currentHeightRatio) - (headerTransparent ? 0 : 38)
+              }
+            ]}
+          >
             {children}
           </View>
         </Animated.View>

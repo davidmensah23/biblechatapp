@@ -962,9 +962,9 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   apostleQuoteBody: {
-    fontFamily: Typography.fontYouVersionSerif,
-    fontSize: 16.5,
-    lineHeight: 26,
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 15.5,
+    lineHeight: 24,
     color: '#1F2937',
     marginBottom: 12,
   },

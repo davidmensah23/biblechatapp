@@ -1263,9 +1263,9 @@ ${url}`,
       <InteractiveGestureSheet
         visible={showCommentsSheet}
         onClose={() => setShowCommentsSheet(false)}
-        initialSnap="mid"
+        initialSnap="full"
         midHeightRatio={0.80}
-        fullHeightRatio={0.98}
+        fullHeightRatio={0.94}
       >
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.sheetContent}>
           <View style={styles.modalHeaderRow}>
@@ -2108,10 +2108,19 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: '#4B5563',
   },
+  sheetContent: {
+    flex: 1,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 4,
+  },
   commentInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginHorizontal: -20,
+    paddingBottom: Platform.OS === 'ios' ? 26 : 14,
     borderTopWidth: 1,
     borderTopColor: '#EEEEEE',
     backgroundColor: '#FFFFFF',
@@ -2120,17 +2129,17 @@ const styles = StyleSheet.create({
   commentInput: {
     flex: 1,
     fontFamily: Typography.fontSansRegular,
-    fontSize: 13,
+    fontSize: 14,
     backgroundColor: '#F3F4F6',
-    borderRadius: 20,
+    borderRadius: 22,
     paddingHorizontal: 16,
-    paddingVertical: 9,
+    paddingVertical: 10,
     color: '#111827',
   },
   sendCommentBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: '#111827',
     alignItems: 'center',
     justifyContent: 'center',
