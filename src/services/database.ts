@@ -53,6 +53,20 @@ export const registerSyncListener = (listener: SyncListener) => {
   activeSyncListener = listener;
 };
 
+// Internal pub/sub for local UI components to instantly react to database mutations
+const dbChangeListeners: Set<() => void> = new Set();
+export const subscribeToDatabaseChanges = (callback: () => void): (() => void) => {
+  dbChangeListeners.add(callback);
+  return () => {
+    dbChangeListeners.delete(callback);
+  };
+};
+export const notifyDatabaseChanged = () => {
+  dbChangeListeners.forEach(cb => {
+    try { cb(); } catch (e) { console.warn('dbChangeListener error:', e); }
+  });
+};
+
 
 // In-memory fallback if SQLite encounters an issue
 let memoryConversations: ConversationThread[] = [];
@@ -332,7 +346,13 @@ const initTables = async (db: SQLite.SQLiteDatabase) => {
 
     // Unique indices for robust non-destructive merging and deduplication
     try {
+      // Pre-emptively deduplicate any legacy duplicate rows before applying unique index
       await db.execAsync(`
+        DELETE FROM bookmarks WHERE rowid NOT IN (SELECT MIN(rowid) FROM bookmarks GROUP BY user_id, reference);
+        DELETE FROM memorized_verses WHERE rowid NOT IN (SELECT MIN(rowid) FROM memorized_verses GROUP BY user_id, reference);
+        DELETE FROM verse_notes WHERE rowid NOT IN (SELECT MIN(rowid) FROM verse_notes GROUP BY user_id, book, chapter, verse);
+        DELETE FROM verse_highlights WHERE rowid NOT IN (SELECT MIN(rowid) FROM verse_highlights GROUP BY user_id, book, chapter, verse);
+
         CREATE UNIQUE INDEX IF NOT EXISTS idx_bookmarks_user_ref ON bookmarks(user_id, reference);
         CREATE UNIQUE INDEX IF NOT EXISTS idx_memorized_user_ref ON memorized_verses(user_id, reference);
         CREATE UNIQUE INDEX IF NOT EXISTS idx_notes_user_coords ON verse_notes(user_id, book, chapter, verse);
@@ -498,6 +518,7 @@ export const saveBookmark = async (bookmark: SavedBookmark): Promise<void> => {
 
   // Background Cloud Sync
   activeSyncListener?.onBookmarkSaved?.(bookmark);
+  notifyDatabaseChanged();
 };
 
 export const removeBookmark = async (id: string): Promise<void> => {
@@ -517,6 +538,7 @@ export const removeBookmark = async (id: string): Promise<void> => {
   if (target?.reference) {
     activeSyncListener?.onBookmarkRemoved?.(target.reference);
   }
+  notifyDatabaseChanged();
 };
 
 
@@ -627,30 +649,97 @@ export const migrateGuestDataToUser = async (newUserId: string): Promise<{
   const guestId = await getOrCreateGuestId();
   if (db) {
     try {
-      const tables = [
-        'conversations',
-        'messages',
-        'bookmarks',
-        'user_reading_progress',
-        'group_conversations',
-        'group_messages',
-        'verse_highlights',
-        'verse_notes',
-        'memorized_verses',
-        'completed_deeds',
-        'daily_activity_log'
-      ];
-      for (const t of tables) {
-        // Non-destructive update: existing account records are preserved, guest records fill gaps
-        await db.runAsync(
-          `UPDATE OR IGNORE ${t} SET user_id = ? WHERE user_id = 'guest_user' OR user_id = ?`,
-          [newUserId, guestId]
-        );
-        // Clean up any remaining conflicting guest rows so orphaned data is not left behind
-        await db.runAsync(
-          `DELETE FROM ${t} WHERE user_id = 'guest_user' OR user_id = ?`,
-          [guestId]
-        );
+      // 1. Bookmarks: INSERT ... ON CONFLICT DO NOTHING
+      await db.runAsync(
+        `INSERT INTO bookmarks (id, user_id, type, title, content, reference, author, timestamp)
+         SELECT 'bm_' || ? || '_' || hex(randomblob(6)), ?, type, title, content, reference, author, timestamp
+         FROM bookmarks WHERE user_id = 'guest_user' OR user_id = ?
+         ON CONFLICT(user_id, reference) DO NOTHING;`,
+        [newUserId, newUserId, guestId]
+      );
+      await db.runAsync(`DELETE FROM bookmarks WHERE user_id = 'guest_user' OR user_id = ?;`, [guestId]);
+
+      // 2. Memorized Verses: INSERT ... ON CONFLICT DO NOTHING
+      await db.runAsync(
+        `INSERT INTO memorized_verses (id, user_id, reference, verse_text, version, mastered_at, practice_count, status)
+         SELECT 'mem_' || ? || '_' || REPLACE(reference, ' ', '_'), ?, reference, verse_text, version, mastered_at, practice_count, status
+         FROM memorized_verses WHERE user_id = 'guest_user' OR user_id = ?
+         ON CONFLICT(user_id, reference) DO NOTHING;`,
+        [newUserId, newUserId, guestId]
+      );
+      await db.runAsync(`DELETE FROM memorized_verses WHERE user_id = 'guest_user' OR user_id = ?;`, [guestId]);
+
+      // 3. Verse Notes: INSERT ... ON CONFLICT DO NOTHING
+      await db.runAsync(
+        `INSERT INTO verse_notes (id, user_id, book, chapter, verse, reference, verse_text, note_text, timestamp)
+         SELECT 'note_' || ? || '_' || book || '_' || chapter || '_' || verse, ?, book, chapter, verse, reference, verse_text, note_text, timestamp
+         FROM verse_notes WHERE user_id = 'guest_user' OR user_id = ?
+         ON CONFLICT(user_id, book, chapter, verse) DO NOTHING;`,
+        [newUserId, newUserId, guestId]
+      );
+      await db.runAsync(`DELETE FROM verse_notes WHERE user_id = 'guest_user' OR user_id = ?;`, [guestId]);
+
+      // 4. Verse Highlights: INSERT ... ON CONFLICT DO NOTHING
+      await db.runAsync(
+        `INSERT INTO verse_highlights (id, user_id, book, chapter, verse, color, verse_text, timestamp)
+         SELECT 'hl_' || ? || '_' || book || '_' || chapter || '_' || verse, ?, book, chapter, verse, color, verse_text, timestamp
+         FROM verse_highlights WHERE user_id = 'guest_user' OR user_id = ?
+         ON CONFLICT(user_id, book, chapter, verse) DO NOTHING;`,
+        [newUserId, newUserId, guestId]
+      );
+      await db.runAsync(`DELETE FROM verse_highlights WHERE user_id = 'guest_user' OR user_id = ?;`, [guestId]);
+
+      // 5. Completed Deeds: INSERT OR IGNORE
+      await db.runAsync(
+        `INSERT OR IGNORE INTO completed_deeds (id, user_id, deed_id, title, category, scripture, completed_date, xp_awarded)
+         SELECT 'deed_' || ? || '_' || deed_id || '_' || completed_date, ?, deed_id, title, category, scripture, completed_date, xp_awarded
+         FROM completed_deeds WHERE user_id = 'guest_user' OR user_id = ?;`,
+        [newUserId, newUserId, guestId]
+      );
+      await db.runAsync(`DELETE FROM completed_deeds WHERE user_id = 'guest_user' OR user_id = ?;`, [guestId]);
+
+      // 6. Daily Activity Log: INSERT OR IGNORE
+      await db.runAsync(
+        `INSERT OR IGNORE INTO daily_activity_log (id, user_id, activity_date, xp_earned, actions_count)
+         SELECT 'act_' || ? || '_' || activity_date, ?, activity_date, xp_earned, actions_count
+         FROM daily_activity_log WHERE user_id = 'guest_user' OR user_id = ?;`,
+        [newUserId, newUserId, guestId]
+      );
+      await db.runAsync(`DELETE FROM daily_activity_log WHERE user_id = 'guest_user' OR user_id = ?;`, [guestId]);
+
+      // 7. User Reading Progress: INSERT OR IGNORE
+      await db.runAsync(
+        `INSERT OR IGNORE INTO user_reading_progress (id, user_id, book, chapter, verse, translation, snippet, estimated_minutes, updated_at)
+         SELECT 'current_' || ?, ?, book, chapter, verse, translation, snippet, estimated_minutes, updated_at
+         FROM user_reading_progress WHERE user_id = 'guest_user' OR user_id = ?;`,
+        [newUserId, newUserId, guestId]
+      );
+      await db.runAsync(`DELETE FROM user_reading_progress WHERE user_id = 'guest_user' OR user_id = ?;`, [guestId]);
+
+      // 8. Conversations & Messages
+      const guestConversations = await db.getAllAsync<any>(
+        `SELECT * FROM conversations WHERE user_id = 'guest_user' OR user_id = ?`,
+        [guestId]
+      );
+      if (guestConversations && guestConversations.length > 0) {
+        for (const gc of guestConversations) {
+          const userConv = await db.getFirstAsync<any>(
+            `SELECT id FROM conversations WHERE user_id = ? AND persona_id = ?`,
+            [newUserId, gc.persona_id]
+          );
+          if (!userConv) {
+            await db.runAsync(
+              `INSERT OR REPLACE INTO conversations (id, user_id, persona_id, persona_name, last_message, last_message_sender, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)`,
+              [gc.id, newUserId, gc.persona_id, gc.persona_name, gc.last_message, gc.last_message_sender, gc.updated_at]
+            );
+          }
+          await db.runAsync(
+            `UPDATE messages SET user_id = ? WHERE (user_id = 'guest_user' OR user_id = ?) AND conversation_id = ?`,
+            [newUserId, guestId, gc.id]
+          );
+        }
+        await db.runAsync(`DELETE FROM conversations WHERE user_id = 'guest_user' OR user_id = ?;`, [guestId]);
       }
     } catch (e) {
       console.warn('migrateGuestDataToUser SQLite error:', e);
@@ -674,6 +763,8 @@ export const migrateGuestDataToUser = async (newUserId: string): Promise<{
     ...currentProfile,
     id: newUserId
   });
+
+  notifyDatabaseChanged();
 
   return {
     bookmarksCount: bookmarks.length,
@@ -910,6 +1001,7 @@ export const saveVerseHighlight = async (
 
   // Background Cloud Sync
   activeSyncListener?.onHighlightSaved?.(hl);
+  notifyDatabaseChanged();
 };
 
 
@@ -933,6 +1025,7 @@ export const removeVerseHighlight = async (
       console.warn('removeVerseHighlight error:', e);
     }
   }
+  notifyDatabaseChanged();
 };
 
 export const fetchHighlightsForChapter = async (
@@ -1039,6 +1132,7 @@ export const saveVerseNote = async (
 
   // Background Cloud Sync
   activeSyncListener?.onNoteSaved?.(noteItem);
+  notifyDatabaseChanged();
 };
 
 
@@ -1121,6 +1215,7 @@ export const deleteVerseNote = async (id: string): Promise<void> => {
       console.warn('deleteVerseNote error:', e);
     }
   }
+  notifyDatabaseChanged();
 };
 
 export const saveMemorizedVerse = async (
@@ -1165,6 +1260,7 @@ export const saveMemorizedVerse = async (
 
   // Background Cloud Sync
   activeSyncListener?.onMemorizedSaved?.(memoryMemorizedVerses[id]);
+  notifyDatabaseChanged();
 };
 
 

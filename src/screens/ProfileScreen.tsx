@@ -50,11 +50,16 @@ import { SettingsScreen } from './SettingsScreen';
 import { SavedItemsModal } from '../components/SavedItemsModal';
 import { CustomConfirmationModal } from '../components/CustomConfirmationModal';
 import { useTranslation } from '../services/localizationService';
-import { fetchCompletedDeeds, CompletedDeedLog } from '../services/deedsService';
+import {
+  fetchCompletedDeeds,
+  CompletedDeedLog
+} from '../services/deedsService';
+import { subscribeToDatabaseChanges } from '../services/database';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface ProfileScreenProps {
+  isActive?: boolean;
   onLogout?: () => void;
   onOpenAuthModal?: () => void;
   onSelectApostle?: (apostle?: ApostlePersona, initialMessage?: string, contextQuote?: { text: string; reference: string }) => void;
@@ -65,6 +70,7 @@ interface ProfileScreenProps {
 }
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
+  isActive,
   onLogout,
   onOpenAuthModal,
   onSelectApostle,
@@ -185,16 +191,30 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   useEffect(() => {
     loadData();
 
-    const sub = AppState.addEventListener('change', (state) => {
+    // 1. Instantly reload whenever any bookmark, memorized verse, or note is saved across the app
+    const unsubDb = subscribeToDatabaseChanges(() => {
+      loadData();
+    });
+
+    // 2. Reload when the app returns to the foreground from background
+    const subAppState = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
         loadData();
       }
     });
 
     return () => {
-      sub.remove();
+      unsubDb();
+      subAppState.remove();
     };
   }, []);
+
+  // 3. Immediately reload whenever the user switches directly to the Profile tab
+  useEffect(() => {
+    if (isActive) {
+      loadData();
+    }
+  }, [isActive]);
 
 
   const handleRefresh = async () => {

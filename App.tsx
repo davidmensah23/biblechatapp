@@ -529,6 +529,7 @@ export default function App() {
 
             {activeNavTab === 'profile' && (
               <ProfileScreen
+                isActive={activeNavTab === 'profile'}
                 onLogout={handleLogout}
                 onOpenAuthModal={() => setShowAuthModal(true)}
                 onSelectApostle={(apostle, initialMessage, contextQuote) => {

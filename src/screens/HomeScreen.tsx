@@ -5,7 +5,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring, FadeOutUp, Layo
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { APOSTLE_PERSONAS } from '../services/personas';
-import { getTodayScripture } from '../services/dailyScriptures';
+import { getTodayScripture, fetchDailyScriptureWithCache, DailyScriptureItem } from '../services/dailyScriptures';
 import { getTodayApostleQuotation } from '../services/apostleQuotations';
 import { ApostlePersona, BibleVerse } from '../types';
 import { ApostleCard } from '../components/ApostleCard';
@@ -68,13 +68,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
   const [deedModalVisible, setDeedModalVisible] = useState(false);
   const [deedModalMode, setDeedModalMode] = useState<'complete' | 'scripture'>('complete');
 
-  const todayScripture = getTodayScripture();
+  const [todayScripture, setTodayScripture] = useState<DailyScriptureItem>(getTodayScripture());
   const todayApostleQuote = getTodayApostleQuotation();
 
   const tabIndicatorOffset = useSharedValue(0);
   const tabIndicatorWidth = useSharedValue(68);
 
   useEffect(() => {
+    fetchDailyScriptureWithCache().then(setTodayScripture).catch(console.warn);
     const todayD = getTodayDeedForUser();
     setTodayDeed(todayD);
 

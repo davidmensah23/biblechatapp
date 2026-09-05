@@ -1,3 +1,5 @@
+import { supabase } from './supabase';
+
 export interface DailyScriptureItem {
   id: string;
   dayIndex: number;
@@ -402,6 +404,396 @@ export const DAILY_SCRIPTURES_DATABASE: DailyScriptureItem[] = [
     reflection: 'Present pain is not the end of your story. An eternal morning is coming where Christ Himself will gently dry every tear.',
     imageUrl: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1200&q=80',
     bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_31',
+    dayIndex: 31,
+    quote: 'God is our refuge and strength, an ever-present help in trouble.',
+    reference: 'Psalm 46:1',
+    book: 'Psalms',
+    chapter: 46,
+    verse: 1,
+    theme: 'Unshakable Refuge',
+    reflection: 'When foundations shake, God does not flinch. He remains your impenetrable sanctuary and personal defense.',
+    imageUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_32',
+    dayIndex: 32,
+    quote: 'Therefore, as God\'s chosen people, holy and dearly loved, clothe yourselves with compassion, kindness, humility, gentleness and patience.',
+    reference: 'Colossians 3:12',
+    book: 'Colossians',
+    chapter: 3,
+    verse: 12,
+    theme: 'Garments of Grace',
+    reflection: 'Before facing the world today, put on love and patience like fresh garments of heaven.',
+    imageUrl: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_33',
+    dayIndex: 33,
+    quote: 'Your word is a lamp for my feet, a light on my path.',
+    reference: 'Psalm 119:105',
+    book: 'Psalms',
+    chapter: 119,
+    verse: 105,
+    theme: 'Illuminated Steps',
+    reflection: 'God rarely reveals ten miles down the road; His Word provides just enough radiant light for your next obedient step.',
+    imageUrl: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_34',
+    dayIndex: 34,
+    quote: 'But the fruit of the Spirit is love, joy, peace, forbearance, kindness, goodness, faithfulness, gentleness and self-control.',
+    reference: 'Galatians 5:22-23',
+    book: 'Galatians',
+    chapter: 5,
+    verse: '22-23',
+    theme: 'Fruitful Living',
+    reflection: 'Spiritual maturity is not measured by spiritual gifts or noise, but by the sweet fragrance of Christlike character.',
+    imageUrl: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_35',
+    dayIndex: 35,
+    quote: 'If any of you lacks wisdom, you should ask God, who gives generously to all without finding fault, and it will be given to you.',
+    reference: 'James 1:5',
+    book: 'James',
+    chapter: 1,
+    verse: 5,
+    theme: 'Generous Wisdom',
+    reflection: 'God never scolds you for admitting you do not know the way. Ask in faith, and heaven will dispense counsel with open hands.',
+    imageUrl: 'https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_36',
+    dayIndex: 36,
+    quote: 'Now faith is confidence in what we hope for and assurance about what we do not see.',
+    reference: 'Hebrews 11:1',
+    book: 'Hebrews',
+    chapter: 11,
+    verse: 1,
+    theme: 'Steadfast Faith',
+    reflection: 'Faith is the title deed to heaven’s promises—holding firmly onto God\'s unseen goodness when physical eyes cannot trace it.',
+    imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_37',
+    dayIndex: 37,
+    quote: 'I praise you because I am fearfully and wonderfully made; your works are wonderful, I know that full well.',
+    reference: 'Psalm 139:14',
+    book: 'Psalms',
+    chapter: 139,
+    verse: 14,
+    theme: 'Sacred Design',
+    reflection: 'You are no accident or afterthought. Every breath and fiber of your being was crafted with purposeful delight by your Creator.',
+    imageUrl: 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_38',
+    dayIndex: 38,
+    quote: 'For the Spirit God gave us does not make us timid, but gives us power, love and self-discipline.',
+    reference: '2 Timothy 1:7',
+    book: '2 Timothy',
+    chapter: 1,
+    verse: 7,
+    theme: 'Spirit of Boldness',
+    reflection: 'Fear does not come from God. When anxious dread knocks at the door, let the Holy Spirit of power answer it.',
+    imageUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_39',
+    dayIndex: 39,
+    quote: 'You will keep in perfect peace those whose minds are steadfast, because they trust in you.',
+    reference: 'Isaiah 26:3',
+    book: 'Isaiah',
+    chapter: 26,
+    verse: 3,
+    theme: 'Perfect Peace',
+    reflection: 'Peace is not the absence of storms; it is fixing your thoughts unwaveringly on the Master of the seas.',
+    imageUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_40',
+    dayIndex: 40,
+    quote: 'For it is by grace you have been saved, through faith—and this is not from yourselves, it is the gift of God—not by works, so that no one can boast.',
+    reference: 'Ephesians 2:8-9',
+    book: 'Ephesians',
+    chapter: 2,
+    verse: '8-9',
+    theme: 'Gift of Grace',
+    reflection: 'Salvation is an unearnable gift of pure mercy. Cease striving and simply receive the Father\'s lavish embrace.',
+    imageUrl: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_41',
+    dayIndex: 41,
+    quote: 'For I am convinced that neither death nor life, neither angels nor demons... will be able to separate us from the love of God.',
+    reference: 'Romans 8:38-39',
+    book: 'Romans',
+    chapter: 8,
+    verse: '38-39',
+    theme: 'Inseparable Love',
+    reflection: 'Nothing in this cosmos—neither trials, failures, nor darkness—can ever sever the bond of Christ\'s fierce devotion to you.',
+    imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_42',
+    dayIndex: 42,
+    quote: 'Taste and see that the Lord is good; blessed is the one who takes refuge in him.',
+    reference: 'Psalm 34:8',
+    book: 'Psalms',
+    chapter: 34,
+    verse: 8,
+    theme: 'Experienced Goodness',
+    reflection: 'God does not ask for distant intellectual assent. Taste His kindness personally in prayer, and you will discover true satisfaction.',
+    imageUrl: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_43',
+    dayIndex: 43,
+    quote: 'Rejoice always, pray continually, give thanks in all circumstances; for this is God\'s will for you in Christ Jesus.',
+    reference: '1 Thessalonians 5:16-18',
+    book: '1 Thessalonians',
+    chapter: 5,
+    verse: '16-18',
+    theme: 'Heart of Gratitude',
+    reflection: 'Gratitude is a spiritual weapon. Giving thanks in all seasons re-anchors your soul in heaven\'s unchanging joy.',
+    imageUrl: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_44',
+    dayIndex: 44,
+    quote: 'May these words of my mouth and this meditation of my heart be pleasing in your sight, Lord, my Rock and my Redeemer.',
+    reference: 'Psalm 19:14',
+    book: 'Psalms',
+    chapter: 19,
+    verse: 14,
+    theme: 'Pleasing Worship',
+    reflection: 'Offer the thoughts of your mind and the words of your tongue as a holy, sweet sacrifice before your Redeemer today.',
+    imageUrl: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_45',
+    dayIndex: 45,
+    quote: 'Come to me, all you who are weary and burdened, and I will give you rest.',
+    reference: 'Matthew 11:28',
+    book: 'Matthew',
+    chapter: 11,
+    verse: 28,
+    theme: 'Sabbath Rest',
+    reflection: 'Jesus never offers a complicated religion. He offers His gentle presence to trade your exhaustion for supernatural peace.',
+    imageUrl: 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_46',
+    dayIndex: 46,
+    quote: 'Be strong and courageous. Do not be afraid or terrified because of them, for the Lord your God goes with you; he will never leave you nor forsake you.',
+    reference: 'Deuteronomy 31:6',
+    book: 'Deuteronomy',
+    chapter: 31,
+    verse: 6,
+    theme: 'Constant Companion',
+    reflection: 'Courage is not bravado; it is stepping out with confidence knowing God has walked into the battle ahead of you.',
+    imageUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_47',
+    dayIndex: 47,
+    quote: 'The Lord is my light and my salvation—whom shall I fear? The Lord is the stronghold of my life—of whom shall I be afraid?',
+    reference: 'Psalm 27:1',
+    book: 'Psalms',
+    chapter: 27,
+    verse: 1,
+    theme: 'Divine Stronghold',
+    reflection: 'When the Lord illuminates your world, shadows lose all power to intimidate you.',
+    imageUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_48',
+    dayIndex: 48,
+    quote: 'Peace I leave with you; my peace I give you. I do not give to you as the world gives. Do not let your hearts be troubled and do not be afraid.',
+    reference: 'John 14:27',
+    book: 'John',
+    chapter: 14,
+    verse: 27,
+    theme: 'Supernatural Peace',
+    reflection: 'The peace Jesus imparts cannot be stolen by circumstances because it comes from heaven’s unshakable throne.',
+    imageUrl: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_49',
+    dayIndex: 49,
+    quote: 'Do not conform to the pattern of this world, but be transformed by the renewing of your mind.',
+    reference: 'Romans 12:2',
+    book: 'Romans',
+    chapter: 12,
+    verse: 2,
+    theme: 'Renewed Mind',
+    reflection: 'Transformation begins when you replace worldly culture\'s noise with the steady truth of scripture.',
+    imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_50',
+    dayIndex: 50,
+    quote: 'Praise the Lord, my soul, and forget not all his benefits—who forgives all your sins and heals all your diseases.',
+    reference: 'Psalm 103:2-3',
+    book: 'Psalms',
+    chapter: 103,
+    verse: '2-3',
+    theme: 'Remembering Benefits',
+    reflection: 'Count your blessings out loud today. Gratitude chases away gloom and recalibrates your spirit with praise.',
+    imageUrl: 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_51',
+    dayIndex: 51,
+    quote: 'Therefore, if anyone is in Christ, the new creation has come: The old has gone, the new is here!',
+    reference: '2 Corinthians 5:17',
+    book: '2 Corinthians',
+    chapter: 5,
+    verse: 17,
+    theme: 'New Creation',
+    reflection: 'You are not defined by past shame or broken seasons. In Christ, every day is a fresh, consecrated canvas.',
+    imageUrl: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_52',
+    dayIndex: 52,
+    quote: 'The Lord your God is with you, the Mighty Warrior who saves. He will take great delight in you; in his love he will no longer rebuke you, but will rejoice over you with singing.',
+    reference: 'Zephaniah 3:17',
+    book: 'Zephaniah',
+    chapter: 3,
+    verse: 17,
+    theme: 'Singing Over You',
+    reflection: 'Hear the tender song of heaven: Almighty God sings over you with passionate joy and fierce protection.',
+    imageUrl: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_53',
+    dayIndex: 53,
+    quote: 'Whoever dwells in the shelter of the Most High will rest in the shadow of the Almighty. I will say of the Lord, \'He is my refuge and my fortress, my God, in whom I trust.\'',
+    reference: 'Psalm 91:1-2',
+    book: 'Psalms',
+    chapter: 91,
+    verse: '1-2',
+    theme: 'Secret Place',
+    reflection: 'In the quiet shelter of prayer, no enemy arrow can penetrate the overshadowing wings of the Almighty.',
+    imageUrl: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_54',
+    dayIndex: 54,
+    quote: 'Let us then approach God\'s throne of grace with confidence, so that we may receive mercy and find grace to help us in our time of need.',
+    reference: 'Hebrews 4:16',
+    book: 'Hebrews',
+    chapter: 4,
+    verse: 16,
+    theme: 'Throne of Grace',
+    reflection: 'Do not approach God timidly or with fear. Christ\'s blood has swung heaven\'s gates wide open for your bold requests.',
+    imageUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_55',
+    dayIndex: 55,
+    quote: 'You make known to me the path of life; you will fill me with joy in your presence, with eternal pleasures at your right hand.',
+    reference: 'Psalm 16:11',
+    book: 'Psalms',
+    chapter: 16,
+    verse: 11,
+    theme: 'Fullness of Joy',
+    reflection: 'Worldly happiness depends on happenings; divine joy flows ceaselessly from dwelling in His holy presence.',
+    imageUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_56',
+    dayIndex: 56,
+    quote: 'May the God of hope fill you with all joy and peace as you trust in him, so that you may overflow with hope by the power of the Holy Spirit.',
+    reference: 'Romans 15:13',
+    book: 'Romans',
+    chapter: 15,
+    verse: 13,
+    theme: 'Overflowing Hope',
+    reflection: 'May the Spirit fill your spiritual reserves until joy and buoyant hope spill over into everyone around you.',
+    imageUrl: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_57',
+    dayIndex: 57,
+    quote: 'Because of the Lord\'s great love we are not consumed, for his compassions never fail. They are new every morning; great is your faithfulness.',
+    reference: 'Lamentations 3:22-23',
+    book: 'Lamentations',
+    chapter: 3,
+    verse: '22-23',
+    theme: 'Mercies Every Morning',
+    reflection: 'Yesterday\'s failures ran out with yesterday\'s sun. Today, fresh mercies await you with the sunrise.',
+    imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_58',
+    dayIndex: 58,
+    quote: 'Above all else, guard your heart, for everything you do flows from it.',
+    reference: 'Proverbs 4:23',
+    book: 'Proverbs',
+    chapter: 4,
+    verse: 23,
+    theme: 'Guarding the Wellspring',
+    reflection: 'Protect what you let into your spiritual gates. A consecrated heart produces rivers of life and peace.',
+    imageUrl: 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_59',
+    dayIndex: 59,
+    quote: 'I am the vine; you are the branches. If you remain in me and I in you, you will bear much fruit; apart from me you can do nothing.',
+    reference: 'John 15:5',
+    book: 'John',
+    chapter: 15,
+    verse: 5,
+    theme: 'Abiding in the Vine',
+    reflection: 'Branches don\'t strain to produce fruit; they simply stay connected to the vine. Abide in Christ, and fruit is inevitable.',
+    imageUrl: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
+  },
+  {
+    id: 'scripture_60',
+    dayIndex: 60,
+    quote: 'The Lord bless you and keep you; the Lord make his face shine on you and be gracious to you; the Lord turn his face toward you and give you peace.',
+    reference: 'Numbers 6:24-26',
+    book: 'Numbers',
+    chapter: 6,
+    verse: '24-26',
+    theme: 'Priestly Blessing',
+    reflection: 'Receive the timeless Aaronite blessing: God\'s smiling face turns toward you, wrapping you in shalom peace.',
+    imageUrl: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1200&q=80',
+    bannerImage: require('../../assets/images/daily_scripture_banner.png')
   }
 ];
 
@@ -410,4 +802,72 @@ export const getTodayScripture = (): DailyScriptureItem => {
   const index = Math.abs(dayOfYear) % DAILY_SCRIPTURES_DATABASE.length;
   return DAILY_SCRIPTURES_DATABASE[index];
 };
+
+let cachedTodayScripture: DailyScriptureItem | null = null;
+let lastCachedDateStr: string = '';
+
+/**
+ * High-performance SWR cached loader for Daily Scripture.
+ * Reads centrally from Supabase daily_scriptures_cache (fetch once, shared across all users)
+ * and falls back seamlessly to the 60-day local offline database.
+ */
+export const fetchDailyScriptureWithCache = async (): Promise<DailyScriptureItem> => {
+  const todayStr = new Date().toISOString().split('T')[0];
+  if (cachedTodayScripture && lastCachedDateStr === todayStr) {
+    return cachedTodayScripture;
+  }
+
+  const fallback = getTodayScripture();
+
+  try {
+    const { data, error } = await supabase
+      .from('daily_scriptures_cache')
+      .select('*')
+      .eq('date_str', todayStr)
+      .maybeSingle();
+
+    if (!error && data) {
+      cachedTodayScripture = {
+        id: data.id,
+        dayIndex: fallback.dayIndex,
+        quote: data.quote,
+        reference: data.reference,
+        book: data.book,
+        chapter: data.chapter,
+        verse: data.verse,
+        theme: data.theme,
+        reflection: data.reflection,
+        imageUrl: data.image_url || fallback.imageUrl,
+        bannerImage: fallback.bannerImage
+      };
+      lastCachedDateStr = todayStr;
+      return cachedTodayScripture;
+    }
+
+    // Seed into Supabase cache so subsequent users receive the exact same shared verse
+    supabase
+      .from('daily_scriptures_cache')
+      .upsert({
+        id: todayStr,
+        date_str: todayStr,
+        quote: fallback.quote,
+        reference: fallback.reference,
+        book: fallback.book,
+        chapter: fallback.chapter,
+        verse: String(fallback.verse),
+        theme: fallback.theme,
+        reflection: fallback.reflection,
+        image_url: fallback.imageUrl
+      }, { onConflict: 'date_str' })
+      .then(() => {}, () => {});
+
+  } catch (e) {
+    // Offline fallback
+  }
+
+  cachedTodayScripture = fallback;
+  lastCachedDateStr = todayStr;
+  return fallback;
+};
+
 
