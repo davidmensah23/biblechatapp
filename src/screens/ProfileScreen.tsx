@@ -9,18 +9,25 @@ import {
   Dimensions,
   SafeAreaView,
   Image,
-  RefreshControl
+  RefreshControl,
+  Clipboard,
+  ToastAndroid,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Typography } from '../theme/typography';
-import { UserProfile, SavedBookmark } from '../types';
+import { UserProfile, SavedBookmark, ApostlePersona } from '../types';
 import {
   fetchUserProfile,
   saveUserProfile,
   fetchBookmarks,
   fetchMemorizedVerses,
-  MemorizedVerse
+  fetchAllHighlights,
+  fetchAllVerseNotes,
+  MemorizedVerse,
+  VerseHighlight,
+  VerseNote
 } from '../services/database';
 import {
   getSpiritualGrowthProfile,
@@ -47,7 +54,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 interface ProfileScreenProps {
   onLogout?: () => void;
   onOpenAuthModal?: () => void;
-  onSelectApostle?: () => void;
+  onSelectApostle?: (apostle?: ApostlePersona, initialMessage?: string, contextQuote?: { text: string; reference: string }) => void;
   onOpenBible?: () => void;
   onOpenCommunityPrayers?: (segment?: 'community' | 'my_prayers') => void;
   onOpenCommunityPosts?: () => void;
@@ -74,9 +81,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   });
 
   const [growthProfile, setGrowthProfile] = useState<SpiritualGrowthProfile | null>(null);
-  const [activeActivityFilter, setActiveActivityFilter] = useState<'all' | 'highlights' | 'notes' | 'plans' | 'badges' | 'memorized'>('all');
+  const [activeActivityFilter, setActiveActivityFilter] = useState<'all' | 'saved' | 'memorized' | 'highlights' | 'notes' | 'badges'>('all');
   const [userBookmarks, setUserBookmarks] = useState<SavedBookmark[]>([]);
   const [memorizedVerses, setMemorizedVerses] = useState<MemorizedVerse[]>([]);
+  const [userHighlights, setUserHighlights] = useState<VerseHighlight[]>([]);
+  const [userNotes, setUserNotes] = useState<VerseNote[]>([]);
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
@@ -89,6 +98,42 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   // Activity like toggles (local state for visual delight)
   const [likedActivities, setLikedActivities] = useState<Record<string, boolean>>({});
+
+  // Helper to parse reference string into book & chapter
+  const parseBookAndChapter = (ref: string): { book: string; chapter: number } => {
+    const parts = ref.trim().split(' ');
+    const book = parts.slice(0, -1).join(' ') || 'Genesis';
+    const ch = parseInt(parts[parts.length - 1]?.split(':')[0] || '1', 10);
+    return { book, chapter: isNaN(ch) ? 1 : ch };
+  };
+
+  const handleOpenVerse = (ref: string) => {
+    const { book, chapter } = parseBookAndChapter(ref);
+    if (onOpenVerseInBible) {
+      onOpenVerseInBible(book, chapter);
+    } else if (onOpenBible) {
+      onOpenBible();
+    }
+  };
+
+  // 1-Tap Copy Scripture and Automatically Discuss with Apostle
+  const handleSelectScriptureToDiscuss = (ref: string, text: string) => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (e) {}
+    const copyString = `“${text}” — ${ref}`;
+    Clipboard.setString(copyString);
+    if (Platform.OS === 'android') {
+      ToastAndroid.show('Scripture copied! Opening Apostle chat...', ToastAndroid.SHORT);
+    }
+    if (onSelectApostle) {
+      onSelectApostle(
+        undefined,
+        `What is the deeper spiritual meaning of this scripture: “${text}” (${ref})?`,
+        { text, reference: ref }
+      );
+    }
+  };
 
   // Confirmation Modal
   const [confirmModal, setConfirmModal] = useState<{
@@ -109,17 +154,21 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   const loadData = async () => {
     try {
-      const [uProf, gProf, bMarks, mems] = await Promise.all([
+      const [uProf, gProf, bMarks, mems, hls, nts] = await Promise.all([
         fetchUserProfile(),
         getSpiritualGrowthProfile(),
         fetchBookmarks(),
         fetchMemorizedVerses(),
+        fetchAllHighlights(),
+        fetchAllVerseNotes(),
       ]);
 
       if (uProf) setProfile(uProf);
       if (gProf) setGrowthProfile(gProf);
-      setUserBookmarks(bMarks);
-      setMemorizedVerses(mems);
+      setUserBookmarks(bMarks || []);
+      setMemorizedVerses(mems || []);
+      setUserHighlights(hls || []);
+      setUserNotes(nts || []);
     } catch (e) {
       console.warn('ProfileScreen loadData error:', e);
     } finally {
@@ -300,13 +349,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
           </TouchableOpacity>
 
-          {/* Horizontal Preview of Badges (Smooth, No Phone Edge Clipping) */}
+          {/* Horizontal Preview of Badges (All badges visible, smoothly scrollable) */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.badgesPreviewRow}
           >
-            {(growthProfile?.badges || []).slice(0, 6).map((badge: FaithBadge) => (
+            {(growthProfile?.badges || []).map((badge: FaithBadge) => (
               <MascotBadgeCard
                 key={badge.id}
                 badge={badge}
@@ -327,9 +376,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChipsRow}>
             {[
               { id: 'all', label: 'All', icon: undefined },
+              { id: 'saved', label: 'Saved', icon: 'bookmark-outline' },
               { id: 'memorized', label: 'Memorized', icon: 'heart-outline' },
-              { id: 'highlights', label: 'Highlights', icon: 'create-outline' },
-              { id: 'plans', label: 'Plans', icon: 'checkbox-outline' },
+              { id: 'notes', label: 'Notes', icon: 'document-text-outline' },
+              { id: 'highlights', label: 'Highlights', icon: 'color-palette-outline' },
               { id: 'badges', label: 'Badges', icon: 'ribbon-outline' },
             ].map((f) => {
               const isActive = activeActivityFilter === f.id;
@@ -357,30 +407,80 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </ScrollView>
 
           {/* DYNAMIC ACTIVITY FEED */}
-          {/* 1. INLINE BADGES VIEW */}
-          {activeActivityFilter === 'badges' && (
-            <View style={styles.inlineBadgesWrap}>
-              {(growthProfile?.badges || []).map((badge: FaithBadge) => (
-                <TouchableOpacity
-                  key={badge.id}
-                  style={styles.inlineBadgeRow}
-                  onPress={() => setSelectedBadgeForDetail(badge)}
-                  activeOpacity={0.8}
-                >
-                  <MascotBadgeCard
-                    badge={badge}
-                    size="compact"
-                    onPress={() => setSelectedBadgeForDetail(badge)}
-                  />
-                  <View style={styles.inlineBadgeMeta}>
-                    <Text style={styles.inlineBadgeTitle}>{badge.title}</Text>
-                    <Text style={styles.inlineBadgeSubtitle} numberOfLines={2}>{badge.subtitle}</Text>
-                    <Text style={styles.inlineBadgeLevel}>Level {badge.level || 1} Achieved</Text>
+
+          {/* 1. SAVED SCRIPTURES (BOOKMARKS) FILTER */}
+          {activeActivityFilter === 'saved' && (
+            userBookmarks.length === 0 ? (
+              <View style={styles.emptyActivityBox}>
+                <Ionicons name="bookmark-outline" size={32} color="#D97706" style={{ marginBottom: 8 }} />
+                <Text style={styles.emptyActivityTitle}>No Saved Scriptures Yet</Text>
+                <Text style={styles.emptyActivitySub}>Tap any verse in the Bible reader and select "Bookmark" to save it here.</Text>
+              </View>
+            ) : (
+              userBookmarks.map((bm) => {
+                const ref = bm.reference || bm.title;
+                return (
+                  <View key={bm.id} style={styles.activityCard}>
+                    <View style={styles.activityHeader}>
+                      <View style={[styles.activityAvatarSmall, { backgroundColor: '#FEF3C7' }]}>
+                        <Ionicons name="bookmark" size={13} color="#D97706" />
+                      </View>
+                      <View style={styles.activityMeta}>
+                        <Text style={styles.activityTitleText}>
+                          Saved <Text style={{ fontFamily: Typography.fontSansBold }}>{ref}</Text>
+                        </Text>
+                        <Text style={styles.activityTimeText}>Spiritual treasury</Text>
+                      </View>
+                    </View>
+
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      onPress={() => handleSelectScriptureToDiscuss(ref, bm.content)}
+                    >
+                      <View style={styles.quoteBlock}>
+                        <View style={[styles.quoteAccentLine, { backgroundColor: '#D97706' }]} />
+                        <View style={styles.quoteContent}>
+                          <Text style={[styles.quoteText, { fontFamily: Typography.fontYouVersionSerif }]}>“{bm.content}”</Text>
+                          <Text style={styles.quoteRef}>{ref}</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+
+                    <View style={styles.activityFooterRow}>
+                      <View style={styles.activityFooterLeft}>
+                        <TouchableOpacity
+                          style={styles.activityFooterBtn}
+                          onPress={() => handleToggleLikeActivity(bm.id)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons
+                            name={likedActivities[bm.id] ? "heart" : "heart-outline"}
+                            size={18}
+                            color={likedActivities[bm.id] ? "#E11D48" : "#6B7280"}
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.activityFooterBtn}
+                          onPress={() => handleOpenVerse(ref)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="book-outline" size={17} color="#6B7280" />
+                        </TouchableOpacity>
+                      </View>
+
+                      <TouchableOpacity
+                        style={styles.discussApostlePillBtn}
+                        onPress={() => handleSelectScriptureToDiscuss(ref, bm.content)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="chatbubble-ellipses-outline" size={13} color="#FFFFFF" style={{ marginRight: 5 }} />
+                        <Text style={styles.discussApostlePillText}>Ask Apostle</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
-                </TouchableOpacity>
-              ))}
-            </View>
+                );
+              })
+            )
           )}
 
           {/* 2. MEMORIZED VERSES FILTER */}
@@ -406,132 +506,420 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     </View>
                   </View>
 
-                  <View style={styles.quoteBlock}>
-                    <View style={[styles.quoteAccentLine, { backgroundColor: '#D97706' }]} />
-                    <View style={styles.quoteContent}>
-                      <Text style={[styles.quoteText, { fontFamily: Typography.fontYouVersionSerif }]}>"{mem.verseText}"</Text>
-                      <Text style={styles.quoteRef}>{mem.reference} · {mem.version}</Text>
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={() => handleSelectScriptureToDiscuss(mem.reference, mem.verseText)}
+                  >
+                    <View style={styles.quoteBlock}>
+                      <View style={[styles.quoteAccentLine, { backgroundColor: '#D97706' }]} />
+                      <View style={styles.quoteContent}>
+                        <Text style={[styles.quoteText, { fontFamily: Typography.fontYouVersionSerif }]}>“{mem.verseText}”</Text>
+                        <Text style={styles.quoteRef}>{mem.reference} · {mem.version}</Text>
+                      </View>
                     </View>
+                  </TouchableOpacity>
+
+                  <View style={styles.activityFooterRow}>
+                    <View style={styles.activityFooterLeft}>
+                      <TouchableOpacity
+                        style={styles.activityFooterBtn}
+                        onPress={() => handleToggleLikeActivity(mem.id)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons
+                          name={likedActivities[mem.id] ? "heart" : "heart-outline"}
+                          size={18}
+                          color={likedActivities[mem.id] ? "#E11D48" : "#6B7280"}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.activityFooterBtn}
+                        onPress={() => handleOpenVerse(mem.reference)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="book-outline" size={17} color="#6B7280" />
+                      </TouchableOpacity>
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.discussApostlePillBtn}
+                      onPress={() => handleSelectScriptureToDiscuss(mem.reference, mem.verseText)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="chatbubble-ellipses-outline" size={13} color="#FFFFFF" style={{ marginRight: 5 }} />
+                      <Text style={styles.discussApostlePillText}>Ask Apostle</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               ))
             )
           )}
 
-          {/* 3. HIGHLIGHTS / BOOKMARKS FILTER */}
-          {activeActivityFilter === 'highlights' && (
-            userBookmarks.length === 0 ? (
+          {/* 3. NOTES FILTER */}
+          {activeActivityFilter === 'notes' && (
+            userNotes.length === 0 ? (
               <View style={styles.emptyActivityBox}>
-                <Ionicons name="create-outline" size={32} color="#9CA3AF" style={{ marginBottom: 8 }} />
-                <Text style={styles.emptyActivityTitle}>No Saved Verses Yet</Text>
-                <Text style={styles.emptyActivitySub}>Tap any verse in the Bible reader to bookmark or highlight.</Text>
+                <Ionicons name="document-text-outline" size={32} color="#6B7280" style={{ marginBottom: 8 }} />
+                <Text style={styles.emptyActivityTitle}>No Personal Notes Yet</Text>
+                <Text style={styles.emptyActivitySub}>Tap any verse in the Bible reader and select "Add Note" to write reflections.</Text>
               </View>
             ) : (
-              userBookmarks.map((bm) => (
-                <View key={bm.id} style={styles.activityCard}>
+              userNotes.map((note) => (
+                <View key={note.id} style={styles.activityCard}>
                   <View style={styles.activityHeader}>
-                    <View style={[styles.activityAvatarSmall, { backgroundColor: '#FEF08A' }]}>
-                      <Ionicons name="bookmark" size={13} color="#111111" />
+                    <View style={[styles.activityAvatarSmall, { backgroundColor: '#FEE2E2' }]}>
+                      <Ionicons name="document-text" size={13} color="#8B1E1E" />
                     </View>
                     <View style={styles.activityMeta}>
                       <Text style={styles.activityTitleText}>
-                        Saved <Text style={{ fontFamily: Typography.fontSansBold }}>{bm.reference}</Text>
+                        Note on <Text style={{ fontFamily: Typography.fontSansBold }}>{note.reference}</Text>
                       </Text>
-                      <Text style={styles.activityTimeText}>Saved scripture</Text>
+                      <Text style={styles.activityTimeText}>Personal reflection</Text>
                     </View>
                   </View>
 
                   <View style={styles.quoteBlock}>
-                    <View style={[styles.quoteAccentLine, { backgroundColor: '#FEF08A' }]} />
+                    <View style={[styles.quoteAccentLine, { backgroundColor: '#8B1E1E' }]} />
                     <View style={styles.quoteContent}>
-                      <Text style={[styles.quoteText, { fontFamily: Typography.fontYouVersionSerif }]}>"{bm.content}"</Text>
-                      <Text style={styles.quoteRef}>{bm.reference || bm.title}</Text>
+                      <Text style={[styles.quoteText, { fontFamily: Typography.fontYouVersionSerif }]}>“{note.verseText}”</Text>
+                      <Text style={styles.noteContentText}>{note.noteText}</Text>
+                      <Text style={styles.quoteRef}>{note.reference}</Text>
                     </View>
+                  </View>
+
+                  <View style={styles.activityFooterRow}>
+                    <View style={styles.activityFooterLeft}>
+                      <TouchableOpacity
+                        style={styles.activityFooterBtn}
+                        onPress={() => handleToggleLikeActivity(note.id)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons
+                          name={likedActivities[note.id] ? "heart" : "heart-outline"}
+                          size={18}
+                          color={likedActivities[note.id] ? "#E11D48" : "#6B7280"}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.activityFooterBtn}
+                        onPress={() => handleOpenVerse(note.reference)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="book-outline" size={17} color="#6B7280" />
+                      </TouchableOpacity>
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.discussApostlePillBtn}
+                      onPress={() => handleSelectScriptureToDiscuss(note.reference, `${note.verseText} (My Reflection: ${note.noteText})`)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="chatbubble-ellipses-outline" size={13} color="#FFFFFF" style={{ marginRight: 5 }} />
+                      <Text style={styles.discussApostlePillText}>Ask Apostle</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               ))
             )
           )}
 
-          {/* 4. ALL ACTIVITIES FEED */}
-          {activeActivityFilter === 'all' && (
-            <View>
-              {/* Sample Saved Verse */}
-              <View style={styles.activityCard}>
-                <View style={styles.activityHeader}>
-                  <View style={styles.activityAvatarSmall}>
-                    <Text style={styles.activityAvatarText}>{userInitial}</Text>
-                  </View>
-                  <View style={styles.activityMeta}>
-                    <Text style={styles.activityTitleText}>
-                      You saved <Text style={{ fontFamily: Typography.fontSansBold }}>James 1:27 NIV</Text>
-                    </Text>
-                    <View style={styles.tagRow}>
-                      <Ionicons name="pricetag-outline" size={11} color="#6B7280" style={{ marginRight: 4 }} />
-                      <Text style={styles.tagText}>encouragement</Text>
+          {/* 4. HIGHLIGHTS FILTER */}
+          {activeActivityFilter === 'highlights' && (
+            userHighlights.length === 0 ? (
+              <View style={styles.emptyActivityBox}>
+                <Ionicons name="color-palette-outline" size={32} color="#9CA3AF" style={{ marginBottom: 8 }} />
+                <Text style={styles.emptyActivityTitle}>No Highlights Yet</Text>
+                <Text style={styles.emptyActivitySub}>Tap any verse in the Bible reader and select a color to highlight.</Text>
+              </View>
+            ) : (
+              userHighlights.map((hl) => {
+                const ref = `${hl.book} ${hl.chapter}:${hl.verse}`;
+                return (
+                  <View key={hl.id} style={styles.activityCard}>
+                    <View style={styles.activityHeader}>
+                      <View style={[styles.activityAvatarSmall, { backgroundColor: hl.color || '#FEF08A' }]}>
+                        <Ionicons name="color-wand" size={13} color="#111111" />
+                      </View>
+                      <View style={styles.activityMeta}>
+                        <Text style={styles.activityTitleText}>
+                          Highlighted <Text style={{ fontFamily: Typography.fontSansBold }}>{ref}</Text>
+                        </Text>
+                        <Text style={styles.activityTimeText}>Scripture highlight</Text>
+                      </View>
+                    </View>
+
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      onPress={() => handleSelectScriptureToDiscuss(ref, hl.verseText)}
+                    >
+                      <View style={styles.quoteBlock}>
+                        <View style={[styles.quoteAccentLine, { backgroundColor: hl.color || '#FEF08A' }]} />
+                        <View style={styles.quoteContent}>
+                          <Text style={[styles.quoteText, { fontFamily: Typography.fontYouVersionSerif }]}>“{hl.verseText}”</Text>
+                          <Text style={styles.quoteRef}>{ref}</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+
+                    <View style={styles.activityFooterRow}>
+                      <View style={styles.activityFooterLeft}>
+                        <TouchableOpacity
+                          style={styles.activityFooterBtn}
+                          onPress={() => handleToggleLikeActivity(hl.id)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons
+                            name={likedActivities[hl.id] ? "heart" : "heart-outline"}
+                            size={18}
+                            color={likedActivities[hl.id] ? "#E11D48" : "#6B7280"}
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.activityFooterBtn}
+                          onPress={() => handleOpenVerse(ref)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="book-outline" size={17} color="#6B7280" />
+                        </TouchableOpacity>
+                      </View>
+
+                      <TouchableOpacity
+                        style={styles.discussApostlePillBtn}
+                        onPress={() => handleSelectScriptureToDiscuss(ref, hl.verseText)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="chatbubble-ellipses-outline" size={13} color="#FFFFFF" style={{ marginRight: 5 }} />
+                        <Text style={styles.discussApostlePillText}>Ask Apostle</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
-                  <Text style={styles.activityAgeText}>Recent</Text>
-                </View>
+                );
+              })
+            )
+          )}
 
-                <View style={styles.quoteBlock}>
-                  <View style={styles.quoteAccentLine} />
-                  <View style={styles.quoteContent}>
-                    <Text style={[styles.quoteText, { fontFamily: Typography.fontYouVersionSerif }]}>
-                      Religion that God our Father accepts as pure and faultless is this: to look after orphans and widows in their distress...
-                    </Text>
-                    <Text style={styles.quoteRef}>James 1:27 NIV</Text>
+          {/* 5. INLINE BADGES VIEW */}
+          {activeActivityFilter === 'badges' && (
+            <View style={styles.inlineBadgesWrap}>
+              {(growthProfile?.badges || []).map((badge: FaithBadge) => (
+                <TouchableOpacity
+                  key={badge.id}
+                  style={styles.inlineBadgeRow}
+                  onPress={() => setSelectedBadgeForDetail(badge)}
+                  activeOpacity={0.8}
+                >
+                  <MascotBadgeCard
+                    badge={badge}
+                    size="compact"
+                    onPress={() => setSelectedBadgeForDetail(badge)}
+                  />
+                  <View style={styles.inlineBadgeMeta}>
+                    <Text style={styles.inlineBadgeTitle}>{badge.title}</Text>
+                    <Text style={styles.inlineBadgeSubtitle} numberOfLines={2}>{badge.subtitle}</Text>
+                    <Text style={styles.inlineBadgeLevel}>Level {badge.level || 1} Achieved</Text>
                   </View>
-                </View>
-
-                <View style={styles.activityFooterRow}>
-                  <TouchableOpacity
-                    style={styles.activityFooterBtn}
-                    onPress={() => handleToggleLikeActivity('sample_james')}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name={likedActivities['sample_james'] ? "heart" : "heart-outline"}
-                      size={18}
-                      color={likedActivities['sample_james'] ? "#E11D48" : "#4B5563"}
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.activityFooterBtn}
-                    onPress={() => onOpenBible?.()}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="chatbubble-outline" size={17} color="#4B5563" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Sample Badge Level Up Activity */}
-              <View style={styles.activityCard}>
-                <View style={styles.activityHeader}>
-                  <View style={styles.activityAvatarSmall}>
-                    <Text style={styles.activityAvatarText}>{userInitial}</Text>
-                  </View>
-                  <View style={styles.activityMeta}>
-                    <Text style={styles.activityTitleText}>
-                      You leveled up your <Text style={{ fontFamily: Typography.fontSansBold }}>Saved Verse Badge</Text>
-                    </Text>
-                    <Text style={styles.activityTimeText}>Scripture reward</Text>
-                  </View>
-                  <Text style={styles.activityAgeText}>Recent</Text>
-                </View>
-
-                {growthProfile?.badges?.[0] && (
-                  <View style={styles.badgeActivityPreviewBox}>
-                    <MascotBadgeCard
-                      badge={growthProfile.badges[0]}
-                      size="compact"
-                      onPress={() => setSelectedBadgeForDetail(growthProfile.badges[0])}
-                    />
-                  </View>
-                )}
-              </View>
+                  <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
+                </TouchableOpacity>
+              ))}
             </View>
+          )}
+
+          {/* 6. ALL ACTIVITIES FEED (Dynamically renders real user items) */}
+          {activeActivityFilter === 'all' && (
+            userBookmarks.length === 0 && memorizedVerses.length === 0 && userNotes.length === 0 ? (
+              <View style={styles.emptyActivityBox}>
+                <Ionicons name="sparkles-outline" size={32} color="#9CA3AF" style={{ marginBottom: 8 }} />
+                <Text style={styles.emptyActivityTitle}>Your Faith Activity Awaits</Text>
+                <Text style={styles.emptyActivitySub}>Saved scriptures, memorized passages, and notes will appear here.</Text>
+              </View>
+            ) : (
+              <View>
+                {/* 1. All Real User Bookmarks */}
+                {userBookmarks.map((bm) => {
+                  const ref = bm.reference || bm.title;
+                  return (
+                    <View key={`all_bm_${bm.id}`} style={styles.activityCard}>
+                      <View style={styles.activityHeader}>
+                        <View style={[styles.activityAvatarSmall, { backgroundColor: '#FEF3C7' }]}>
+                          <Ionicons name="bookmark" size={13} color="#D97706" />
+                        </View>
+                        <View style={styles.activityMeta}>
+                          <Text style={styles.activityTitleText}>
+                            You saved <Text style={{ fontFamily: Typography.fontSansBold }}>{ref}</Text>
+                          </Text>
+                          <Text style={styles.activityTimeText}>Saved scripture</Text>
+                        </View>
+                      </View>
+
+                      <TouchableOpacity
+                        activeOpacity={0.85}
+                        onPress={() => handleSelectScriptureToDiscuss(ref, bm.content)}
+                      >
+                        <View style={styles.quoteBlock}>
+                          <View style={[styles.quoteAccentLine, { backgroundColor: '#D97706' }]} />
+                          <View style={styles.quoteContent}>
+                            <Text style={[styles.quoteText, { fontFamily: Typography.fontYouVersionSerif }]}>“{bm.content}”</Text>
+                            <Text style={styles.quoteRef}>{ref}</Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+
+                      <View style={styles.activityFooterRow}>
+                        <View style={styles.activityFooterLeft}>
+                          <TouchableOpacity
+                            style={styles.activityFooterBtn}
+                            onPress={() => handleToggleLikeActivity(`bm_${bm.id}`)}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons
+                              name={likedActivities[`bm_${bm.id}`] ? "heart" : "heart-outline"}
+                              size={18}
+                              color={likedActivities[`bm_${bm.id}`] ? "#E11D48" : "#6B7280"}
+                            />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.activityFooterBtn}
+                            onPress={() => handleOpenVerse(ref)}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons name="book-outline" size={17} color="#6B7280" />
+                          </TouchableOpacity>
+                        </View>
+
+                        <TouchableOpacity
+                          style={styles.discussApostlePillBtn}
+                          onPress={() => handleSelectScriptureToDiscuss(ref, bm.content)}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons name="chatbubble-ellipses-outline" size={13} color="#FFFFFF" style={{ marginRight: 5 }} />
+                          <Text style={styles.discussApostlePillText}>Ask Apostle</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })}
+
+                {/* 2. All Real Memorized Verses */}
+                {memorizedVerses.map((mem) => (
+                  <View key={`all_mem_${mem.id}`} style={styles.activityCard}>
+                    <View style={styles.activityHeader}>
+                      <View style={[styles.activityAvatarSmall, { backgroundColor: '#FEF3C7' }]}>
+                        <Ionicons name="heart" size={14} color="#D97706" />
+                      </View>
+                      <View style={styles.activityMeta}>
+                        <Text style={styles.activityTitleText}>
+                          You memorized <Text style={{ fontFamily: Typography.fontSansBold }}>{mem.reference}</Text>
+                        </Text>
+                        <Text style={styles.activityTimeText}>Practiced {mem.practiceCount} {mem.practiceCount === 1 ? 'time' : 'times'}</Text>
+                      </View>
+                    </View>
+
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      onPress={() => handleSelectScriptureToDiscuss(mem.reference, mem.verseText)}
+                    >
+                      <View style={styles.quoteBlock}>
+                        <View style={[styles.quoteAccentLine, { backgroundColor: '#D97706' }]} />
+                        <View style={styles.quoteContent}>
+                          <Text style={[styles.quoteText, { fontFamily: Typography.fontYouVersionSerif }]}>“{mem.verseText}”</Text>
+                          <Text style={styles.quoteRef}>{mem.reference} · {mem.version}</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+
+                    <View style={styles.activityFooterRow}>
+                      <View style={styles.activityFooterLeft}>
+                        <TouchableOpacity
+                          style={styles.activityFooterBtn}
+                          onPress={() => handleToggleLikeActivity(`mem_${mem.id}`)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons
+                            name={likedActivities[`mem_${mem.id}`] ? "heart" : "heart-outline"}
+                            size={18}
+                            color={likedActivities[`mem_${mem.id}`] ? "#E11D48" : "#6B7280"}
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.activityFooterBtn}
+                          onPress={() => handleOpenVerse(mem.reference)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="book-outline" size={17} color="#6B7280" />
+                        </TouchableOpacity>
+                      </View>
+
+                      <TouchableOpacity
+                        style={styles.discussApostlePillBtn}
+                        onPress={() => handleSelectScriptureToDiscuss(mem.reference, mem.verseText)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="chatbubble-ellipses-outline" size={13} color="#FFFFFF" style={{ marginRight: 5 }} />
+                        <Text style={styles.discussApostlePillText}>Ask Apostle</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+
+                {/* 3. All Real User Notes */}
+                {userNotes.map((note) => (
+                  <View key={`all_note_${note.id}`} style={styles.activityCard}>
+                    <View style={styles.activityHeader}>
+                      <View style={[styles.activityAvatarSmall, { backgroundColor: '#FEE2E2' }]}>
+                        <Ionicons name="document-text" size={13} color="#8B1E1E" />
+                      </View>
+                      <View style={styles.activityMeta}>
+                        <Text style={styles.activityTitleText}>
+                          Note on <Text style={{ fontFamily: Typography.fontSansBold }}>{note.reference}</Text>
+                        </Text>
+                        <Text style={styles.activityTimeText}>Personal reflection</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.quoteBlock}>
+                      <View style={[styles.quoteAccentLine, { backgroundColor: '#8B1E1E' }]} />
+                      <View style={styles.quoteContent}>
+                        <Text style={[styles.quoteText, { fontFamily: Typography.fontYouVersionSerif }]}>“{note.verseText}”</Text>
+                        <Text style={styles.noteContentText}>{note.noteText}</Text>
+                        <Text style={styles.quoteRef}>{note.reference}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.activityFooterRow}>
+                      <View style={styles.activityFooterLeft}>
+                        <TouchableOpacity
+                          style={styles.activityFooterBtn}
+                          onPress={() => handleToggleLikeActivity(`note_${note.id}`)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons
+                            name={likedActivities[`note_${note.id}`] ? "heart" : "heart-outline"}
+                            size={18}
+                            color={likedActivities[`note_${note.id}`] ? "#E11D48" : "#6B7280"}
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.activityFooterBtn}
+                          onPress={() => handleOpenVerse(note.reference)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="book-outline" size={17} color="#6B7280" />
+                        </TouchableOpacity>
+                      </View>
+
+                      <TouchableOpacity
+                        style={styles.discussApostlePillBtn}
+                        onPress={() => handleSelectScriptureToDiscuss(note.reference, `${note.verseText} (My Reflection: ${note.noteText})`)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="chatbubble-ellipses-outline" size={13} color="#FFFFFF" style={{ marginRight: 5 }} />
+                        <Text style={styles.discussApostlePillText}>Ask Apostle</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )
           )}
         </View>
 
@@ -929,13 +1317,31 @@ const styles = StyleSheet.create({
   activityFooterRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    justifyContent: 'space-between',
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
+  activityFooterLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   activityFooterBtn: {
     padding: 4,
+  },
+  discussApostlePillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#111827',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  discussApostlePillText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 12,
+    color: '#FFFFFF',
   },
   badgeActivityPreviewBox: {
     alignItems: 'center',

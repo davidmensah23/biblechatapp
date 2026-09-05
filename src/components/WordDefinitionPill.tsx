@@ -5,11 +5,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   Modal,
-  TouchableWithoutFeedback
+  TouchableWithoutFeedback,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
-import { Colors } from '../theme/colors';
 import { GlossaryEntry } from '../services/biblicalGlossary';
 
 interface WordDefinitionPillProps {
@@ -31,37 +31,41 @@ export const WordDefinitionPill: React.FC<WordDefinitionPillProps> = ({
       onRequestClose={onClose}
     >
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.overlay}>
+        <View style={styles.backdrop}>
           <TouchableWithoutFeedback>
-            <View style={styles.card}>
-              {/* Header Badge */}
+            <View style={styles.floatingTooltip}>
+              {/* Top Header Row */}
               <View style={styles.headerRow}>
-                <View style={styles.badge}>
-                  <Ionicons name="sparkles" size={12} color="#8B1E1E" style={{ marginRight: 4 }} />
-                  <Text style={styles.badgeText}>{entry.originLabel}</Text>
+                <View style={styles.termInfo}>
+                  <View style={styles.originPill}>
+                    <Ionicons name="sparkles" size={10} color="#8B1E1E" style={{ marginRight: 3 }} />
+                    <Text style={styles.originText}>{entry.originLabel || 'Biblical Study'}</Text>
+                  </View>
+                  <Text style={styles.termTitle}>{entry.term}</Text>
                 </View>
-                <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <Ionicons name="close" size={18} color="#8E8E93" />
+
+                <TouchableOpacity
+                  onPress={onClose}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  style={styles.closeBtn}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="close" size={16} color="#6B7280" />
                 </TouchableOpacity>
               </View>
 
-              {/* Term Title */}
-              <Text style={styles.termTitle}>{entry.term}</Text>
-
-              {/* 1-Sentence Plain English Definition */}
+              {/* Definition in clean, small, highly legible Poppins text */}
               <Text style={styles.definitionText}>{entry.definition}</Text>
 
-              {/* Context / Example if available */}
-              {entry.exampleContext && (
-                <View style={styles.contextBox}>
-                  <Text style={styles.contextText}>“{entry.exampleContext}”</Text>
+              {/* Contextual Nuance (if available) */}
+              {Boolean(entry.exampleContext) && (
+                <View style={styles.contextRow}>
+                  <View style={styles.contextBar} />
+                  <Text style={styles.contextText} numberOfLines={2}>
+                    {entry.exampleContext}
+                  </Text>
                 </View>
               )}
-
-              {/* Bottom "Got it" action */}
-              <TouchableOpacity style={styles.gotItBtn} onPress={onClose} activeOpacity={0.8}>
-                <Text style={styles.gotItText}>Got it</Text>
-              </TouchableOpacity>
             </View>
           </TouchableWithoutFeedback>
         </View>
@@ -71,89 +75,105 @@ export const WordDefinitionPill: React.FC<WordDefinitionPillProps> = ({
 };
 
 const styles = StyleSheet.create({
-  overlay: {
+  backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
-    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.18)',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    paddingHorizontal: 24,
+    paddingBottom: Platform.OS === 'ios' ? 100 : 85,
+    paddingHorizontal: 16,
   },
-  card: {
+  floatingTooltip: {
     width: '100%',
-    maxWidth: 340,
+    maxWidth: 380,
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.14,
-    shadowRadius: 18,
-    elevation: 10,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.12,
+        shadowRadius: 14,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   headerRow: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
-  badge: {
+  termInfo: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  originPill: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'flex-start',
     backgroundColor: '#FDF2F2',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginBottom: 4,
     borderWidth: 1,
-    borderColor: 'rgba(139, 30, 30, 0.12)',
+    borderColor: 'rgba(139, 30, 30, 0.10)',
   },
-  badgeText: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 11,
+  originText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 10,
     color: '#8B1E1E',
     letterSpacing: 0.2,
   },
   termTitle: {
-    fontFamily: Typography.fontYouVersionSerif,
-    fontSize: 22,
-    color: '#111111',
-    fontWeight: '600',
-    marginBottom: 8,
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 15.5,
+    color: '#111827',
+  },
+  closeBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
   },
   definitionText: {
     fontFamily: Typography.fontSansRegular,
-    fontSize: 15,
-    color: '#333333',
-    lineHeight: 22,
-    marginBottom: 12,
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#374151',
   },
-  contextBox: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 16,
-    borderLeftWidth: 3,
-    borderLeftColor: '#8B1E1E',
+  contextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  contextBar: {
+    width: 2.5,
+    height: '100%',
+    minHeight: 18,
+    backgroundColor: '#D97706',
+    borderRadius: 2,
+    marginRight: 8,
   },
   contextText: {
-    fontFamily: Typography.fontYouVersionSerif,
-    fontSize: 13.5,
-    color: '#4B5563',
-    lineHeight: 19,
+    flex: 1,
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 11.5,
+    color: '#6B7280',
+    lineHeight: 16,
     fontStyle: 'italic',
-  },
-  gotItBtn: {
-    backgroundColor: '#111111',
-    borderRadius: 12,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gotItText: {
-    fontFamily: Typography.fontSansSemiBold,
-    fontSize: 14,
-    color: '#FFFFFF',
   },
 });

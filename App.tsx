@@ -491,8 +491,17 @@ export default function App() {
               <ProfileScreen
                 onLogout={handleLogout}
                 onOpenAuthModal={() => setShowAuthModal(true)}
-                onSelectApostle={() => setActiveNavTab('home')}
+                onSelectApostle={(apostle, initialMessage, contextQuote) => {
+                  setSelectedApostle(apostle || APOSTLE_PERSONAS[0]);
+                  if (initialMessage) setChatInitialMessage(initialMessage);
+                  if (contextQuote) setChatContextQuote(contextQuote);
+                  setCurrentView('chat');
+                }}
                 onOpenBible={() => setActiveNavTab('bible')}
+                onOpenVerseInBible={(book, chapter) => {
+                  setBibleInitialTarget({ book, chapter });
+                  setActiveNavTab('bible');
+                }}
                 onOpenCommunityPrayers={(seg) => {
                   setCommunityInitialSegment(seg || 'my_prayers');
                   setActiveNavTab('community');

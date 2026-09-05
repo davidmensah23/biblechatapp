@@ -122,8 +122,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   imageLocked: {
-    opacity: 0.4,
-    tintColor: '#9CA3AF',
+    opacity: 0.38,
   },
   levelPill: {
     paddingHorizontal: 8,

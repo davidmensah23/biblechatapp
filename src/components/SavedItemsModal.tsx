@@ -8,8 +8,12 @@ import {
   TouchableOpacity,
   ScrollView,
   Share,
-  ActivityIndicator
+  ActivityIndicator,
+  Clipboard,
+  ToastAndroid,
+  Platform
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { SavedBookmark } from '../types';
@@ -19,12 +23,14 @@ interface SavedItemsModalProps {
   visible: boolean;
   onClose: () => void;
   onOpenVerseInBible: (book: string, chapter: number) => void;
+  onSelectApostle?: (apostle?: any, initialMessage?: string, contextQuote?: { text: string; reference: string }) => void;
 }
 
 export const SavedItemsModal: React.FC<SavedItemsModalProps> = ({
   visible,
   onClose,
-  onOpenVerseInBible
+  onOpenVerseInBible,
+  onSelectApostle
 }) => {
   const [tab, setTab] = useState<'bookmarks' | 'notes'>('bookmarks');
   const [bookmarks, setBookmarks] = useState<SavedBookmark[]>([]);
@@ -56,6 +62,29 @@ export const SavedItemsModal: React.FC<SavedItemsModalProps> = ({
   const handleRemoveBookmark = async (id: string) => {
     setBookmarks(prev => prev.filter(b => b.id !== id));
     await removeBookmark(id);
+  };
+
+  const handleCopyScripture = (ref: string, text: string) => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (e) {}
+    const copyString = `“${text}” — ${ref}`;
+    Clipboard.setString(copyString);
+    if (Platform.OS === 'android') {
+      ToastAndroid.show('Scripture copied to clipboard!', ToastAndroid.SHORT);
+    }
+  };
+
+  const handleDiscussWithApostle = (ref: string, text: string) => {
+    handleCopyScripture(ref, text);
+    onClose();
+    if (onSelectApostle) {
+      onSelectApostle(
+        undefined,
+        `What is the deeper spiritual meaning of this scripture: “${text}” (${ref})?`,
+        { text, reference: ref }
+      );
+    }
   };
 
   const handleShare = async (title: string, text: string) => {
@@ -135,16 +164,24 @@ export const SavedItemsModal: React.FC<SavedItemsModalProps> = ({
                 const parts = (bm.reference || bm.title).split(' ');
                 const book = parts.slice(0, -1).join(' ') || 'Genesis';
                 const ch = parseInt(parts[parts.length - 1]?.split(':')[0] || '1', 10);
+                const ref = bm.reference || bm.title;
 
                 return (
                   <View key={bm.id} style={styles.card}>
                     <View style={styles.cardHeader}>
                       <View style={styles.citationBadge}>
-                        <Text style={styles.citationText}>{bm.reference || bm.title}</Text>
+                        <Text style={styles.citationText}>{ref}</Text>
                       </View>
                       <View style={styles.cardActions}>
                         <TouchableOpacity
-                          onPress={() => handleShare(bm.reference || bm.title, bm.content)}
+                          onPress={() => handleCopyScripture(ref, bm.content)}
+                          style={styles.iconBtn}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="copy-outline" size={17} color="#6B7280" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => handleShare(ref, bm.content)}
                           style={styles.iconBtn}
                           activeOpacity={0.7}
                         >
@@ -162,17 +199,30 @@ export const SavedItemsModal: React.FC<SavedItemsModalProps> = ({
 
                     <Text style={styles.verseQuote}>“{bm.content}”</Text>
 
-                    <TouchableOpacity
-                      style={styles.readInBibleBtn}
-                      onPress={() => {
-                        onClose();
-                        onOpenVerseInBible(book, ch);
-                      }}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={styles.readInBibleText}>Read in Bible</Text>
-                      <Ionicons name="arrow-forward" size={13} color="#111111" style={{ marginLeft: 4 }} />
-                    </TouchableOpacity>
+                    <View style={styles.cardBottomRow}>
+                      <TouchableOpacity
+                        style={styles.readInBibleBtn}
+                        onPress={() => {
+                          onClose();
+                          onOpenVerseInBible(book, ch);
+                        }}
+                        activeOpacity={0.75}
+                      >
+                        <Ionicons name="book-outline" size={13} color="#111111" style={{ marginRight: 4 }} />
+                        <Text style={styles.readInBibleText}>Read in Bible</Text>
+                      </TouchableOpacity>
+
+                      {Boolean(onSelectApostle) && (
+                        <TouchableOpacity
+                          style={styles.discussBtn}
+                          onPress={() => handleDiscussWithApostle(ref, bm.content)}
+                          activeOpacity={0.75}
+                        >
+                          <Ionicons name="chatbubble-ellipses-outline" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
+                          <Text style={styles.discussBtnText}>Ask Apostle</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </View>
                 );
               })
@@ -195,13 +245,22 @@ export const SavedItemsModal: React.FC<SavedItemsModalProps> = ({
                     <View style={styles.citationBadge}>
                       <Text style={styles.citationText}>{note.reference}</Text>
                     </View>
-                    <TouchableOpacity
-                      onPress={() => handleShare(note.reference, `${note.verseText}\nNote: ${note.noteText}`)}
-                      style={styles.iconBtn}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons name="share-outline" size={17} color="#6B7280" />
-                    </TouchableOpacity>
+                    <View style={styles.cardActions}>
+                      <TouchableOpacity
+                        onPress={() => handleCopyScripture(note.reference, note.verseText)}
+                        style={styles.iconBtn}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="copy-outline" size={17} color="#6B7280" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleShare(note.reference, `${note.verseText}\nNote: ${note.noteText}`)}
+                        style={styles.iconBtn}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="share-outline" size={17} color="#6B7280" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
 
                   <Text style={styles.verseQuoteSmall} numberOfLines={2}>
@@ -213,17 +272,30 @@ export const SavedItemsModal: React.FC<SavedItemsModalProps> = ({
                     <Text style={styles.noteContent}>{note.noteText}</Text>
                   </View>
 
-                  <TouchableOpacity
-                    style={styles.readInBibleBtn}
-                    onPress={() => {
-                      onClose();
-                      onOpenVerseInBible(note.book, note.chapter);
-                    }}
-                    activeOpacity={0.75}
-                  >
-                    <Text style={styles.readInBibleText}>Read in Bible</Text>
-                    <Ionicons name="arrow-forward" size={13} color="#111111" style={{ marginLeft: 4 }} />
-                  </TouchableOpacity>
+                  <View style={styles.cardBottomRow}>
+                    <TouchableOpacity
+                      style={styles.readInBibleBtn}
+                      onPress={() => {
+                        onClose();
+                        onOpenVerseInBible(note.book, note.chapter);
+                      }}
+                      activeOpacity={0.75}
+                    >
+                      <Ionicons name="book-outline" size={13} color="#111111" style={{ marginRight: 4 }} />
+                      <Text style={styles.readInBibleText}>Read in Bible</Text>
+                    </TouchableOpacity>
+
+                    {Boolean(onSelectApostle) && (
+                      <TouchableOpacity
+                        style={styles.discussBtn}
+                        onPress={() => handleDiscussWithApostle(note.reference, note.verseText)}
+                        activeOpacity={0.75}
+                      >
+                        <Ionicons name="chatbubble-ellipses-outline" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
+                        <Text style={styles.discussBtnText}>Ask Apostle</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               ))
             )}
@@ -393,18 +465,37 @@ const styles = StyleSheet.create({
     color: '#111827',
     lineHeight: 18,
   },
+  cardBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
   readInBibleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
     backgroundColor: '#F3F4F6',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 12,
   },
   readInBibleText: {
     fontFamily: Typography.fontSansSemiBold,
     fontSize: 12,
     color: '#111827',
+  },
+  discussBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#111111',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 12,
+  },
+  discussBtnText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 12,
+    color: '#FFFFFF',
   },
 });
