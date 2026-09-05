@@ -530,18 +530,24 @@ const styles = StyleSheet.create({
   },
   continueBtnActive: {
     backgroundColor: '#111111',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
   },
   continueBtnDisabled: {
     backgroundColor: '#F3F4F6',
   },
   continueBtnText: {
-    fontFamily: Typography.fontSansMedium,
-    fontSize: 16,
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 15.5,
+    letterSpacing: 0.2,
   },
   continueBtnTextActive: {
     color: '#FFFFFF',
   },
   continueBtnTextDisabled: {
-    color: '#C7C7CC',
+    color: '#9CA3AF',
   },
 });
