@@ -38,6 +38,24 @@ export const getContextualChips = (
           { id: 't2', label: '✋ Touching His wounds', text: 'What did you feel when Jesus asked you to touch His hands?' },
           { id: 't3', label: '🕊️ Pray with me', text: 'Can you pray with me for clarity and genuine faith?' }
         ];
+      case 'the_bible':
+        return [
+          { id: 'b1', label: '📜 Explain a passage', text: 'Holy Bible, can you illuminate the deeper meaning and cross-references of this passage?' },
+          { id: 'b2', label: '✝️ Christ in the Old Testament', text: 'How do the Old Testament covenants point forward to Jesus Christ?' },
+          { id: 'b3', label: '🕊️ Comfort for anxiety', text: 'What scriptures provide peace and strength when facing deep worry?' }
+        ];
+      case 'deborah':
+        return [
+          { id: 'deb1', label: '🌴 Counsel under the Palm', text: 'Deborah, I am facing a difficult decision—what wisdom do you have for me?' },
+          { id: 'deb2', label: '⚔️ Boldness when afraid', text: 'How do I overcome hesitation when God calls me to take a courageous step?' },
+          { id: 'deb3', label: '🎵 Song of Victory', text: 'Deborah, pray with me for victory over the battles I face today.' }
+        ];
+      case 'esther':
+        return [
+          { id: 'est1', label: '👑 For such a time as this', text: 'Esther, how do I know if God has placed me somewhere for a divine purpose?' },
+          { id: 'est2', label: '🕊️ Fasting & prayer', text: 'How did fasting and prayer give you courage before the king?' },
+          { id: 'est3', label: '🛡️ Pray for my situation', text: 'Esther, please pray with me for favor and wisdom in a challenging circumstance.' }
+        ];
       default:
         return [
           { id: 'd1', label: '📖 Today’s wisdom', text: 'Share a word of encouragement from your walk with Jesus.' },

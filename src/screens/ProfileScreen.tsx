@@ -48,6 +48,7 @@ import { SettingsScreen } from './SettingsScreen';
 import { SavedItemsModal } from '../components/SavedItemsModal';
 import { CustomConfirmationModal } from '../components/CustomConfirmationModal';
 import { useTranslation } from '../services/localizationService';
+import { fetchCompletedDeeds, CompletedDeedLog } from '../services/deedsService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -81,11 +82,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   });
 
   const [growthProfile, setGrowthProfile] = useState<SpiritualGrowthProfile | null>(null);
-  const [activeActivityFilter, setActiveActivityFilter] = useState<'all' | 'saved' | 'memorized' | 'highlights' | 'notes' | 'badges'>('all');
+  const [activeActivityFilter, setActiveActivityFilter] = useState<'all' | 'saved' | 'memorized' | 'deeds' | 'notes' | 'highlights' | 'badges'>('all');
   const [userBookmarks, setUserBookmarks] = useState<SavedBookmark[]>([]);
   const [memorizedVerses, setMemorizedVerses] = useState<MemorizedVerse[]>([]);
   const [userHighlights, setUserHighlights] = useState<VerseHighlight[]>([]);
   const [userNotes, setUserNotes] = useState<VerseNote[]>([]);
+  const [completedDeeds, setCompletedDeeds] = useState<CompletedDeedLog[]>([]);
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
@@ -154,13 +156,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   const loadData = async () => {
     try {
-      const [uProf, gProf, bMarks, mems, hls, nts] = await Promise.all([
+      const [uProf, gProf, bMarks, mems, hls, nts, cDeeds] = await Promise.all([
         fetchUserProfile(),
         getSpiritualGrowthProfile(),
         fetchBookmarks(),
         fetchMemorizedVerses(),
         fetchAllHighlights(),
         fetchAllVerseNotes(),
+        fetchCompletedDeeds(),
       ]);
 
       if (uProf) setProfile(uProf);
@@ -169,6 +172,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       setMemorizedVerses(mems || []);
       setUserHighlights(hls || []);
       setUserNotes(nts || []);
+      setCompletedDeeds(cDeeds || []);
     } catch (e) {
       console.warn('ProfileScreen loadData error:', e);
     } finally {
@@ -338,6 +342,87 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </TouchableOpacity>
         </View>
 
+        {/* Daily Faith Walk (Today's Sacred Habits & Quests Tracker) */}
+        <View style={styles.dailyHabitsCard}>
+          <View style={styles.dailyHabitsHeader}>
+            <View style={styles.dailyHabitsTitleRow}>
+              <Ionicons name="compass-outline" size={17} color="#DC2626" style={{ marginRight: 6 }} />
+              <Text style={styles.dailyHabitsTitle}>Today's Faith Walk</Text>
+            </View>
+            <Text style={styles.dailyHabitsStreakBadge}>
+              🔥 {growthProfile?.streakDays || 1} Day Streak
+            </Text>
+          </View>
+
+          <View style={styles.dailyHabitsRow}>
+            {/* 1. Scripture Reading */}
+            <TouchableOpacity
+              style={[styles.dailyHabitPill, growthProfile?.habitsStatus?.morningScripture && styles.dailyHabitPillDone]}
+              onPress={() => onOpenBible?.()}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name={growthProfile?.habitsStatus?.morningScripture ? "checkmark-circle" : "book-outline"}
+                size={15}
+                color={growthProfile?.habitsStatus?.morningScripture ? "#16A34A" : "#6B7280"}
+              />
+              <Text style={[styles.dailyHabitText, growthProfile?.habitsStatus?.morningScripture && styles.dailyHabitTextDone]}>
+                Scripture
+              </Text>
+            </TouchableOpacity>
+
+            {/* 2. Apostolic Fellowship */}
+            <TouchableOpacity
+              style={[styles.dailyHabitPill, growthProfile?.habitsStatus?.apostleChat && styles.dailyHabitPillDone]}
+              onPress={() => onSelectApostle?.()}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name={growthProfile?.habitsStatus?.apostleChat ? "checkmark-circle" : "chatbubble-ellipses-outline"}
+                size={15}
+                color={growthProfile?.habitsStatus?.apostleChat ? "#16A34A" : "#6B7280"}
+              />
+              <Text style={[styles.dailyHabitText, growthProfile?.habitsStatus?.apostleChat && styles.dailyHabitTextDone]}>
+                Apostle
+              </Text>
+            </TouchableOpacity>
+
+            {/* 3. Kingdom Deed */}
+            <View
+              style={[
+                styles.dailyHabitPill,
+                (growthProfile?.habitsStatus?.kingdomDeed || completedDeeds.some(d => {
+                  const start = new Date(); start.setHours(0,0,0,0); return d.completedAt >= start.getTime();
+                })) && styles.dailyHabitPillDone
+              ]}
+            >
+              <Ionicons
+                name={
+                  (growthProfile?.habitsStatus?.kingdomDeed || completedDeeds.some(d => {
+                    const start = new Date(); start.setHours(0,0,0,0); return d.completedAt >= start.getTime();
+                  })) ? "checkmark-circle" : "heart-outline"
+                }
+                size={15}
+                color={
+                  (growthProfile?.habitsStatus?.kingdomDeed || completedDeeds.some(d => {
+                    const start = new Date(); start.setHours(0,0,0,0); return d.completedAt >= start.getTime();
+                  })) ? "#16A34A" : "#6B7280"
+                }
+              />
+              <Text
+                style={[
+                  styles.dailyHabitText,
+                  (growthProfile?.habitsStatus?.kingdomDeed || completedDeeds.some(d => {
+                    const start = new Date(); start.setHours(0,0,0,0); return d.completedAt >= start.getTime();
+                  })) && styles.dailyHabitTextDone
+                ]}
+              >
+                Kingdom Deed
+              </Text>
+            </View>
+          </View>
+        </View>
+
         {/* Badges Showcase Card (Edge-to-Edge Unclipped Scrolling) */}
         <View style={styles.badgesSectionCard}>
           <TouchableOpacity
@@ -378,9 +463,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               { id: 'all', label: 'All', icon: undefined },
               { id: 'saved', label: 'Saved', icon: 'bookmark-outline' },
               { id: 'memorized', label: 'Memorized', icon: 'heart-outline' },
+              { id: 'deeds', label: 'Deeds', icon: 'ribbon-outline' },
               { id: 'notes', label: 'Notes', icon: 'document-text-outline' },
               { id: 'highlights', label: 'Highlights', icon: 'color-palette-outline' },
-              { id: 'badges', label: 'Badges', icon: 'ribbon-outline' },
+              { id: 'badges', label: 'Badges', icon: 'trophy-outline' },
             ].map((f) => {
               const isActive = activeActivityFilter === f.id;
               return (
@@ -555,7 +641,74 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             )
           )}
 
-          {/* 3. NOTES FILTER */}
+          {/* 3. KINGDOM DEEDS FILTER */}
+          {activeActivityFilter === 'deeds' && (
+            completedDeeds.length === 0 ? (
+              <View style={styles.emptyActivityBox}>
+                <Ionicons name="ribbon-outline" size={32} color="#D97706" style={{ marginBottom: 8 }} />
+                <Text style={styles.emptyActivityTitle}>No Kingdom Deeds Logged Yet</Text>
+                <Text style={styles.emptyActivitySub}>Complete your daily act of grace on the Home tab to record your deeds here.</Text>
+              </View>
+            ) : (
+              completedDeeds.map((deed) => (
+                <View key={`deed_${deed.id}`} style={styles.activityCard}>
+                  <View style={styles.activityHeader}>
+                    <View style={[styles.activityAvatarSmall, { backgroundColor: '#FEF3C7' }]}>
+                      <Ionicons name="heart" size={13} color="#D97706" />
+                    </View>
+                    <View style={styles.activityMeta}>
+                      <Text style={styles.activityTitleText}>
+                        Kingdom Deed: <Text style={{ fontFamily: Typography.fontSansBold }}>{deed.title}</Text>
+                      </Text>
+                      <Text style={styles.activityTimeText}>{deed.locationName} · +{deed.xpAwarded} Grace XP</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.quoteBlock}>
+                    <View style={[styles.quoteAccentLine, { backgroundColor: '#D97706' }]} />
+                    <View style={styles.quoteContent}>
+                      <Text style={[styles.quoteText, { fontFamily: Typography.fontYouVersionSerif }]}>“{deed.reflection}”</Text>
+                      <Text style={styles.quoteRef}>{deed.scriptureRef}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.activityFooterRow}>
+                    <View style={styles.activityFooterLeft}>
+                      <TouchableOpacity
+                        style={styles.activityFooterBtn}
+                        onPress={() => handleToggleLikeActivity(`deed_${deed.id}`)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons
+                          name={likedActivities[`deed_${deed.id}`] ? "heart" : "heart-outline"}
+                          size={18}
+                          color={likedActivities[`deed_${deed.id}`] ? "#E11D48" : "#6B7280"}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.activityFooterBtn}
+                        onPress={() => handleOpenVerse(deed.scriptureRef)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="book-outline" size={17} color="#6B7280" />
+                      </TouchableOpacity>
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.discussApostlePillBtn}
+                      onPress={() => handleSelectScriptureToDiscuss(deed.scriptureRef, `I completed the Kingdom Deed "${deed.title}" (${deed.scriptureRef}). My reflection: ${deed.reflection}`)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="chatbubble-ellipses-outline" size={13} color="#FFFFFF" style={{ marginRight: 5 }} />
+                      <Text style={styles.discussApostlePillText}>Ask Apostle</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))
+            )
+          )}
+
+          {/* 4. NOTES FILTER */}
           {activeActivityFilter === 'notes' && (
             userNotes.length === 0 ? (
               <View style={styles.emptyActivityBox}>
@@ -726,7 +879,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
           {/* 6. ALL ACTIVITIES FEED (Dynamically renders real user items) */}
           {activeActivityFilter === 'all' && (
-            userBookmarks.length === 0 && memorizedVerses.length === 0 && userNotes.length === 0 ? (
+            userBookmarks.length === 0 && memorizedVerses.length === 0 && userNotes.length === 0 && completedDeeds.length === 0 ? (
               <View style={styles.emptyActivityBox}>
                 <Ionicons name="sparkles-outline" size={32} color="#9CA3AF" style={{ marginBottom: 8 }} />
                 <Text style={styles.emptyActivityTitle}>Your Faith Activity Awaits</Text>
@@ -914,6 +1067,63 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       >
                         <Ionicons name="chatbubble-ellipses-outline" size={13} color="#FFFFFF" style={{ marginRight: 5 }} />
                         <Text style={styles.discussApostlePillText}>Ask Apostle</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+
+                {/* 4. All Real Completed Deeds */}
+                {completedDeeds.map((deed) => (
+                  <View key={`all_deed_${deed.id}`} style={styles.activityCard}>
+                    <View style={styles.activityHeader}>
+                      <View style={[styles.activityAvatarSmall, { backgroundColor: '#FEF3C7' }]}>
+                        <Ionicons name="heart" size={13} color="#D97706" />
+                      </View>
+                      <View style={styles.activityMeta}>
+                        <Text style={styles.activityTitleText}>
+                          Kingdom Deed: <Text style={{ fontFamily: Typography.fontSansBold }}>{deed.title}</Text>
+                        </Text>
+                        <Text style={styles.activityTimeText}>{deed.locationName} · +{deed.xpAwarded} Grace XP</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.quoteBlock}>
+                      <View style={[styles.quoteAccentLine, { backgroundColor: '#D97706' }]} />
+                      <View style={styles.quoteContent}>
+                        <Text style={[styles.quoteText, { fontFamily: Typography.fontYouVersionSerif }]}>“{deed.reflection}”</Text>
+                        <Text style={styles.quoteRef}>{deed.scriptureRef}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.activityFooterRow}>
+                      <View style={styles.activityFooterLeft}>
+                        <TouchableOpacity
+                          style={styles.activityFooterBtn}
+                          onPress={() => handleToggleLikeActivity(`all_deed_${deed.id}`)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons
+                            name={likedActivities[`all_deed_${deed.id}`] ? "heart" : "heart-outline"}
+                            size={18}
+                            color={likedActivities[`all_deed_${deed.id}`] ? "#E11D48" : "#6B7280"}
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.activityFooterBtn}
+                          onPress={() => handleOpenVerse(deed.scriptureRef)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="book-outline" size={17} color="#6B7280" />
+                        </TouchableOpacity>
+                      </View>
+
+                      <TouchableOpacity
+                        style={styles.discussApostlePillBtn}
+                        onPress={() => handleSelectScriptureToDiscuss(deed.scriptureRef, `I completed the Kingdom Deed "${deed.title}" (${deed.scriptureRef}). My reflection: ${deed.reflection}`)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="chatbubble-ellipses-outline" size={13} color="#FFFFFF" style={{ marginRight: 5 }} />
+                        <Text style={styles.discussApostlePillText}>Discuss</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -1129,6 +1339,69 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontSansMedium,
     fontSize: 13,
     color: '#111111',
+  },
+  dailyHabitsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    marginBottom: 16,
+  },
+  dailyHabitsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  dailyHabitsTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dailyHabitsTitle: {
+    fontFamily: Typography.fontSansBold,
+    fontSize: 14.5,
+    color: '#111111',
+  },
+  dailyHabitsStreakBadge: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 12,
+    color: '#D97706',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  dailyHabitsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dailyHabitPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  dailyHabitPillDone: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+  },
+  dailyHabitText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 11.5,
+    color: '#4B5563',
+  },
+  dailyHabitTextDone: {
+    color: '#15803D',
+    fontFamily: Typography.fontSansSemiBold,
   },
   badgesSectionCard: {
     backgroundColor: '#FFFFFF',

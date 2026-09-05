@@ -39,6 +39,7 @@ import { useTranslation, LANGUAGE_TO_DEFAULT_BIBLE } from '../services/localizat
 import { ApostleSelectSheet } from '../components/ApostleSelectSheet';
 import { ToastBanner } from '../components/ToastBanner';
 import { ApostlePersona } from '../types';
+import { awardGraceXp, recordDailyActivity } from '../services/gamificationService';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -371,25 +372,40 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
 
   // 4. Save Note with Custom Toast
   const handleSaveNote = async (noteText: string) => {
-    if (!chapterData || selectedVerseNumber === null) return;
-    const verseObj = chapterData.verses.find(v => v.verseNumber === selectedVerseNumber);
-    if (!verseObj) return;
+    const vNum = modalVerseData?.verseNumber ?? selectedVerseNumber;
+    if (vNum === null || vNum === undefined) return;
 
-    const ref = `${chapterData.book} ${chapterData.chapter}:${selectedVerseNumber}`;
-    setChapterNotes(prev => ({ ...prev, [selectedVerseNumber]: noteText }));
-    await saveVerseNote(currentBook, currentChapter, selectedVerseNumber, ref, verseObj.text, noteText);
+    const book = modalVerseData?.book || chapterData?.book || currentBook;
+    const chapter = modalVerseData?.chapter || chapterData?.chapter || currentChapter;
+
+    let text = modalVerseData?.text;
+    if (!text && chapterData) {
+      const verseObj = chapterData.verses.find(v => v.verseNumber === vNum);
+      text = verseObj?.text;
+    }
+    if (!text) text = '';
+
+    const ref = modalVerseData?.citation || `${book} ${chapter}:${vNum}`;
+    setChapterNotes(prev => ({ ...prev, [vNum]: noteText }));
+    await saveVerseNote(book, chapter, vNum, ref, text, noteText);
+    await awardGraceXp(20, `Note on ${ref}`).catch(() => {});
+    await recordDailyActivity('scripture_read', 20).catch(() => {});
     showToast('Reflection saved to Profile ✓', 'document-text-outline');
   };
 
   // 5. Delete Note
   const handleDeleteNote = async () => {
-    if (!chapterData || selectedVerseNumber === null) return;
+    const vNum = modalVerseData?.verseNumber ?? selectedVerseNumber;
+    if (vNum === null || vNum === undefined) return;
+    const book = modalVerseData?.book || chapterData?.book || currentBook;
+    const chapter = modalVerseData?.chapter || chapterData?.chapter || currentChapter;
+
     setChapterNotes(prev => {
       const copy = { ...prev };
-      delete copy[selectedVerseNumber];
+      delete copy[vNum];
       return copy;
     });
-    await deleteVerseNote(`note_${currentBook}_${currentChapter}_${selectedVerseNumber}`);
+    await deleteVerseNote(`note_${book}_${chapter}_${vNum}`);
     showToast('Note deleted', 'trash-outline');
   };
 
@@ -600,6 +616,14 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
                         style={styles.inlineNoteCallout}
                         onPress={() => {
                           setSelectedVerseNumber(v.verseNumber);
+                          setModalVerseData({
+                            citation: `${chapterData.book} ${chapterData.chapter}:${v.verseNumber}`,
+                            text: v.text,
+                            book: chapterData.book,
+                            chapter: chapterData.chapter,
+                            verseNumber: v.verseNumber,
+                            version: translation,
+                          });
                           setShowNoteModal(true);
                         }}
                         activeOpacity={0.8}
@@ -747,7 +771,10 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
         }}
         verseCitation={modalVerseData?.citation || selectedCitation}
         verseText={modalVerseData?.text || selectedVerseObj?.text || ''}
-        existingNote={modalVerseData?.verseNumber ? chapterNotes[modalVerseData.verseNumber] : undefined}
+        existingNote={
+          (modalVerseData?.verseNumber ? chapterNotes[modalVerseData.verseNumber] : undefined) ??
+          (selectedVerseNumber ? chapterNotes[selectedVerseNumber] : undefined)
+        }
         onSaveNote={handleSaveNote}
         onDeleteNote={handleDeleteNote}
       />

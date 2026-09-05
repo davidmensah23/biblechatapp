@@ -14,7 +14,7 @@ import { ScriptureDetailModal } from '../components/ScriptureDetailModal';
 import { NotificationsModal } from '../components/NotificationsModal';
 import { DailyDeedCard } from '../components/DailyDeedCard';
 import { DeedCompletionModal } from '../components/DeedCompletionModal';
-import { getTodayDeedForUser, initDeedsDatabase, KingdomDeed } from '../services/deedsService';
+import { getTodayDeedForUser, initDeedsDatabase, KingdomDeed, isTodayDeedCompleted } from '../services/deedsService';
 import { getSpiritualGrowthProfile, SpiritualGrowthProfile, FaithBadge } from '../services/gamificationService';
 import { MascotAssets } from '../services/mascotAssets';
 import { BadgesModal } from '../components/BadgesModal';
@@ -75,8 +75,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
   const tabIndicatorWidth = useSharedValue(68);
 
   useEffect(() => {
+    const todayD = getTodayDeedForUser();
+    setTodayDeed(todayD);
+
     Promise.all([
       initDeedsDatabase().catch(console.error),
+      isTodayDeedCompleted(todayD.id).then(setDeedCompleted).catch(console.warn),
       getSpiritualGrowthProfile().then(setGrowthProfile).catch(console.warn),
       isLiturgyCompletedForToday().then(setIsLiturgyDone).catch(console.warn),
       getLastReadPosition().then(setLastRead).catch(console.warn),
@@ -88,7 +92,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
         }
       }).catch(console.warn)
     ]).finally(() => {
-      setTodayDeed(getTodayDeedForUser());
       setTimeout(() => setIsInitializing(false), 200);
     });
   }, []);
@@ -555,6 +558,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
         onClose={() => setDeedModalVisible(false)}
         onSuccess={() => {
           setDeedCompleted(true);
+          getSpiritualGrowthProfile().then(setGrowthProfile).catch(console.warn);
         }}
       />
 

@@ -245,11 +245,16 @@ export const logCompletedDeed = async (
     }
   }
 
+  // In-memory cache
+  memoryCompletedDeeds.unshift(newLog);
+
   // Award Grace XP & Log Daily Streak Activity
   await awardGraceXp(deed.xpReward, deed.title);
   await recordDailyActivity('deed_completed', deed.xpReward);
   return newLog;
 };
+
+let memoryCompletedDeeds: CompletedDeedLog[] = [];
 
 export const fetchCompletedDeeds = async (): Promise<CompletedDeedLog[]> => {
   const db = await getDB();
@@ -258,21 +263,93 @@ export const fetchCompletedDeeds = async (): Promise<CompletedDeedLog[]> => {
       const rows = await db.getAllAsync<any>(
         'SELECT * FROM completed_deeds ORDER BY completed_at DESC;'
       );
-      return rows.map(r => ({
-        id: r.id,
-        deedId: r.deed_id,
-        title: r.title,
-        reflection: r.reflection,
-        locationName: r.location_name,
-        latitude: r.latitude,
-        longitude: r.longitude,
-        scriptureRef: r.scripture_ref,
-        xpAwarded: r.xp_awarded,
-        completedAt: r.completed_at
-      }));
+      if (rows && rows.length > 0) {
+        const list = rows.map(r => ({
+          id: r.id,
+          deedId: r.deed_id,
+          title: r.title,
+          reflection: r.reflection,
+          locationName: r.location_name,
+          latitude: r.latitude,
+          longitude: r.longitude,
+          scriptureRef: r.scripture_ref,
+          xpAwarded: r.xp_awarded,
+          completedAt: r.completed_at
+        }));
+        memoryCompletedDeeds = list;
+        return list;
+      }
     } catch (e) {
-      return [];
+      console.warn('fetchCompletedDeeds error:', e);
     }
   }
-  return [];
+  return memoryCompletedDeeds;
+};
+
+export const isTodayDeedCompleted = async (deedId?: string): Promise<boolean> => {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const startMs = todayStart.getTime();
+
+  // Check in-memory first
+  const memoryHit = memoryCompletedDeeds.some(
+    d => d.completedAt >= startMs && (!deedId || d.deedId === deedId)
+  );
+  if (memoryHit) return true;
+
+  const db = await getDB();
+  if (db) {
+    try {
+      let query = 'SELECT id FROM completed_deeds WHERE completed_at >= ?';
+      const params: any[] = [startMs];
+      if (deedId) {
+        query += ' AND deed_id = ?';
+        params.push(deedId);
+      }
+      query += ' LIMIT 1;';
+      const rows = await db.getAllAsync<any>(query, params);
+      return Boolean(rows && rows.length > 0);
+    } catch (e) {
+      console.warn('isTodayDeedCompleted query error:', e);
+      return false;
+    }
+  }
+  return false;
+};
+
+export const getTodayCompletedDeed = async (): Promise<CompletedDeedLog | null> => {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const startMs = todayStart.getTime();
+
+  const memoryHit = memoryCompletedDeeds.find(d => d.completedAt >= startMs);
+  if (memoryHit) return memoryHit;
+
+  const db = await getDB();
+  if (db) {
+    try {
+      const rows = await db.getAllAsync<any>(
+        'SELECT * FROM completed_deeds WHERE completed_at >= ? ORDER BY completed_at DESC LIMIT 1;',
+        [startMs]
+      );
+      if (rows && rows.length > 0) {
+        const r = rows[0];
+        return {
+          id: r.id,
+          deedId: r.deed_id,
+          title: r.title,
+          reflection: r.reflection,
+          locationName: r.location_name,
+          latitude: r.latitude,
+          longitude: r.longitude,
+          scriptureRef: r.scripture_ref,
+          xpAwarded: r.xp_awarded,
+          completedAt: r.completed_at
+        };
+      }
+    } catch (e) {
+      console.warn('getTodayCompletedDeed error:', e);
+    }
+  }
+  return null;
 };
