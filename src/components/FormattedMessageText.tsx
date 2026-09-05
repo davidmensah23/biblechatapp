@@ -2,17 +2,20 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Typography } from '../theme/typography';
 import { Colors } from '../theme/colors';
+import { findGlossaryTerm, GlossaryEntry, BIBLICAL_GLOSSARY } from '../services/biblicalGlossary';
 
 interface FormattedMessageTextProps {
   content: string;
   isUser: boolean;
   fontSize?: number;
+  onSelectWord?: (entry: GlossaryEntry) => void;
 }
 
 export const FormattedMessageText: React.FC<FormattedMessageTextProps> = ({
   content,
   isUser,
-  fontSize = 16.5
+  fontSize = 16.5,
+  onSelectWord
 }) => {
   if (isUser) {
     return (
@@ -31,7 +34,7 @@ export const FormattedMessageText: React.FC<FormattedMessageTextProps> = ({
         const trimmed = paragraph.trim();
         if (!trimmed) return null;
 
-        // Check if paragraph is a scripture quote (e.g. starts with quote or ">" or contains Bible citation)
+        // Check if paragraph is a scripture quote (starts with ">" or quote block)
         const isQuoteBlock =
           trimmed.startsWith('>') ||
           (trimmed.startsWith('"') && (trimmed.includes('(') || trimmed.endsWith('"')));
@@ -41,16 +44,22 @@ export const FormattedMessageText: React.FC<FormattedMessageTextProps> = ({
           return (
             <View key={pIdx} style={styles.scriptureQuoteCard}>
               <Text style={[styles.scriptureQuoteText, { fontSize: fontSize * 1.05, lineHeight: fontSize * 1.55 }]}>
-                {cleanQuote}
+                {renderTokensWithGlossary(cleanQuote, fontSize * 1.05, onSelectWord)}
               </Text>
             </View>
           );
         }
 
-        // Standard text paragraph: parse **bold** and *italic* tokens
+        // Standard text paragraph: parse **bold**, *italic*, and glossary terms
         return (
-          <Text key={pIdx} style={[styles.assistantText, { fontSize, lineHeight: fontSize * 1.52, marginBottom: pIdx < paragraphs.length - 1 ? 10 : 0 }]}>
-            {renderFormattedInline(trimmed, fontSize)}
+          <Text
+            key={pIdx}
+            style={[
+              styles.assistantText,
+              { fontSize, lineHeight: fontSize * 1.54, marginBottom: pIdx < paragraphs.length - 1 ? 12 : 0 }
+            ]}
+          >
+            {renderTokensWithGlossary(trimmed, fontSize, onSelectWord)}
           </Text>
         );
       })}
@@ -58,29 +67,91 @@ export const FormattedMessageText: React.FC<FormattedMessageTextProps> = ({
   );
 };
 
-// Parses inline **bold** and *italic* markup
-function renderFormattedInline(text: string, baseFontSize: number): React.ReactNode[] {
-  // Regex to split by bold (**text**) and italic (*text*)
+// Regex pattern matching all multi-word and single-word glossary keys
+const glossaryKeys = Object.keys(BIBLICAL_GLOSSARY).sort((a, b) => b.length - a.length);
+const glossaryRegexPattern = new RegExp(`\\b(${glossaryKeys.map(k => k.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')).join('|')})\\b`, 'gi');
+
+/**
+ * Parses inline **bold**, *italic*, and interactive glossary tokens
+ */
+function renderTokensWithGlossary(
+  text: string,
+  baseFontSize: number,
+  onSelectWord?: (entry: GlossaryEntry) => void
+): React.ReactNode[] {
+  // 1. Split by bold (**text**) and italic (*text*)
   const tokens = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
 
   return tokens.map((token, idx) => {
+    // Bold tokens
     if (token.startsWith('**') && token.endsWith('**')) {
       const inner = token.slice(2, -2);
+      const glossaryEntry = findGlossaryTerm(inner);
+      if (glossaryEntry && onSelectWord) {
+        return (
+          <Text
+            key={idx}
+            style={[styles.boldText, styles.glossaryWord]}
+            onPress={() => onSelectWord(glossaryEntry)}
+          >
+            {inner}
+          </Text>
+        );
+      }
       return (
         <Text key={idx} style={styles.boldText}>
           {inner}
         </Text>
       );
     }
+
+    // Italic tokens (frequently Greek/Hebrew words)
     if (token.startsWith('*') && token.endsWith('*')) {
       const inner = token.slice(1, -1);
+      const glossaryEntry = findGlossaryTerm(inner);
+      if (glossaryEntry && onSelectWord) {
+        return (
+          <Text
+            key={idx}
+            style={[styles.italicText, styles.glossaryWord]}
+            onPress={() => onSelectWord(glossaryEntry)}
+          >
+            {inner}
+          </Text>
+        );
+      }
       return (
         <Text key={idx} style={styles.italicText}>
           {inner}
         </Text>
       );
     }
-    return <Text key={idx}>{token}</Text>;
+
+    // Plain text: scan for embedded glossary words & phrases
+    if (!onSelectWord) {
+      return <Text key={idx}>{token}</Text>;
+    }
+
+    const subTokens = token.split(glossaryRegexPattern);
+    return (
+      <React.Fragment key={idx}>
+        {subTokens.map((subToken, sIdx) => {
+          const entry = findGlossaryTerm(subToken);
+          if (entry) {
+            return (
+              <Text
+                key={sIdx}
+                style={styles.glossaryWord}
+                onPress={() => onSelectWord(entry)}
+              >
+                {subToken}
+              </Text>
+            );
+          }
+          return <Text key={sIdx}>{subToken}</Text>;
+        })}
+      </React.Fragment>
+    );
   });
 }
 
@@ -104,10 +175,17 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontYouVersionSerifItalic,
     color: Colors.textPrimary,
   },
+  glossaryWord: {
+    color: '#8B1E1E',
+    textDecorationLine: 'underline',
+    textDecorationStyle: 'dotted',
+    textDecorationColor: 'rgba(139, 30, 30, 0.45)',
+    fontWeight: '600',
+  },
   scriptureQuoteCard: {
-    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+    backgroundColor: 'rgba(139, 30, 30, 0.05)',
     borderLeftWidth: 3,
-    borderLeftColor: Colors.accentBlue,
+    borderLeftColor: '#8B1E1E',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -120,3 +198,4 @@ const styles = StyleSheet.create({
     color: '#111111',
   }
 });
+

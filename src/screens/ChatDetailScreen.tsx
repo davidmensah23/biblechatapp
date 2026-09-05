@@ -38,6 +38,8 @@ import { splitIntoThoughtBubbles } from '../services/messageSplitter';
 import { calculateBubbleTypingDelay, calculateInitialContemplationDelay } from '../services/typingSpeed';
 import { AnimatedChatBubble } from '../components/AnimatedChatBubble';
 import { getContextualChips } from '../services/quickChips';
+import { WordDefinitionPill } from '../components/WordDefinitionPill';
+import { GlossaryEntry } from '../services/biblicalGlossary';
 
 interface ChatDetailScreenProps {
   apostle: ApostlePersona;
@@ -106,6 +108,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<ChatMessage | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [selectedGlossaryEntry, setSelectedGlossaryEntry] = useState<GlossaryEntry | null>(null);
   
   const flatListRef = useRef<FlatList>(null);
   const activeDispatchIdRef = useRef<number>(0);
@@ -177,12 +180,13 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
       }
       setMessages(updatedHistory);
     } else if (updatedHistory.length === 0) {
-      const nameGreeting = userProfile?.fullName ? `, ${userProfile.fullName}` : '';
+      const userFirstName = userProfile?.fullName ? userProfile.fullName.trim().split(' ')[0] : '';
+      const nameGreeting = userFirstName ? `, ${userFirstName}` : '';
       const greeting: ChatMessage = {
         id: `msg_${Date.now()}`,
         conversationId: conversationId,
         sender: 'assistant',
-        content: `Peace be with you${nameGreeting}! I am ${apostle.name}. What is on your heart today?`,
+        content: `Good to be with you${nameGreeting}! I am ${apostle.name}. What is on your heart today?`,
         timestamp: Date.now()
       };
       await saveMessage(greeting, apostle.title, apostle.id);
@@ -378,13 +382,27 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.messagesList}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
             const isUser = item.sender === 'user';
             const isPreloaded = initialLoadedIdsRef.current.has(item.id);
             const isPlayingThis = playingMessageId === item.id;
 
+            // Clustered message detection:
+            // Check next message
+            const nextMsg = messages[index + 1];
+            const isLastInCluster =
+              !nextMsg ||
+              nextMsg.sender !== item.sender ||
+              (nextMsg.timestamp - item.timestamp > 2.5 * 60 * 1000);
+
             return (
-              <View style={[styles.messageRow, isUser ? styles.userRow : styles.assistantRow]}>
+              <View
+                style={[
+                  styles.messageRow,
+                  isUser ? styles.userRow : styles.assistantRow,
+                  { marginBottom: isLastInCluster ? 14 : 3 }
+                ]}
+              >
                 <AnimatedChatBubble isUser={isUser} animate={!isPreloaded}>
                   <TouchableOpacity
                     style={[styles.messageBubble, isUser ? styles.userBubble : styles.assistantBubble]}
@@ -395,23 +413,27 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
                       content={item.content}
                       isUser={isUser}
                       fontSize={15.5}
+                      onSelectWord={setSelectedGlossaryEntry}
                     />
 
-                    {/* Subtle Timestamp & Playing Indicator */}
-                    <View style={styles.bubbleFooterRow}>
-                      <Text style={[styles.bubbleTimeText, isUser && styles.bubbleTimeTextUser]}>
-                        {formatMessageTime(item.timestamp)}
-                      </Text>
-
-                      {isPlayingThis && (
-                        <View style={styles.playingIndicatorBadge}>
-                          <Ionicons name="volume-high" size={12} color="#8B1E1E" style={{ marginRight: 3 }} />
-                          <Text style={styles.playingIndicatorText}>Playing</Text>
-                        </View>
-                      )}
-                    </View>
+                    {/* Playing Indicator inside bubble if currently playing audio */}
+                    {isPlayingThis && (
+                      <View style={styles.playingIndicatorBadge}>
+                        <Ionicons name="volume-high" size={12} color="#8B1E1E" style={{ marginRight: 3 }} />
+                        <Text style={styles.playingIndicatorText}>Playing</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 </AnimatedChatBubble>
+
+                {/* Subtle Timestamp outside/below card — only rendered on the last message in a burst */}
+                {isLastInCluster && (
+                  <View style={[styles.clusterTimeRow, isUser ? styles.clusterTimeRowUser : styles.clusterTimeRowAssistant]}>
+                    <Text style={styles.clusterTimeText}>
+                      {formatMessageTime(item.timestamp)}
+                    </Text>
+                  </View>
+                )}
               </View>
             );
           }}
@@ -567,6 +589,12 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
         visible={showCallModal}
         apostle={apostle}
         onEndCall={() => setShowCallModal(false)}
+      />
+
+      {/* Floating Word Definition Pill Modal */}
+      <WordDefinitionPill
+        entry={selectedGlossaryEntry}
+        onClose={() => setSelectedGlossaryEntry(null)}
       />
     </SafeAreaView>
   );
@@ -755,20 +783,22 @@ const styles = StyleSheet.create({
   sendBtnDisabled: {
     opacity: 0.4,
   },
-  bubbleFooterRow: {
+  clusterTimeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 6,
-    paddingTop: 4,
+    marginTop: 4,
+    paddingHorizontal: 4,
   },
-  bubbleTimeText: {
+  clusterTimeRowUser: {
+    justifyContent: 'flex-end',
+  },
+  clusterTimeRowAssistant: {
+    justifyContent: 'flex-start',
+  },
+  clusterTimeText: {
     fontFamily: Typography.fontSansRegular,
     fontSize: 10.5,
     color: '#9CA3AF',
-  },
-  bubbleTimeTextUser: {
-    color: 'rgba(255, 255, 255, 0.65)',
   },
   playingIndicatorBadge: {
     flexDirection: 'row',
