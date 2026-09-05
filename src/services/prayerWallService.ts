@@ -33,9 +33,47 @@ export interface PrayerRequest {
   isUserAuthor?: boolean;
 }
 
+interface PrayerCacheEntry {
+  data: PrayerRequest[];
+  timestamp: number;
+}
+
+const prayerRequestsCache: Record<string, PrayerCacheEntry> = {};
+const PRAYER_CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes fresh cache
+
+export const getCachedPrayerWallRequests = (category?: string): PrayerRequest[] | null => {
+  const catKey = category || 'all';
+  const entry = prayerRequestsCache[catKey];
+  if (entry && entry.data && entry.data.length > 0) {
+    return entry.data;
+  }
+  return null;
+};
+
+export const invalidatePrayerCache = (category?: string): void => {
+  if (category) {
+    delete prayerRequestsCache[category];
+  } else {
+    for (const key of Object.keys(prayerRequestsCache)) {
+      delete prayerRequestsCache[key];
+    }
+  }
+};
+
 export const fetchPrayerWallRequests = async (
-  category?: string
+  category?: string,
+  forceRefresh: boolean = false
 ): Promise<PrayerRequest[]> => {
+  const catKey = category || 'all';
+
+  // Return fresh cache immediately if available and forceRefresh is false
+  if (!forceRefresh) {
+    const cached = prayerRequestsCache[catKey];
+    if (cached && (Date.now() - cached.timestamp < PRAYER_CACHE_TTL_MS)) {
+      return cached.data;
+    }
+  }
+
   try {
     let query = supabase
       .from('prayer_wall_requests')
@@ -50,7 +88,12 @@ export const fetchPrayerWallRequests = async (
     }
 
     const { data, error } = await query;
-    if (error || !data) return [];
+    if (error || !data) {
+      if (prayerRequestsCache[catKey]?.data) {
+        return prayerRequestsCache[catKey].data;
+      }
+      return [];
+    }
 
     // Check interactions for current user if logged in
     const { data: { user } } = await supabase.auth.getUser();
@@ -67,7 +110,7 @@ export const fetchPrayerWallRequests = async (
       }
     }
 
-    return data.map((r: any) => {
+    const result: PrayerRequest[] = data.map((r: any) => {
       const commentsCount = r.prayer_wall_comments?.[0]?.count || 0;
       return {
         id: r.id,
@@ -88,8 +131,19 @@ export const fetchPrayerWallRequests = async (
         isUserAuthor: user ? user.id === r.user_id : false,
       };
     });
+
+    // Save to cache
+    prayerRequestsCache[catKey] = {
+      data: result,
+      timestamp: Date.now()
+    };
+
+    return result;
   } catch (e) {
     console.warn('fetchPrayerWallRequests error:', e);
+    if (prayerRequestsCache[catKey]?.data) {
+      return prayerRequestsCache[catKey].data;
+    }
     return [];
   }
 };
@@ -129,24 +183,34 @@ export const createPrayerRequest = async (
       return { success: false, error: error?.message || 'Could not post request.' };
     }
 
+    const createdReq: PrayerRequest = {
+      id: data.id,
+      userId: data.user_id,
+      authorName: isAnonymous ? 'A Fellow Pilgrim' : authorName,
+      authorAvatar: isAnonymous ? undefined : userEmblem.id,
+      isAnonymous,
+      category: data.category,
+      title: data.title,
+      requestText: data.request_text,
+      prayedCount: 0,
+      commentsCount: 0,
+      isAnswered: false,
+      createdAt: data.created_at,
+      hasUserPrayed: false,
+      isUserAuthor: true
+    };
+
+    // Optimistically update cache
+    if (prayerRequestsCache['all']) {
+      prayerRequestsCache['all'].data.unshift(createdReq);
+    }
+    if (category && prayerRequestsCache[category]) {
+      prayerRequestsCache[category].data.unshift(createdReq);
+    }
+
     return {
       success: true,
-      request: {
-        id: data.id,
-        userId: data.user_id,
-        authorName: isAnonymous ? 'A Fellow Pilgrim' : authorName,
-        authorAvatar: isAnonymous ? undefined : userEmblem.id,
-        isAnonymous,
-        category: data.category,
-        title: data.title,
-        requestText: data.request_text,
-        prayedCount: 0,
-        commentsCount: 0,
-        isAnswered: false,
-        createdAt: data.created_at,
-        hasUserPrayed: false,
-        isUserAuthor: true
-      }
+      request: createdReq
     };
   } catch (e: any) {
     return { success: false, error: e?.message || 'Network error' };
@@ -157,6 +221,16 @@ export const togglePrayedForRequest = async (
   requestId: string,
   currentlyPrayed: boolean
 ): Promise<{ success: boolean; newCountDelta: number }> => {
+  // Optimistically update cache across all cached categories
+  for (const catKey of Object.keys(prayerRequestsCache)) {
+    const list = prayerRequestsCache[catKey].data;
+    const target = list.find(r => r.id === requestId);
+    if (target) {
+      target.hasUserPrayed = !currentlyPrayed;
+      target.prayedCount = Math.max(0, target.prayedCount + (currentlyPrayed ? -1 : 1));
+    }
+  }
+
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, newCountDelta: 0 };
@@ -189,6 +263,29 @@ export const markPrayerAsAnswered = async (
   requestId: string,
   praiseReport: string
 ): Promise<{ success: boolean; error?: string }> => {
+  const answeredIso = new Date().toISOString();
+  let updatedRequest: PrayerRequest | null = null;
+
+  // Optimistically update cache across all cached categories
+  for (const catKey of Object.keys(prayerRequestsCache)) {
+    const list = prayerRequestsCache[catKey].data;
+    const target = list.find(r => r.id === requestId);
+    if (target) {
+      target.isAnswered = true;
+      target.answeredAt = answeredIso;
+      target.praiseReport = praiseReport;
+      updatedRequest = target;
+    }
+  }
+
+  // Prepend to answered category cache if present
+  if (prayerRequestsCache['answered'] && updatedRequest) {
+    const exists = prayerRequestsCache['answered'].data.some(r => r.id === requestId);
+    if (!exists) {
+      prayerRequestsCache['answered'].data.unshift({ ...updatedRequest });
+    }
+  }
+
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
@@ -197,7 +294,7 @@ export const markPrayerAsAnswered = async (
       .from('prayer_wall_requests')
       .update({
         is_answered: true,
-        answered_at: new Date().toISOString(),
+        answered_at: answeredIso,
         praise_report: praiseReport
       })
       .eq('id', requestId)

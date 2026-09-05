@@ -1,4 +1,4 @@
-import { getDB } from './database';
+import { getDB, getCurrentUserId } from './database';
 import { awardGraceXp, recordDailyActivity } from './gamificationService';
 
 export type DeedTier = 'seed' | 'branch' | 'fruit';
@@ -185,6 +185,7 @@ export const initDeedsDatabase = async () => {
       await db.execAsync(`
         CREATE TABLE IF NOT EXISTS completed_deeds (
           id TEXT PRIMARY KEY NOT NULL,
+          user_id TEXT DEFAULT 'guest_user',
           deed_id TEXT NOT NULL,
           title TEXT NOT NULL,
           reflection TEXT,
@@ -196,6 +197,10 @@ export const initDeedsDatabase = async () => {
           completed_at INTEGER NOT NULL
         );
       `);
+      // Safe migration for user_id column
+      try {
+        await db.execAsync(`ALTER TABLE completed_deeds ADD COLUMN user_id TEXT DEFAULT 'guest_user';`);
+      } catch {}
     } catch (e) {
       console.warn('Deeds table init error:', e);
     }
@@ -208,8 +213,9 @@ export const logCompletedDeed = async (
   locationName: string = 'Local Community',
   coords?: { latitude: number; longitude: number }
 ): Promise<CompletedDeedLog> => {
+  const userId = await getCurrentUserId();
   const newLog: CompletedDeedLog = {
-    id: `deed_${Date.now()}`,
+    id: `deed_${userId}_${Date.now()}`,
     deedId: deed.id,
     title: deed.title,
     reflection: reflection.trim() || 'Completed with a glad and willing heart in Christ.',
@@ -225,10 +231,11 @@ export const logCompletedDeed = async (
   if (db) {
     try {
       await db.runAsync(
-        `INSERT INTO completed_deeds (id, deed_id, title, reflection, location_name, latitude, longitude, scripture_ref, xp_awarded, completed_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        `INSERT INTO completed_deeds (id, user_id, deed_id, title, reflection, location_name, latitude, longitude, scripture_ref, xp_awarded, completed_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
         [
           newLog.id,
+          userId,
           newLog.deedId,
           newLog.title,
           newLog.reflection,
@@ -256,12 +263,18 @@ export const logCompletedDeed = async (
 
 let memoryCompletedDeeds: CompletedDeedLog[] = [];
 
+export const clearDeedsSession = (): void => {
+  memoryCompletedDeeds = [];
+};
+
 export const fetchCompletedDeeds = async (): Promise<CompletedDeedLog[]> => {
+  const userId = await getCurrentUserId();
   const db = await getDB();
   if (db) {
     try {
       const rows = await db.getAllAsync<any>(
-        'SELECT * FROM completed_deeds ORDER BY completed_at DESC;'
+        'SELECT * FROM completed_deeds WHERE user_id = ? ORDER BY completed_at DESC;',
+        [userId]
       );
       if (rows && rows.length > 0) {
         const list = rows.map(r => ({
@@ -283,25 +296,26 @@ export const fetchCompletedDeeds = async (): Promise<CompletedDeedLog[]> => {
       console.warn('fetchCompletedDeeds error:', e);
     }
   }
-  return memoryCompletedDeeds;
+  return memoryCompletedDeeds.filter(d => d.id.startsWith(`deed_${userId}_`));
 };
 
 export const isTodayDeedCompleted = async (deedId?: string): Promise<boolean> => {
+  const userId = await getCurrentUserId();
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const startMs = todayStart.getTime();
 
   // Check in-memory first
   const memoryHit = memoryCompletedDeeds.some(
-    d => d.completedAt >= startMs && (!deedId || d.deedId === deedId)
+    d => d.completedAt >= startMs && (!deedId || d.deedId === deedId) && d.id.startsWith(`deed_${userId}_`)
   );
   if (memoryHit) return true;
 
   const db = await getDB();
   if (db) {
     try {
-      let query = 'SELECT id FROM completed_deeds WHERE completed_at >= ?';
-      const params: any[] = [startMs];
+      let query = 'SELECT id FROM completed_deeds WHERE completed_at >= ? AND user_id = ?';
+      const params: any[] = [startMs, userId];
       if (deedId) {
         query += ' AND deed_id = ?';
         params.push(deedId);
@@ -318,19 +332,22 @@ export const isTodayDeedCompleted = async (deedId?: string): Promise<boolean> =>
 };
 
 export const getTodayCompletedDeed = async (): Promise<CompletedDeedLog | null> => {
+  const userId = await getCurrentUserId();
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const startMs = todayStart.getTime();
 
-  const memoryHit = memoryCompletedDeeds.find(d => d.completedAt >= startMs);
+  const memoryHit = memoryCompletedDeeds.find(
+    d => d.completedAt >= startMs && d.id.startsWith(`deed_${userId}_`)
+  );
   if (memoryHit) return memoryHit;
 
   const db = await getDB();
   if (db) {
     try {
       const rows = await db.getAllAsync<any>(
-        'SELECT * FROM completed_deeds WHERE completed_at >= ? ORDER BY completed_at DESC LIMIT 1;',
-        [startMs]
+        'SELECT * FROM completed_deeds WHERE completed_at >= ? AND user_id = ? ORDER BY completed_at DESC LIMIT 1;',
+        [startMs, userId]
       );
       if (rows && rows.length > 0) {
         const r = rows[0];

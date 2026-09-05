@@ -30,6 +30,8 @@ import {
   PrayerRequest,
   PrayerComment,
   fetchPrayerWallRequests,
+  getCachedPrayerWallRequests,
+  invalidatePrayerCache,
   createPrayerRequest,
   togglePrayedForRequest,
   markPrayerAsAnswered,
@@ -221,9 +223,18 @@ export const CommunityScreen: React.FC<CommunityScreenProps> = ({
     setIsLoadingPosts(false);
   };
 
-  const loadPrayers = async (cat = selectedPrayerCategory) => {
-    setIsLoadingPrayers(true);
-    const data = await fetchPrayerWallRequests(cat);
+  const loadPrayers = async (cat = selectedPrayerCategory, forceRefresh = false) => {
+    // 1. Zero-latency instant cache hit to prevent loading flicker
+    const cached = getCachedPrayerWallRequests(cat);
+    if (cached && cached.length > 0 && !forceRefresh) {
+      setRequests(cached);
+      setIsLoadingPrayers(false);
+    } else {
+      setIsLoadingPrayers(true);
+    }
+
+    // 2. Fetch fresh / revalidated data
+    const data = await fetchPrayerWallRequests(cat, forceRefresh);
     setRequests(data);
     setIsLoadingPrayers(false);
   };
@@ -250,7 +261,7 @@ export const CommunityScreen: React.FC<CommunityScreenProps> = ({
     } catch (e) {}
     await Promise.all([
       loadPosts(selectedPostCategory),
-      loadPrayers(selectedPrayerCategory)
+      loadPrayers(selectedPrayerCategory, true)
     ]);
     setIsRefreshing(false);
   };

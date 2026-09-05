@@ -1,4 +1,4 @@
-import { getDB } from './database';
+import { getDB, getCurrentUserId } from './database';
 
 export interface FaithBadge {
   id: string;
@@ -59,6 +59,10 @@ let memoryActivityLog: Array<{ id: string; dateStr: string; activityType: string
   { id: 'init_log', dateStr: getLocalDateString(), activityType: 'app_open', xp: 15, timestamp: Date.now() }
 ];
 
+export const clearGamificationSession = (): void => {
+  memoryActivityLog = [];
+};
+
 /**
  * Record a real user activity (App Open, Reading Bible, Chatting with Apostle, Completing Deed)
  */
@@ -66,8 +70,9 @@ export const recordDailyActivity = async (
   activityType: 'app_open' | 'scripture_read' | 'apostle_chat' | 'deed_completed' | 'sermon_prep' | 'verse_memorized',
   xpEarned: number = 10
 ): Promise<void> => {
+  const userId = await getCurrentUserId();
   const dateStr = getLocalDateString();
-  const logId = `act_${dateStr}_${activityType}`;
+  const logId = `act_${userId}_${dateStr}_${activityType}`;
 
   const item = {
     id: logId,
@@ -87,17 +92,21 @@ export const recordDailyActivity = async (
       await db.execAsync(`
         CREATE TABLE IF NOT EXISTS daily_activity_log (
           id TEXT PRIMARY KEY NOT NULL,
+          user_id TEXT DEFAULT 'guest_user',
           date_str TEXT NOT NULL,
           activity_type TEXT NOT NULL,
           xp_earned INTEGER DEFAULT 0,
           timestamp INTEGER NOT NULL
         );
       `);
+      try {
+        await db.execAsync(`ALTER TABLE daily_activity_log ADD COLUMN user_id TEXT DEFAULT 'guest_user';`);
+      } catch {}
 
       await db.runAsync(
-        `INSERT OR REPLACE INTO daily_activity_log (id, date_str, activity_type, xp_earned, timestamp)
-         VALUES (?, ?, ?, ?, ?)`,
-        [logId, dateStr, activityType, xpEarned, Date.now()]
+        `INSERT OR REPLACE INTO daily_activity_log (id, user_id, date_str, activity_type, xp_earned, timestamp)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [logId, userId, dateStr, activityType, xpEarned, Date.now()]
       );
     } catch (e) {
       console.warn('recordDailyActivity SQLite error:', e);
@@ -109,6 +118,7 @@ export const recordDailyActivity = async (
  * Calculates real streak, real XP, and real weekly activity from SQLite
  */
 export const getSpiritualGrowthProfile = async (): Promise<SpiritualGrowthProfile> => {
+  const userId = await getCurrentUserId();
   // 1. Auto-record today's check-in
   await recordDailyActivity('app_open', 15);
 
@@ -126,48 +136,56 @@ export const getSpiritualGrowthProfile = async (): Promise<SpiritualGrowthProfil
       await db.execAsync(`
         CREATE TABLE IF NOT EXISTS daily_activity_log (
           id TEXT PRIMARY KEY NOT NULL,
+          user_id TEXT DEFAULT 'guest_user',
           date_str TEXT NOT NULL,
           activity_type TEXT NOT NULL,
           xp_earned INTEGER DEFAULT 0,
           timestamp INTEGER NOT NULL
         );
       `);
+      try {
+        await db.execAsync(`ALTER TABLE daily_activity_log ADD COLUMN user_id TEXT DEFAULT 'guest_user';`);
+      } catch {}
 
       // 1. Fetch unique active dates
       const dateRows = await db.getAllAsync<{ date_str: string }>(
-        'SELECT DISTINCT date_str FROM daily_activity_log ORDER BY date_str ASC'
+        'SELECT DISTINCT date_str FROM daily_activity_log WHERE user_id = ? ORDER BY date_str ASC',
+        [userId]
       );
       distinctDates = dateRows.map(r => r.date_str);
 
       // 2. Fetch total activity XP
       const xpRow = await db.getFirstAsync<{ total: number }>(
-        'SELECT SUM(xp_earned) as total FROM daily_activity_log'
+        'SELECT SUM(xp_earned) as total FROM daily_activity_log WHERE user_id = ?',
+        [userId]
       );
       if (xpRow && xpRow.total) totalActivityXp = xpRow.total;
 
       // 3. Fetch today's activities
       const todayStr = getLocalDateString();
       const todayRows = await db.getAllAsync<{ activity_type: string }>(
-        'SELECT activity_type FROM daily_activity_log WHERE date_str = ?',
-        [todayStr]
+        'SELECT activity_type FROM daily_activity_log WHERE date_str = ? AND user_id = ?',
+        [todayStr, userId]
       );
       todayActivities = todayRows.map(r => r.activity_type);
 
       // 4. Fetch real deeds completed
       try {
-        const deedsRows = await db.getAllAsync<{ xp_reward: number }>(
-          'SELECT xp_reward FROM deeds_history'
+        const deedsRows = await db.getAllAsync<{ xp_awarded: number }>(
+          'SELECT xp_awarded FROM completed_deeds WHERE user_id = ?',
+          [userId]
         );
         if (deedsRows) {
           deedsCompletedCount = deedsRows.length;
-          deedsXp = deedsRows.reduce((sum, d) => sum + (d.xp_reward || 0), 0);
+          deedsXp = deedsRows.reduce((sum, d) => sum + (d.xp_awarded || 0), 0);
         }
       } catch (e) {}
 
       // 5. Fetch real conversations count
       try {
         const convRows = await db.getAllAsync<{ id: string }>(
-          'SELECT id FROM conversations'
+          'SELECT id FROM conversations WHERE user_id = ?',
+          [userId]
         );
         if (convRows) conversationsCount = convRows.length;
       } catch (e) {}
@@ -184,7 +202,8 @@ export const getSpiritualGrowthProfile = async (): Promise<SpiritualGrowthProfil
       let bookmarksCount = 0;
       try {
         const bmRows = await db.getAllAsync<{ id: string }>(
-          'SELECT id FROM bookmarks'
+          'SELECT id FROM bookmarks WHERE user_id = ?',
+          [userId]
         );
         if (bmRows) bookmarksCount = bmRows.length;
       } catch (e) {}
@@ -283,7 +302,7 @@ export const getSpiritualGrowthProfile = async (): Promise<SpiritualGrowthProfil
   const bookmarksCount = (await (async () => {
     try {
       if (db) {
-        const rows = await db.getAllAsync<{ id: string }>('SELECT id FROM bookmarks');
+        const rows = await db.getAllAsync<{ id: string }>('SELECT id FROM bookmarks WHERE user_id = ?', [userId]);
         return rows ? rows.length : 0;
       }
     } catch (e) {}

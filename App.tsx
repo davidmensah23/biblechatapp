@@ -36,6 +36,10 @@ import { APOSTLE_PERSONAS } from './src/services/personas';
 import { GroupCouncilThread } from './src/types/groupChat';
 import { getDB, saveUserProfile, fetchUserProfile, migrateGuestDataToUser, clearLocalUserSession } from './src/services/database';
 import { clearReadingProgressSession } from './src/services/readingProgressService';
+import { clearDeedsSession } from './src/services/deedsService';
+import { clearGamificationSession } from './src/services/gamificationService';
+import { invalidatePrayerCache } from './src/services/prayerWallService';
+import { pullCloudToLocal } from './src/services/cloudSyncService';
 import { UserProfile } from './src/types';
 import {
   supabase,
@@ -174,6 +178,7 @@ export default function App() {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           migrateGuestDataToUser(session.user.id);
+          pullCloudToLocal().catch(console.warn);
           const remoteProfile = await fetchRemoteProfile(session.user.id);
           if (remoteProfile) {
             await saveUserProfile(remoteProfile);
@@ -206,6 +211,7 @@ export default function App() {
       if (session?.user) {
         setShowAuthModal(false);
         migrateGuestDataToUser(session.user.id);
+        pullCloudToLocal().catch(console.warn);
 
         const meta = session.user.user_metadata;
         const authFullName = meta?.full_name || meta?.name || meta?.given_name || (session.user.email ? splitEmailToName(session.user.email) : '');
@@ -324,7 +330,10 @@ export default function App() {
 
   const handleLogout = async () => {
     await clearLocalUserSession();
+    clearDeedsSession();
+    clearGamificationSession();
     await clearReadingProgressSession();
+    invalidatePrayerCache();
     await signOutUser();
     setUserProfile(null);
     setAppStage('auth');
