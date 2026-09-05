@@ -399,9 +399,17 @@ const initTables = async (db: SQLite.SQLiteDatabase) => {
       // Column already exists
     }
 
-    // Create unique indexes to support ON CONFLICT and ensure multi-tenant deduplication
+    // Pre-emptively deduplicate any legacy duplicate rows before applying unique indices
     try {
       await db.execAsync(`
+        DELETE FROM bookmarks WHERE rowid NOT IN (SELECT MIN(rowid) FROM bookmarks GROUP BY user_id, reference);
+        DELETE FROM memorized_verses WHERE rowid NOT IN (SELECT MIN(rowid) FROM memorized_verses GROUP BY user_id, reference);
+        DELETE FROM verse_notes WHERE rowid NOT IN (SELECT MIN(rowid) FROM verse_notes GROUP BY user_id, book, chapter, verse);
+        DELETE FROM verse_highlights WHERE rowid NOT IN (SELECT MIN(rowid) FROM verse_highlights GROUP BY user_id, book, chapter, verse);
+        DELETE FROM conversations WHERE rowid NOT IN (SELECT MIN(rowid) FROM conversations GROUP BY user_id, persona_id);
+        DELETE FROM group_conversations WHERE rowid NOT IN (SELECT MIN(rowid) FROM group_conversations GROUP BY user_id, name);
+        DELETE FROM user_reading_progress WHERE rowid NOT IN (SELECT MIN(rowid) FROM user_reading_progress GROUP BY user_id);
+
         CREATE UNIQUE INDEX IF NOT EXISTS idx_bookmarks_user_ref ON bookmarks(user_id, reference);
         CREATE UNIQUE INDEX IF NOT EXISTS idx_memorized_user_ref ON memorized_verses(user_id, reference);
         CREATE UNIQUE INDEX IF NOT EXISTS idx_verse_notes_user_bcv ON verse_notes(user_id, book, chapter, verse);
@@ -411,25 +419,7 @@ const initTables = async (db: SQLite.SQLiteDatabase) => {
         CREATE UNIQUE INDEX IF NOT EXISTS idx_group_conv_user_name ON group_conversations(user_id, name);
       `);
     } catch (idxErr) {
-      console.warn('Error creating local unique indexes:', idxErr);
-    }
-
-    // Unique indices for robust non-destructive merging and deduplication
-    try {
-      // Pre-emptively deduplicate any legacy duplicate rows before applying unique index
-      await db.execAsync(`
-        DELETE FROM bookmarks WHERE rowid NOT IN (SELECT MIN(rowid) FROM bookmarks GROUP BY user_id, reference);
-        DELETE FROM memorized_verses WHERE rowid NOT IN (SELECT MIN(rowid) FROM memorized_verses GROUP BY user_id, reference);
-        DELETE FROM verse_notes WHERE rowid NOT IN (SELECT MIN(rowid) FROM verse_notes GROUP BY user_id, book, chapter, verse);
-        DELETE FROM verse_highlights WHERE rowid NOT IN (SELECT MIN(rowid) FROM verse_highlights GROUP BY user_id, book, chapter, verse);
-
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_bookmarks_user_ref ON bookmarks(user_id, reference);
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_memorized_user_ref ON memorized_verses(user_id, reference);
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_notes_user_coords ON verse_notes(user_id, book, chapter, verse);
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_highlights_user_coords ON verse_highlights(user_id, book, chapter, verse);
-      `);
-    } catch (e) {
-      console.warn('Index creation note:', e);
+      console.warn('Error deduplicating and creating local unique indexes:', idxErr);
     }
   } catch (e) {
     console.warn('Table creation note:', e);
