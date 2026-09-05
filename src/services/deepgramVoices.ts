@@ -36,7 +36,13 @@ export const APOSTLE_VOICE_PROFILES: Record<string, ApostleVoiceConfig> = {
   // Thaddaeus: Encouraging, tender
   thaddaeus: { voiceModel: 'aura-orpheus-en', description: 'Encouraging, faithful, soft' },
   // Scripture Reader: Majestic, reverent, clear
-  narrator: { voiceModel: 'aura-orion-en', description: 'Reverent, articulate, majestic' }
+  narrator: { voiceModel: 'aura-orion-en', description: 'Reverent, articulate, majestic' },
+  // The Holy Bible: Living Word, sacred, reverent, deep
+  bible: { voiceModel: 'aura-zeus-en', description: 'Majestic, sacred, reverent, timeless divine wisdom' },
+  // Deborah: Prophetess, judge of Israel, bold & maternal
+  deborah: { voiceModel: 'aura-athena-en', description: 'Authoritative, prophetic, courageous, mother in Israel' },
+  // Queen Esther: Royal, courageous, faithful
+  esther: { voiceModel: 'aura-stella-en', description: 'Graceful, courageous, regal, devoted queen' }
 };
 
 let currentSound: Audio.Sound | null = null;
