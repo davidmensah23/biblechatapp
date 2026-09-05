@@ -262,9 +262,6 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
               showsVerticalScrollIndicator={false}
               onScroll={handleScroll}
               scrollEventThrottle={16}
-              ListHeaderComponent={
-                <PastoralGuidesRow onSelectGuide={(g) => setSelectedPastoralGuide(g)} />
-              }
               renderItem={({ item }) => {
                 const persona = getPersonaById(item.personaId);
                 return (
@@ -505,17 +502,17 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   listContainer: {
-    paddingTop: 4,
+    paddingTop: 12,
     paddingHorizontal: 16,
   },
   chatRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    marginBottom: 8,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: '#F0F0F0',
   },

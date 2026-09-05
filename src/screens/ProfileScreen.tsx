@@ -908,15 +908,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   quoteText: {
-    fontSize: 14.5,
-    lineHeight: 22,
-    color: '#111111',
-    marginBottom: 4,
+    fontFamily: Typography.fontYouVersionSerif,
+    fontSize: 16.5,
+    lineHeight: 25.5,
+    color: '#1F2937',
+    marginBottom: 6,
   },
   quoteRef: {
     fontFamily: Typography.fontSansSemiBold,
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: 12.5,
+    color: '#4B5563',
   },
   noteContentText: {
     fontFamily: Typography.fontSansRegular,

@@ -725,8 +725,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   resumePassageTitle: {
-    fontFamily: Typography.fontSerifBold,
-    fontSize: 19,
+    fontFamily: Typography.fontSansBold,
+    fontSize: 18,
     color: '#111111',
     marginBottom: 4,
     letterSpacing: -0.3,
@@ -951,9 +951,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   apostleQuoteName: {
-    fontFamily: Typography.fontSerifBold,
-    fontSize: 22,
-    letterSpacing: -0.5,
+    fontFamily: Typography.fontSansBold,
+    fontSize: 18,
     color: '#111111',
   },
   apostleQuoteContext: {
@@ -964,9 +963,9 @@ const styles = StyleSheet.create({
   },
   apostleQuoteBody: {
     fontFamily: Typography.fontYouVersionSerif,
-    fontSize: 18,
-    lineHeight: 27,
-    color: '#111111',
+    fontSize: 16.5,
+    lineHeight: 26,
+    color: '#1F2937',
     marginBottom: 12,
   },
   apostleQuoteFooter: {
@@ -1035,9 +1034,9 @@ const styles = StyleSheet.create({
     color: '#111111',
   },
   sermonPrepTitle: {
-    fontFamily: Typography.fontSerifBold,
-    fontSize: 23,
-    letterSpacing: -0.6,
+    fontFamily: Typography.fontSansBold,
+    fontSize: 20,
+    letterSpacing: -0.4,
     color: '#111111',
     marginBottom: 6,
   },
@@ -1077,8 +1076,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionHeading: {
-    fontFamily: Typography.fontSerif,
-    fontSize: 24,
+    fontFamily: Typography.fontSansBold,
+    fontSize: 20,
     color: '#111111',
   },
   sectionSubheading: {

@@ -69,9 +69,9 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   name: {
-    fontFamily: Typography.fontSerifBold,
-    fontSize: 20,
-    letterSpacing: -0.5,
+    fontFamily: Typography.fontSansBold,
+    fontSize: 17,
+    letterSpacing: -0.3,
     color: '#111111',
     marginBottom: 5,
     textAlign: 'center',
