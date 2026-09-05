@@ -201,13 +201,13 @@ export const getTodayLiturgy = (userName?: string): DailyLiturgy => {
       : `Good evening, beloved. It is me, ${apostle.name}. As this day closes, let us lay down every burden in God's peace.`;
   }
 
-  // Reverent, unhurried full liturgy spoken script:
+  // Reverent, natural full liturgy spoken script:
   // 1. Personalized Greeting
   // 2. Clear Scripture Recitation
   // 3. Pastoral Reflection
   // 4. Guided Prayer
   // 5. Apostolic Blessing
-  const fullSpokenScript = `${greeting} ... First, let us hear the Holy Word of God from ${template.scriptureRef}: "${template.scriptureText}". ... ${template.reflection} ... Now, let us join our hearts together in prayer: "${template.prayer}" Amen. ... Receive this blessing over your walk: "${template.blessing}"`;
+  const fullSpokenScript = `${greeting}\n\nFirst, let us hear the Holy Word of God from ${template.scriptureRef}: "${template.scriptureText}".\n\n${template.reflection}\n\nNow, let us join our hearts together in prayer: "${template.prayer}" Amen.\n\nReceive this blessing over your walk: "${template.blessing}"`;
 
   return {
     id: `prayer_${dateStr}_${period}`,

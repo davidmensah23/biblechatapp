@@ -372,9 +372,9 @@ const styles = StyleSheet.create({
   },
   verseQuoteSmall: {
     fontFamily: Typography.fontYouVersionSerif,
-    fontSize: 15.5,
-    lineHeight: 23,
-    color: '#374151',
+    fontSize: 16.5,
+    lineHeight: 25,
+    color: '#1F2937',
     marginBottom: 10,
   },
   noteBox: {

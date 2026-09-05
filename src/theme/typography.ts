@@ -1,15 +1,15 @@
 export const Typography = {
-  // YouVersion Official Typography (Untitled Serif)
-  fontYouVersionSerif: 'UntitledSerif-Regular',
-  fontYouVersionSerifBold: 'UntitledSerif-Bold',
-  fontYouVersionSerifItalic: 'UntitledSerif-Italic',
+  // Screen-Optimized Scripture & Chat Serif (Merriweather)
+  fontYouVersionSerif: 'Merriweather_400Regular',
+  fontYouVersionSerifBold: 'Merriweather_700Bold',
+  fontYouVersionSerifItalic: 'Merriweather_400Regular_Italic',
 
-  // YouVersion Editorial Scripture Reading Serif (Literata)
-  fontSerif: 'Literata_600SemiBold',
-  fontSerifBold: 'Literata_700Bold',
-  fontSerifMedium: 'Literata_500Medium',
-  fontSerifRegular: 'Literata_400Regular',
-  fontSerifItalic: 'Literata_400Regular_Italic',
+  // Editorial Scripture Reading Serif (Merriweather)
+  fontSerif: 'Merriweather_700Bold',
+  fontSerifBold: 'Merriweather_700Bold',
+  fontSerifMedium: 'Merriweather_400Regular',
+  fontSerifRegular: 'Merriweather_400Regular',
+  fontSerifItalic: 'Merriweather_400Regular_Italic',
 
   // Monastic Display Serif (Instrument Serif)
   fontDisplaySerif: 'InstrumentSerif-Bold',

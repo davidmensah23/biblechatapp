@@ -762,6 +762,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   primaryBtn: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -872,11 +873,11 @@ const styles = StyleSheet.create({
   },
   victorySubtitle: {
     fontFamily: Typography.fontYouVersionSerifItalic,
-    fontSize: 13.5,
-    lineHeight: 20,
-    color: '#6B7280',
+    fontSize: 14.5,
+    lineHeight: 22,
+    color: '#4B5563',
     textAlign: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     marginBottom: 20,
   },
   memorizedSummaryCard: {
@@ -888,15 +889,15 @@ const styles = StyleSheet.create({
   },
   summaryRef: {
     fontFamily: Typography.fontSansBold,
-    fontSize: 12.5,
+    fontSize: 13,
     color: '#DC2626',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   summaryBody: {
     fontFamily: Typography.fontYouVersionSerif,
-    fontSize: 15,
-    lineHeight: 23,
-    color: '#374151',
+    fontSize: 17,
+    lineHeight: 26,
+    color: '#111827',
   },
   shareBtn: {
     width: '100%',

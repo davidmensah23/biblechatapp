@@ -9,17 +9,15 @@ import {
   Poppins_700Bold
 } from '@expo-google-fonts/poppins';
 import {
-  Literata_400Regular,
-  Literata_500Medium,
-  Literata_600SemiBold,
-  Literata_700Bold,
-  Literata_400Regular_Italic
-} from '@expo-google-fonts/literata';
-import {
-  Lora_400Regular,
-  Lora_600SemiBold,
-  Lora_700Bold
-} from '@expo-google-fonts/lora';
+  Merriweather_300Light,
+  Merriweather_400Regular,
+  Merriweather_700Bold,
+  Merriweather_900Black,
+  Merriweather_300Light_Italic,
+  Merriweather_400Regular_Italic,
+  Merriweather_700Bold_Italic,
+  Merriweather_900Black_Italic
+} from '@expo-google-fonts/merriweather';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { PersonalizationScreen } from './src/screens/PersonalizationScreen';
@@ -68,21 +66,30 @@ export default function App() {
     'InstrumentSerif-Bold': require('./assets/fonts/InstrumentSerif-Bold.ttf'),
     'InstrumentSerif-Regular': require('./assets/fonts/InstrumentSerif-Regular.ttf'),
     'InstrumentSerif-Italic': require('./assets/fonts/InstrumentSerif-Italic.ttf'),
-    'UntitledSerif-Regular': require('./assets/fonts/UntitledSerif-Regular.ttf'),
-    'UntitledSerif-Bold': require('./assets/fonts/UntitledSerif-Bold.ttf'),
-    'UntitledSerif-Italic': require('./assets/fonts/UntitledSerif-Italic.ttf'),
+    Merriweather_300Light,
+    Merriweather_400Regular,
+    Merriweather_700Bold,
+    Merriweather_900Black,
+    Merriweather_300Light_Italic,
+    Merriweather_400Regular_Italic,
+    Merriweather_700Bold_Italic,
+    Merriweather_900Black_Italic,
+    // Aliases to ensure ALL legacy serif references everywhere instantly render in Merriweather
+    'UntitledSerif-Regular': Merriweather_400Regular,
+    'UntitledSerif-Bold': Merriweather_700Bold,
+    'UntitledSerif-Italic': Merriweather_400Regular_Italic,
+    'Literata_400Regular': Merriweather_400Regular,
+    'Literata_500Medium': Merriweather_400Regular,
+    'Literata_600SemiBold': Merriweather_700Bold,
+    'Literata_700Bold': Merriweather_700Bold,
+    'Literata_400Regular_Italic': Merriweather_400Regular_Italic,
+    'Lora_400Regular': Merriweather_400Regular,
+    'Lora_600SemiBold': Merriweather_700Bold,
+    'Lora_700Bold': Merriweather_700Bold,
     Poppins_400Regular,
     Poppins_500Medium,
     Poppins_600SemiBold,
-    Poppins_700Bold,
-    Literata_400Regular,
-    Literata_500Medium,
-    Literata_600SemiBold,
-    Literata_700Bold,
-    Literata_400Regular_Italic,
-    Lora_400Regular,
-    Lora_600SemiBold,
-    Lora_700Bold
+    Poppins_700Bold
   });
 
   const [appStage, setAppStage] = useState<AppStage>('checking');

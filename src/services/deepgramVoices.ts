@@ -85,20 +85,14 @@ export function prepareReverentCadenceText(raw: string): string {
   spoken = spoken.replace(/^>\s*/gm, '');
   spoken = spoken.replace(/[*_#"`]/g, '').trim();
 
-  // 3. Give deep breath pauses between major sections/paragraphs
-  spoken = spoken.replace(/\n\s*\n/g, '. ... \n\n');
+  // 3. Normalize paragraph breaks to clean periods for natural cadence
+  spoken = spoken.replace(/\n\s*\n/g, '.\n\n');
 
-  // 4. Ensure pauses after sentence-ending punctuation so thoughts don't collide
-  spoken = spoken.replace(/([.!?])\s+/g, '$1 ... ');
+  // 4. Ensure em-dashes and colons pause as natural commas
+  spoken = spoken.replace(/([:;—–])\s*/g, ', ');
 
-  // 5. Ensure natural pauses after semicolons, colons, and em-dashes
-  spoken = spoken.replace(/([:;—–])\s*/g, ', ... ');
-
-  // 6. Add natural breathing pause after common prayer/transition invocations
-  spoken = spoken.replace(/\b(Peace be with you|Grace and peace|Good morning|Good evening|Hello|Beloved|Lord Jesus|Father God|In Jesus' name|Amen|First, let us hear|Now, let us join|Receive this blessing)\b/gi, '$1, ... ');
-
-  // 7. Clean up redundant duplicate ellipses or whitespace
-  spoken = spoken.replace(/(\.{3,}\s*){2,}/g, '... ');
+  // 5. Clean up redundant duplicate punctuation or whitespace
+  spoken = spoken.replace(/([.?!])\s*([.?!])+/g, '$1');
   spoken = spoken.replace(/\s{2,}/g, ' ');
 
   return spoken.trim();
@@ -235,9 +229,9 @@ export const playDeepgramSpeech = async (
     );
 
     currentSound = sound;
-    // Reverent, unhurried spiritual delivery: 0.85 rate + max clarity volume
+    // Natural human cadence: 1.0 rate + max clarity volume
     await sound.setVolumeAsync(1.0);
-    await sound.setRateAsync(0.85, true);
+    await sound.setRateAsync(1.0, true);
     await sound.playAsync();
   } catch (e) {
     console.error('TTS speech error:', e);
