@@ -128,37 +128,7 @@ export const playDeepgramSpeech = async (
     activeAudioId = audioId;
     if (onStart) onStart();
 
-    const appLang = getAppLanguage();
-    const isNonEnglish = appLang.code !== 'en';
-
-    // 1. If language is non-English, use native device neural speech to guarantee authentic accent
-    if (isNonEnglish) {
-      isNativeSpeaking = true;
-      const locale = LANGUAGE_LOCALE_MAP[appLang.code] || 'es-ES';
-      Speech.speak(cleanText.replace(/\.{3,}/g, '.'), {
-        language: locale,
-        rate: 0.90,
-        pitch: 0.98,
-        onDone: () => {
-          isNativeSpeaking = false;
-          activeAudioId = null;
-          if (onDone) onDone();
-        },
-        onStopped: () => {
-          isNativeSpeaking = false;
-          activeAudioId = null;
-          if (onDone) onDone();
-        },
-        onError: () => {
-          isNativeSpeaking = false;
-          activeAudioId = null;
-          if (onDone) onDone();
-        }
-      });
-      return;
-    }
-
-    // 2. English: Configure Audio Mode and invoke Deepgram Aura
+    // 1. Configure Audio Mode for crisp playback
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: false,
       playsInSilentModeIOS: true,
