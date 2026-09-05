@@ -256,6 +256,153 @@ export const BIBLICAL_GLOSSARY: Record<string, GlossaryEntry> = {
     originLabel: 'Biblical Hebrew (אֱמוּנָה)',
     definition: 'Relational faithfulness and steadfast firmness rooted in God’s character, rather than blind emotional optimism.',
     exampleContext: 'Habakkuk 2:4 — "The righteous shall live by his faith / steadfastness."'
+  },
+  tetelestai: {
+    term: 'Tetelestai',
+    category: 'greek',
+    originLabel: 'Koine Greek (τετέλεσται)',
+    definition: 'Ancient commercial & legal term stamped across promissory notes meaning "Paid in Full"—no debt remains!',
+    exampleContext: 'John 19:30 — Jesus’ triumphant cry from the cross declaring humanity’s sin debt cancelled forever.'
+  },
+  metanoia: {
+    term: 'Metanoia',
+    category: 'greek',
+    originLabel: 'Koine Greek (μετάνοια)',
+    definition: 'A total 180° rewiring and transformation of the mind and heart toward God, far beyond fleeting emotional guilt.',
+    exampleContext: 'Mark 1:15 — "Repent (metanoeite) and believe in the Gospel."'
+  },
+  kenosis: {
+    term: 'Kenosis',
+    category: 'greek',
+    originLabel: 'Koine Greek (κένωσις)',
+    definition: 'Self-emptying—Christ willingly laying aside His divine privileges to take the humble form of a bondservant.',
+    exampleContext: 'Philippians 2:7 — "He emptied Himself, by taking the form of a servant."'
+  },
+  hamartia: {
+    term: 'Hamartia',
+    category: 'greek',
+    originLabel: 'Koine Greek (ἁμαρτία)',
+    definition: 'An ancient archery term meaning "missing the bullseye target"—falling short of God’s glorious design for our lives.',
+    exampleContext: 'Romans 3:23 — "For all have sinned (missed the mark) and fall short of the glory of God."'
+  },
+  charis: {
+    term: 'Charis',
+    category: 'greek',
+    originLabel: 'Koine Greek (χάρις)',
+    definition: 'Divine unearned favor and active empowering strength given freely by a generous King to His people.',
+    exampleContext: 'Ephesians 2:8 — "For by grace (charis) you have been saved through faith."'
+  },
+  huiothesia: {
+    term: 'Huiothesia',
+    category: 'greek',
+    originLabel: 'Koine Greek / Roman Law (υἱοθεσία)',
+    definition: 'Roman legal adoption: the moment an heir was adopted, all past debts were legally expunged and he received the full name and authority of the father.',
+    exampleContext: 'Romans 8:15 — "You have received the Spirit of adoption as sons."'
+  },
+  chirographon: {
+    term: 'Chirographon',
+    category: 'roman_custom',
+    originLabel: 'Roman Legal Practice (χειρόγραφον)',
+    definition: 'The handwritten certificate of debt or criminal charges signed by an offender, which Jesus took and nailed to the cross.',
+    exampleContext: 'Colossians 2:14 — "Canceling the record of debt that stood against us."'
+  },
+  gethsemane: {
+    term: 'Gethsemane',
+    category: 'historical_idiom',
+    originLabel: 'Aramaic / Hebrew (גַּת שְׁמָנֵי)',
+    definition: 'Literally "The Oil Press"—an olive orchard where heavy stone wheels crushed olives to produce light, where Jesus agonized in prayer.',
+    exampleContext: 'Matthew 26:36 — Where Christ surrendered His will to the Father under crushing pressure.'
+  },
+  tzitzit: {
+    term: 'Tzitzit',
+    category: 'jewish_custom',
+    originLabel: 'Biblical Hebrew (צִיצִית)',
+    definition: 'The sacred corner tassels of the Jewish prayer shawl (tallit) symbolizing God’s commandments and healing authority.',
+    exampleContext: 'Matthew 9:20 — The woman with the issue of blood touched the tassel (tzitzit) of Jesus’ garment.'
+  },
+  talent: {
+    term: 'Talent',
+    category: 'roman_custom',
+    originLabel: 'Ancient Monetary Unit',
+    definition: 'A massive weight of silver worth roughly 6,000 denarii (about 20 years of daily labor), representing an astronomical, unpayable debt.',
+    exampleContext: 'Matthew 18:24 — The servant who owed ten thousand talents owed billions in modern currency.'
+  },
+  mammon: {
+    term: 'Mammon',
+    category: 'jewish_custom',
+    originLabel: 'Aramaic (מָמוֹן)',
+    definition: 'Wealth personified as an idolatrous rival master demanding ultimate trust, security, and worship.',
+    exampleContext: 'Matthew 6:24 — "You cannot serve both God and Mammon."'
+  },
+  centurion: {
+    term: 'Centurion',
+    category: 'roman_custom',
+    originLabel: 'Roman Military Rank',
+    definition: 'A career combat officer in the Roman legion commanding an elite unit of roughly 80 to 100 legionaries.',
+    exampleContext: 'Matthew 8:10 / Luke 7 — Renowned for iron discipline and remarkable faith in Jesus’ authority.'
+  },
+  titulus: {
+    term: 'Titulus',
+    category: 'roman_custom',
+    originLabel: 'Roman Execution Custom',
+    definition: 'The official wooden placard carried before a condemned criminal and nailed above the cross stating their legal crime.',
+    exampleContext: 'John 19:19 — Pilate wrote: "Jesus of Nazareth, King of the Jews."'
+  },
+  goel: {
+    term: 'Go’el',
+    category: 'hebrew',
+    originLabel: 'Biblical Hebrew (גֹּאֵל)',
+    definition: 'Kinsman Redeemer: a close relative legally responsible for buying back enslaved family members and redeeming lost ancestral land.',
+    exampleContext: 'Ruth 4 / Job 19:25 — "I know that my Redeemer (Go’el) lives."'
+  },
+  shema: {
+    term: 'Shema',
+    category: 'hebrew',
+    originLabel: 'Biblical Hebrew (שְׁמַע)',
+    definition: 'The core Jewish confession of faith from Deuteronomy 6:4 ("Hear, O Israel: The LORD our God, the LORD is one").',
+    exampleContext: 'Recited twice daily by faithful 1st-century believers.'
+  },
+  gehenna: {
+    term: 'Gehenna',
+    category: 'historical_idiom',
+    originLabel: 'Valley of Hinnom (גֵּיא בֶן־הִנֹּם)',
+    definition: 'A smoldering canyon south of Jerusalem where refuse was burned continuously, used by Jesus as a living picture of spiritual destruction.',
+    exampleContext: 'Mark 9:43 — A tangible physical picture of irrecoverable loss and separation.'
+  },
+  maranatha: {
+    term: 'Maranatha',
+    category: 'hebrew',
+    originLabel: 'Aramaic (מרנא תא)',
+    definition: 'An early Christian watchword meaning "Our Lord, come!" expressing eager hope for Christ’s return amid persecution.',
+    exampleContext: '1 Corinthians 16:22 — The longing greeting of the early persecuted church.'
+  },
+  abba: {
+    term: 'Abba',
+    category: 'hebrew',
+    originLabel: 'Aramaic (אַבָּא)',
+    definition: 'An intimate, affectionate family word for father, conveying childlike security, tender closeness, and zero dread.',
+    exampleContext: 'Romans 8:15 / Galatians 4:6 — "By Him we cry, Abba! Father!"'
+  },
+  stigmata: {
+    term: 'Stigmata',
+    category: 'greek',
+    originLabel: 'Koine Greek (στίγματα)',
+    definition: 'The physical branding scars left by Roman rods, lashes, and stones on Paul’s body, marking him as belonging exclusively to Jesus.',
+    exampleContext: 'Galatians 6:17 — "For I bear on my body the marks (stigmata) of Jesus."'
+  },
+  doxa: {
+    term: 'Doxa',
+    category: 'greek',
+    originLabel: 'Koine Greek (δόξα)',
+    definition: 'The manifested weight, splendor, and majestic honor of God’s presence (echoing Hebrew Kavod).',
+    exampleContext: '2 Corinthians 3:18 — Being transformed from glory to glory (doxa).'
+  },
+  nikao: {
+    term: 'Nikao',
+    category: 'greek',
+    originLabel: 'Koine Greek (νικάω)',
+    definition: 'To conquer, overcome, and prevail victoriously against trials through steadfast faith in Christ.',
+    exampleContext: '1 John 5:4 — "This is the victory that has overcome (nikao) the world—our faith."'
   }
 };
 
@@ -294,6 +441,27 @@ export const findGlossaryTerm = (wordOrPhrase: string): GlossaryEntry | null => 
   if (clean.startsWith('shalom')) return BIBLICAL_GLOSSARY.shalom;
   if (clean.startsWith('chesed') || clean.startsWith('hesed')) return BIBLICAL_GLOSSARY.chesed;
   if (clean.startsWith('emunah')) return BIBLICAL_GLOSSARY.emunah;
+  if (clean.startsWith('tetelest')) return BIBLICAL_GLOSSARY.tetelestai;
+  if (clean.startsWith('metanoi')) return BIBLICAL_GLOSSARY.metanoia;
+  if (clean.startsWith('kenos')) return BIBLICAL_GLOSSARY.kenosis;
+  if (clean.startsWith('hamarti')) return BIBLICAL_GLOSSARY.hamartia;
+  if (clean.startsWith('charis')) return BIBLICAL_GLOSSARY.charis;
+  if (clean.startsWith('huiothes')) return BIBLICAL_GLOSSARY.huiothesia;
+  if (clean.startsWith('chirograph')) return BIBLICAL_GLOSSARY.chirographon;
+  if (clean.startsWith('gethseman')) return BIBLICAL_GLOSSARY.gethsemane;
+  if (clean.startsWith('tzitzit')) return BIBLICAL_GLOSSARY.tzitzit;
+  if (clean.startsWith('talent')) return BIBLICAL_GLOSSARY.talent;
+  if (clean.startsWith('mammon')) return BIBLICAL_GLOSSARY.mammon;
+  if (clean.startsWith('centurion')) return BIBLICAL_GLOSSARY.centurion;
+  if (clean.startsWith('titulus')) return BIBLICAL_GLOSSARY.titulus;
+  if (clean.startsWith('goel')) return BIBLICAL_GLOSSARY.goel;
+  if (clean.startsWith('shema')) return BIBLICAL_GLOSSARY.shema;
+  if (clean.startsWith('gehenna')) return BIBLICAL_GLOSSARY.gehenna;
+  if (clean.startsWith('maranatha')) return BIBLICAL_GLOSSARY.maranatha;
+  if (clean.startsWith('abba')) return BIBLICAL_GLOSSARY.abba;
+  if (clean.startsWith('stigmata')) return BIBLICAL_GLOSSARY.stigmata;
+  if (clean.startsWith('doxa')) return BIBLICAL_GLOSSARY.doxa;
+  if (clean.startsWith('nikao')) return BIBLICAL_GLOSSARY.nikao;
 
   return null;
 };

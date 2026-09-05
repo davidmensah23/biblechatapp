@@ -1,5 +1,7 @@
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
+import * as Speech from 'expo-speech';
+import { getAppLanguage } from './localizationService';
 
 const DEEPGRAM_API_KEY = process.env.EXPO_PUBLIC_DEEPGRAM_API_KEY || '';
 
@@ -39,6 +41,16 @@ export const APOSTLE_VOICE_PROFILES: Record<string, ApostleVoiceConfig> = {
 
 let currentSound: Audio.Sound | null = null;
 let activeAudioId: string | null = null;
+let isNativeSpeaking = false;
+
+// Map app language code to native TTS speech locale
+const LANGUAGE_LOCALE_MAP: Record<string, string> = {
+  es: 'es-ES',
+  fr: 'fr-FR',
+  pt: 'pt-BR',
+  sw: 'sw-KE',
+  tw: 'en-GB'
+};
 
 // High-speed binary Uint8Array to base64 converter (no FileReader, zero hangs in Hermes/React Native)
 const B64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
@@ -63,23 +75,29 @@ function bytesToBase64(bytes: Uint8Array): string {
 /**
  * Prepares text specifically for acoustic synthesis with reverent cadence,
  * breath pauses, and punctuation timing WITHOUT altering visible on-screen text.
+ * Also strips dynamic [[term|definition]] tags into clean spoken words.
  */
 export function prepareReverentCadenceText(raw: string): string {
-  let spoken = raw.replace(/[*_#"`]/g, '').trim();
+  // 1. Strip dynamic [[term|definition]] into just the clean term
+  let spoken = raw.replace(/\[\[([^|\]]+)(?:\|[^\]]+)?\]\]/g, '$1');
 
-  // 1. Give deep breath pauses between major sections/paragraphs
+  // 2. Strip scripture quote markers and markdown symbols
+  spoken = spoken.replace(/^>\s*/gm, '');
+  spoken = spoken.replace(/[*_#"`]/g, '').trim();
+
+  // 3. Give deep breath pauses between major sections/paragraphs
   spoken = spoken.replace(/\n\s*\n/g, '. ... \n\n');
 
-  // 2. Ensure pauses after sentence-ending punctuation so thoughts don't collide
+  // 4. Ensure pauses after sentence-ending punctuation so thoughts don't collide
   spoken = spoken.replace(/([.!?])\s+/g, '$1 ... ');
 
-  // 3. Ensure natural pauses after semicolons, colons, and em-dashes
+  // 5. Ensure natural pauses after semicolons, colons, and em-dashes
   spoken = spoken.replace(/([:;—–])\s*/g, ', ... ');
 
-  // 4. Add natural breathing pause after common prayer/transition invocations
+  // 6. Add natural breathing pause after common prayer/transition invocations
   spoken = spoken.replace(/\b(Peace be with you|Grace and peace|Good morning|Good evening|Hello|Beloved|Lord Jesus|Father God|In Jesus' name|Amen|First, let us hear|Now, let us join|Receive this blessing)\b/gi, '$1, ... ');
 
-  // 5. Clean up redundant duplicate ellipses or whitespace
+  // 7. Clean up redundant duplicate ellipses or whitespace
   spoken = spoken.replace(/(\.{3,}\s*){2,}/g, '... ');
   spoken = spoken.replace(/\s{2,}/g, ' ');
 
@@ -87,7 +105,10 @@ export function prepareReverentCadenceText(raw: string): string {
 }
 
 /**
- * Direct, low-latency neural TTS synthesis via Deepgram Aura with reverent pacing
+ * Direct neural TTS synthesis:
+ * - English text: Deepgram Aura neural voices (reverent, character-specific).
+ * - Non-English text (Spanish, French, Portuguese, Swahili): Native device OS TTS via expo-speech
+ *   with authentic native accents, eliminating English-phoneme garble.
  */
 export const playDeepgramSpeech = async (
   audioId: string,
@@ -98,7 +119,7 @@ export const playDeepgramSpeech = async (
 ): Promise<void> => {
   try {
     // If already playing this exact message, toggle stop
-    if (activeAudioId === audioId && currentSound) {
+    if (activeAudioId === audioId && (currentSound || isNativeSpeaking)) {
       await stopDeepgramSpeech();
       if (onDone) onDone();
       return;
@@ -106,15 +127,44 @@ export const playDeepgramSpeech = async (
 
     await stopDeepgramSpeech();
 
-    const voiceConfig = APOSTLE_VOICE_PROFILES[characterId] || APOSTLE_VOICE_PROFILES.peter;
-    // Acoustic synthesis text with breath pauses (on-screen text is never modified)
+    // Clean text: strip [[term|definition]], markdown, add cadence
     const cleanText = prepareReverentCadenceText(text);
     if (!cleanText) return;
 
-    if (onStart) onStart();
     activeAudioId = audioId;
+    if (onStart) onStart();
 
-    // Configure Audio Mode for crisp, loud, immersive playback
+    const appLang = getAppLanguage();
+    const isNonEnglish = appLang.code !== 'en';
+
+    // 1. If language is non-English, use native device neural speech to guarantee authentic accent
+    if (isNonEnglish) {
+      isNativeSpeaking = true;
+      const locale = LANGUAGE_LOCALE_MAP[appLang.code] || 'es-ES';
+      Speech.speak(cleanText.replace(/\.{3,}/g, '.'), {
+        language: locale,
+        rate: 0.90,
+        pitch: 0.98,
+        onDone: () => {
+          isNativeSpeaking = false;
+          activeAudioId = null;
+          if (onDone) onDone();
+        },
+        onStopped: () => {
+          isNativeSpeaking = false;
+          activeAudioId = null;
+          if (onDone) onDone();
+        },
+        onError: () => {
+          isNativeSpeaking = false;
+          activeAudioId = null;
+          if (onDone) onDone();
+        }
+      });
+      return;
+    }
+
+    // 2. English: Configure Audio Mode and invoke Deepgram Aura
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: false,
       playsInSilentModeIOS: true,
@@ -123,9 +173,20 @@ export const playDeepgramSpeech = async (
       playThroughEarpieceAndroid: false
     });
 
+    const voiceConfig = APOSTLE_VOICE_PROFILES[characterId] || APOSTLE_VOICE_PROFILES.peter;
+
     if (!DEEPGRAM_API_KEY) {
-      console.warn('DEEPGRAM_API_KEY not configured');
-      if (onDone) onDone();
+      // Fallback to native speech if API key is absent
+      isNativeSpeaking = true;
+      Speech.speak(cleanText.replace(/\.{3,}/g, '.'), {
+        language: 'en-US',
+        rate: 0.88,
+        onDone: () => {
+          isNativeSpeaking = false;
+          activeAudioId = null;
+          if (onDone) onDone();
+        }
+      });
       return;
     }
 
@@ -140,8 +201,17 @@ export const playDeepgramSpeech = async (
     });
 
     if (!response.ok) {
-      console.warn('Deepgram TTS response not ok:', response.status);
-      if (onDone) onDone();
+      // Graceful fallback to native device TTS
+      isNativeSpeaking = true;
+      Speech.speak(cleanText.replace(/\.{3,}/g, '.'), {
+        language: 'en-US',
+        rate: 0.88,
+        onDone: () => {
+          isNativeSpeaking = false;
+          activeAudioId = null;
+          if (onDone) onDone();
+        }
+      });
       return;
     }
 
@@ -170,13 +240,22 @@ export const playDeepgramSpeech = async (
     await sound.setRateAsync(0.85, true);
     await sound.playAsync();
   } catch (e) {
-    console.error('Deepgram play error:', e);
+    console.error('TTS speech error:', e);
     await stopDeepgramSpeech();
     if (onDone) onDone();
   }
 };
 
 export const stopDeepgramSpeech = async () => {
+  // Stop native TTS
+  if (isNativeSpeaking) {
+    try {
+      Speech.stop();
+    } catch (e) {}
+    isNativeSpeaking = false;
+  }
+
+  // Stop audio player
   if (currentSound) {
     try {
       await currentSound.stopAsync();

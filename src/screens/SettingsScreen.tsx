@@ -482,6 +482,84 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                   />
                 </View>
 
+                {/* Study Depth & Comprehension Level */}
+                <View style={styles.preferenceGroup}>
+                  <Text style={styles.preferenceLabel}>Study Depth & Comprehension</Text>
+                  <Text style={styles.preferenceHint}>Calibrates theological exegesis and dynamic vocabulary assistance from mentors.</Text>
+                  <View style={styles.pillRow}>
+                    {[
+                      { id: 'plain_simple', label: 'Plain & Simple' },
+                      { id: 'growing_believer', label: 'Everyday Believer' },
+                      { id: 'deep_exegesis', label: 'Deep Exegesis' }
+                    ].map((opt) => {
+                      const isSelected = (draftProfile.comprehensionLevel || 'growing_believer') === opt.id;
+                      return (
+                        <TouchableOpacity
+                          key={opt.id}
+                          style={[styles.choicePill, isSelected && styles.choicePillActive]}
+                          onPress={() => setDraftProfile({ ...draftProfile, comprehensionLevel: opt.id as any })}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.choicePillText, isSelected && styles.choicePillTextActive]}>
+                            {opt.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                {/* Church Role / Season */}
+                <View style={styles.preferenceGroup}>
+                  <Text style={styles.preferenceLabel}>Church Role & Season</Text>
+                  <View style={styles.pillRow}>
+                    {[
+                      { id: 'seeker', label: 'Seeker' },
+                      { id: 'member', label: 'Member' },
+                      { id: 'leader', label: 'Leader' },
+                      { id: 'pastor', label: 'Pastor' },
+                      { id: 'questioning', label: 'Questioning' }
+                    ].map((opt) => {
+                      const isSelected = (draftProfile.churchRole || 'member') === opt.id;
+                      return (
+                        <TouchableOpacity
+                          key={opt.id}
+                          style={[styles.choicePill, isSelected && styles.choicePillActive]}
+                          onPress={() => setDraftProfile({ ...draftProfile, churchRole: opt.id })}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.choicePillText, isSelected && styles.choicePillTextActive]}>
+                            {opt.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                {/* Age Bracket */}
+                <View style={styles.preferenceGroup}>
+                  <Text style={styles.preferenceLabel}>Age Group</Text>
+                  <View style={styles.pillRow}>
+                    {['under_18', '18_24', '25_34', '35_50', '50_plus'].map((ageId) => {
+                      const displayLabel = ageId.replace('under_', 'Under ').replace('_', ' – ').replace('plus', '+');
+                      const isSelected = (draftProfile.ageBracket || '25_34') === ageId;
+                      return (
+                        <TouchableOpacity
+                          key={ageId}
+                          style={[styles.choicePill, isSelected && styles.choicePillActive]}
+                          onPress={() => setDraftProfile({ ...draftProfile, ageBracket: ageId })}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.choicePillText, isSelected && styles.choicePillTextActive]}>
+                            {displayLabel}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+
                 {/* Save Account Button */}
                 <TouchableOpacity
                   style={styles.primaryActionButton}
@@ -1510,5 +1588,47 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     color: '#4B5563',
     lineHeight: 20,
-  }
+  },
+  preferenceGroup: {
+    marginBottom: 22,
+  },
+  preferenceLabel: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 14,
+    color: '#111111',
+    marginBottom: 4,
+  },
+  preferenceHint: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 10,
+    lineHeight: 16,
+  },
+  pillRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  choicePill: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  choicePillActive: {
+    borderColor: '#111111',
+    backgroundColor: '#111111',
+  },
+  choicePillText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 13,
+    color: '#374151',
+  },
+  choicePillTextActive: {
+    fontFamily: Typography.fontSansSemiBold,
+    color: '#FFFFFF',
+  },
 });

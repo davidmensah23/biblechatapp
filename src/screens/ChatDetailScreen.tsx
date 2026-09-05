@@ -309,12 +309,20 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
     }
   };
 
+  const cleanMessageForSharing = (raw: string): string => {
+    return raw
+      .replace(/\[\[([^|\]]+)(?:\|[^\]]+)?\]\]/g, '$1')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/^>\s*/gm, '');
+  };
+
   const handleBookmarkMessage = async (msg: ChatMessage) => {
     await saveBookmark({
       id: `bm_counsel_${Date.now()}`,
       type: 'quote',
       title: `${apostle.name}'s Counsel`,
-      content: msg.content,
+      content: cleanMessageForSharing(msg.content),
       reference: apostle.title,
       author: apostle.name,
       timestamp: Date.now()
@@ -324,7 +332,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
 
   const handleCopyMessage = (text: string) => {
     try {
-      Clipboard.setString(text);
+      Clipboard.setString(cleanMessageForSharing(text));
     } catch (e) {}
     Alert.alert('Copied', 'Message copied to clipboard.');
   };
@@ -570,7 +578,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
                     if (msg) {
                       try {
                         await Share.share({
-                          message: `“${msg.content}”\n— ${apostle.name} (${apostle.title})\n\nBible Chat App`,
+                          message: `“${cleanMessageForSharing(msg.content)}”\n— ${apostle.name} (${apostle.title})\n\nBible Chat App`,
                           title: `${apostle.name}'s Counsel`
                         });
                       } catch (e) {}
