@@ -68,33 +68,35 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 });
 
-const ONBOARDING_COMPLETED_KEY = 'akorno_onboarding_completed_state_v1';
+const getOnboardingKey = (userId?: string) => `akorno_onboarding_completed_${userId || 'current'}`;
 
-export const setHasCompletedOnboarding = async (completed: boolean): Promise<void> => {
+export const setHasCompletedOnboarding = async (completed: boolean, userId?: string): Promise<void> => {
+  const key = getOnboardingKey(userId);
   try {
     if (Platform.OS === 'web') {
       if (typeof localStorage !== 'undefined') {
-        if (completed) localStorage.setItem(ONBOARDING_COMPLETED_KEY, 'true');
-        else localStorage.removeItem(ONBOARDING_COMPLETED_KEY);
+        if (completed) localStorage.setItem(key, 'true');
+        else localStorage.removeItem(key);
       }
       return;
     }
     if (completed) {
-      await SecureStore.setItemAsync(ONBOARDING_COMPLETED_KEY, 'true');
+      await SecureStore.setItemAsync(key, 'true');
     } else {
-      await SecureStore.deleteItemAsync(ONBOARDING_COMPLETED_KEY);
+      await SecureStore.deleteItemAsync(key);
     }
   } catch (e) {
     console.warn('setHasCompletedOnboarding error:', e);
   }
 };
 
-export const getHasCompletedOnboarding = async (): Promise<boolean> => {
+export const getHasCompletedOnboarding = async (userId?: string): Promise<boolean> => {
+  const key = getOnboardingKey(userId);
   try {
     if (Platform.OS === 'web') {
-      return typeof localStorage !== 'undefined' ? localStorage.getItem(ONBOARDING_COMPLETED_KEY) === 'true' : false;
+      return typeof localStorage !== 'undefined' ? localStorage.getItem(key) === 'true' : false;
     }
-    const val = await SecureStore.getItemAsync(ONBOARDING_COMPLETED_KEY);
+    const val = await SecureStore.getItemAsync(key);
     return val === 'true';
   } catch (e) {
     return false;
@@ -116,10 +118,15 @@ export const DEFAULT_PROFILE: UserProfile = {
 
 // Google Sign-In (Native Android Bottom Sheet Picker + WebBrowser Fallback)
 try {
+  const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
   GoogleSignin.configure({
+    webClientId: webClientId || undefined,
+    offlineAccess: true,
     scopes: ['email', 'profile'],
   });
-} catch (e) {}
+} catch (e) {
+  console.warn('GoogleSignin.configure error:', e);
+}
 
 export const signInWithGoogle = async (): Promise<{ user: any | null; error: Error | null }> => {
   // 1. Try Native Google Play Services Bottom Sheet Account Picker
@@ -143,7 +150,10 @@ export const signInWithGoogle = async (): Promise<{ user: any | null; error: Err
     if (nativeErr?.code === statusCodes?.SIGN_IN_CANCELLED) {
       return { user: null, error: null };
     }
-    console.warn('Native Google Sign-In note, falling back to WebBrowser auth:', nativeErr?.message);
+    console.warn('Native Google Sign-In note, code:', nativeErr?.code, 'message:', nativeErr?.message);
+    if (nativeErr?.code === '10' || nativeErr?.message?.includes('DEVELOPER_ERROR')) {
+      console.warn('Google Sign-In DEVELOPER_ERROR (10): Ensure webClientId is set and Android OAuth Client in Google Cloud Console matches package com.akorno.biblechat and EAS build SHA-1 fingerprint.');
+    }
   }
 
   // 2. Fallback to WebBrowser.openAuthSessionAsync
@@ -405,7 +415,10 @@ export const handleAuthDeepLink = async (url: string | null): Promise<void> => {
 // Sign Out
 export const signOutUser = async (): Promise<{ error: Error | null }> => {
   try {
-    await setHasCompletedOnboarding(false);
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    await setHasCompletedOnboarding(false, userId);
+    await setHasCompletedOnboarding(false, undefined);
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
     return { error: null };

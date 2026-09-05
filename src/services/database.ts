@@ -118,9 +118,11 @@ export const getOrCreateGuestId = async (): Promise<string> => {
   }
 };
 
-// Returns current Supabase user ID or guest device ID
+// Returns current Supabase user ID or guest device ID (fast in-memory/cache check first)
 export const getCurrentUserId = async (): Promise<string> => {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.id) return session.user.id;
     const { data: { user } } = await supabase.auth.getUser();
     if (user?.id) return user.id;
   } catch (e) {

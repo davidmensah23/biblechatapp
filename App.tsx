@@ -127,20 +127,25 @@ export default function App() {
 
   // Determine whether the user needs to complete the personalization questionnaire
   const checkNeedsPersonalization = async (userId?: string): Promise<boolean> => {
-    const hasCompleted = await getHasCompletedOnboarding();
-    if (hasCompleted) return false;
-
+    // 1. If user ID is available, check per-user storage and remote Supabase profile (source of truth)
     if (userId) {
+      const hasCompleted = await getHasCompletedOnboarding(userId);
+      if (hasCompleted) return false;
+
       const remote = await fetchRemoteProfile(userId);
       if (remote?.onboardingCompleted || (remote?.ageBracket && remote?.comprehensionLevel)) {
-        await setHasCompletedOnboarding(true);
+        await setHasCompletedOnboarding(true, userId);
         return false;
       }
+    } else {
+      const hasCompleted = await getHasCompletedOnboarding();
+      if (hasCompleted) return false;
     }
 
+    // 2. Check local SQLite profile for this session
     const local = await fetchUserProfile();
-    if (local?.onboardingCompleted || (local?.ageBracket && local?.comprehensionLevel && local.fullName !== 'Seeker')) {
-      await setHasCompletedOnboarding(true);
+    if (local?.onboardingCompleted || (local?.ageBracket && local?.comprehensionLevel)) {
+      await setHasCompletedOnboarding(true, userId);
       return false;
     }
 
@@ -329,6 +334,12 @@ export default function App() {
   };
 
   const handleLogout = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      await setHasCompletedOnboarding(false, userId);
+      await setHasCompletedOnboarding(false, undefined);
+    } catch (e) {}
     await clearLocalUserSession();
     clearDeedsSession();
     clearGamificationSession();
@@ -368,11 +379,12 @@ export default function App() {
             >
               <AuthScreen
                 onAuthSuccess={async () => {
-                  const needs = await checkNeedsPersonalization();
+                  const { data: { session } } = await supabase.auth.getSession();
+                  const needs = await checkNeedsPersonalization(session?.user?.id);
                   setAppStage(needs ? 'profile_setup' : 'main');
                 }}
                 onSkip={() => {
-                  setAppStage('profile_setup');
+                  setAppStage('main');
                 }}
               />
             </CircularRevealTransition>
@@ -385,11 +397,12 @@ export default function App() {
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
             <AuthScreen
               onAuthSuccess={async () => {
-                const needs = await checkNeedsPersonalization();
+                const { data: { session } } = await supabase.auth.getSession();
+                const needs = await checkNeedsPersonalization(session?.user?.id);
                 setAppStage(needs ? 'profile_setup' : 'main');
               }}
               onSkip={() => {
-                setAppStage('profile_setup');
+                setAppStage('main');
               }}
             />
           </View>
@@ -401,11 +414,17 @@ export default function App() {
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
             <PersonalizationScreen
               onComplete={async () => {
-                await setHasCompletedOnboarding(true);
-                const p = await fetchUserProfile();
-                if (p) setUserProfile(p);
-                setAppStage('main');
-                setShowPrivacyNotice(true);
+                try {
+                  const { data: { session } } = await supabase.auth.getSession();
+                  await setHasCompletedOnboarding(true, session?.user?.id);
+                  const p = await fetchUserProfile();
+                  if (p) setUserProfile(p);
+                } catch (e) {
+                  console.warn('Personalization onComplete error:', e);
+                } finally {
+                  setAppStage('main');
+                  setShowPrivacyNotice(true);
+                }
               }}
             />
           </View>
@@ -547,7 +566,8 @@ export default function App() {
               <AuthScreen
                 onAuthSuccess={async () => {
                   setShowAuthModal(false);
-                  const needs = await checkNeedsPersonalization();
+                  const { data: { session } } = await supabase.auth.getSession();
+                  const needs = await checkNeedsPersonalization(session?.user?.id);
                   if (needs) {
                     setAppStage('profile_setup');
                   }

@@ -4,6 +4,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  ActivityIndicator,
   StyleSheet,
   SafeAreaView,
   KeyboardAvoidingView,
@@ -16,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { ComprehensionLevel, UserProfile } from '../types';
 import { fetchUserProfile, saveUserProfile } from '../services/database';
-import { supabase, updateRemoteProfile } from '../services/supabase';
+import { supabase, updateRemoteProfile, DEFAULT_PROFILE } from '../services/supabase';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -81,6 +82,7 @@ export const PersonalizationScreen: React.FC<PersonalizationScreenProps> = ({ on
   const [selectedGender, setSelectedGender] = useState<'brother' | 'sister' | 'neutral'>('neutral');
   const [selectedChurchRole, setSelectedChurchRole] = useState<string | null>(null);
   const [selectedComprehension, setSelectedComprehension] = useState<ComprehensionLevel>('growing_believer');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Input ref for step 0 auto-focus
   const nameInputRef = useRef<TextInput>(null);
@@ -124,6 +126,7 @@ export const PersonalizationScreen: React.FC<PersonalizationScreenProps> = ({ on
   }, [currentStep]);
 
   const canContinue = (): boolean => {
+    if (isSubmitting) return false;
     switch (currentStep) {
       case 0:
         return firstName.trim().length >= 1;
@@ -141,35 +144,45 @@ export const PersonalizationScreen: React.FC<PersonalizationScreenProps> = ({ on
   };
 
   const handleNext = async () => {
-    if (!canContinue()) return;
+    if (isSubmitting) return;
 
     if (currentStep < TOTAL_STEPS - 1) {
+      if (!canContinue()) return;
       setCurrentStep((prev) => prev + 1);
     } else {
-      // Save completed profile
-      const current = await fetchUserProfile();
-      const cleanName = firstName.trim();
-      const updatedProfile: UserProfile = {
-        ...current,
-        fullName: cleanName || current.fullName || 'Friend',
-        ageBracket: selectedAge || '25_34',
-        gender: selectedGender,
-        churchRole: selectedChurchRole || 'member',
-        comprehensionLevel: selectedComprehension,
-        onboardingCompleted: true
-      };
-      await saveUserProfile(updatedProfile);
-
+      if (!canContinue()) return;
+      setIsSubmitting(true);
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user?.id) {
-          await updateRemoteProfile(session.user.id, updatedProfile);
-        }
-      } catch (e) {
-        console.warn('Personalization remote sync note:', e);
-      }
+        // 1. Save completed profile locally first (instant)
+        const current = await fetchUserProfile().catch(() => DEFAULT_PROFILE);
+        const cleanName = firstName.trim();
+        const updatedProfile: UserProfile = {
+          ...current,
+          fullName: cleanName || current.fullName || 'Friend',
+          email: current.email || '',
+          bio: current.bio || '',
+          location: current.location || '',
+          dateOfBirth: current.dateOfBirth || '',
+          ageBracket: selectedAge || '25_34',
+          gender: selectedGender,
+          churchRole: selectedChurchRole || 'member',
+          comprehensionLevel: selectedComprehension,
+          onboardingCompleted: true
+        };
+        await saveUserProfile(updatedProfile);
 
-      onComplete();
+        // 2. Sync remote profile in the background without stalling navigation
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session?.user?.id) {
+            updateRemoteProfile(session.user.id, updatedProfile).catch(console.warn);
+          }
+        }).catch(console.warn);
+      } catch (e) {
+        console.warn('Personalization save error:', e);
+      } finally {
+        setIsSubmitting(false);
+        onComplete();
+      }
     }
   };
 
@@ -370,14 +383,21 @@ export const PersonalizationScreen: React.FC<PersonalizationScreenProps> = ({ on
         {/* Floating Continue Button */}
         <View style={styles.bottomBar}>
           <TouchableOpacity
-            style={[styles.continueBtn, canContinue() ? styles.continueBtnActive : styles.continueBtnDisabled]}
+            style={[
+              styles.continueBtn,
+              (canContinue() && !isSubmitting) ? styles.continueBtnActive : styles.continueBtnDisabled
+            ]}
             onPress={handleNext}
-            disabled={!canContinue()}
+            disabled={!canContinue() || isSubmitting}
             activeOpacity={0.85}
           >
-            <Text style={[styles.continueBtnText, canContinue() ? styles.continueBtnTextActive : styles.continueBtnTextDisabled]}>
-              {currentStep === TOTAL_STEPS - 1 ? 'Enter Bible Chat' : 'Continue'}
-            </Text>
+            {isSubmitting ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text style={[styles.continueBtnText, canContinue() ? styles.continueBtnTextActive : styles.continueBtnTextDisabled]}>
+                {currentStep === TOTAL_STEPS - 1 ? 'Enter Bible Chat' : 'Continue'}
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
