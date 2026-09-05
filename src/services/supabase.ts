@@ -108,9 +108,10 @@ export const DEFAULT_PROFILE: UserProfile = {
   location: 'Faith Journey',
   dateOfBirth: '2025',
   gender: 'neutral',
-  churchRole: 'seeker',
-  ageBracket: '18-24',
-  comprehensionLevel: 'growing_believer'
+  churchRole: undefined,
+  ageBracket: undefined,
+  comprehensionLevel: undefined,
+  onboardingCompleted: false
 };
 
 // Google Sign-In (Native Android Bottom Sheet Picker + WebBrowser Fallback)
@@ -436,7 +437,12 @@ export const fetchRemoteProfile = async (userId: string): Promise<UserProfile | 
         location: data.location || '',
         dateOfBirth: data.date_of_birth || '',
         avatarUrl: data.avatar_url || undefined,
-        gender: data.gender || 'neutral'
+        gender: data.gender || 'neutral',
+        churchRole: data.church_role || undefined,
+        churchName: data.church_name || undefined,
+        ageBracket: data.age_bracket || undefined,
+        comprehensionLevel: data.comprehension_level || undefined,
+        onboardingCompleted: Boolean(data.onboarding_completed)
       };
     }
     return null;
@@ -460,6 +466,11 @@ export const updateRemoteProfile = async (userId: string, profile: Partial<UserP
         date_of_birth: profile.dateOfBirth,
         avatar_url: profile.avatarUrl,
         gender: profile.gender || 'neutral',
+        church_role: profile.churchRole || null,
+        church_name: profile.churchName || null,
+        age_bracket: profile.ageBracket || null,
+        comprehension_level: profile.comprehensionLevel || null,
+        onboarding_completed: profile.onboardingCompleted ?? true,
         updated_at: new Date().toISOString()
       });
 
@@ -540,7 +551,7 @@ export const restoreSoftDeletedAccount = async (userId: string): Promise<boolean
   }
 };
 
-const splitEmailToName = (email: string): string => {
+export const splitEmailToName = (email: string): string => {
   const parts = email.split('@')[0];
   return parts.charAt(0).toUpperCase() + parts.slice(1);
 };

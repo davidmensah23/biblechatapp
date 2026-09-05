@@ -30,6 +30,7 @@ const APOSTLE_PREVIEWS = [
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [currentLang, setCurrentLang] = useState<AppLanguage>(getAppLanguage());
+  const currentLangOption = SUPPORTED_LANGUAGES.find(l => l.code === currentLang) || SUPPORTED_LANGUAGES[0];
 
   const handleStart = (e: any) => {
     const { pageX, pageY } = e.nativeEvent || {};
@@ -50,7 +51,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
           activeOpacity={0.8}
         >
           <Ionicons name="globe-outline" size={16} color="rgba(255, 255, 255, 0.85)" />
-          <Text style={styles.langBtnText}>{currentLang.nativeName}</Text>
+          <Text style={styles.langBtnText}>{currentLangOption.nativeName}</Text>
         </TouchableOpacity>
       </View>
 
@@ -137,8 +138,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
       {/* Language Modal */}
       <LanguagePickerModal
         visible={showLanguagePicker}
-        currentLanguage={currentLang}
-        onSelectLanguage={(lang) => {
+        onLanguageSelected={(lang: AppLanguage) => {
           setCurrentLang(lang);
           setShowLanguagePicker(false);
         }}

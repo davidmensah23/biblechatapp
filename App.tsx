@@ -43,7 +43,8 @@ import {
   signOutUser,
   handleAuthDeepLink,
   setHasCompletedOnboarding,
-  getHasCompletedOnboarding
+  getHasCompletedOnboarding,
+  splitEmailToName
 } from './src/services/supabase';
 import { initializePushNotifications } from './src/services/pushNotificationService';
 import * as Linking from 'expo-linking';
@@ -120,6 +121,28 @@ export default function App() {
     });
   }, [activeNavTab]);
 
+  // Determine whether the user needs to complete the personalization questionnaire
+  const checkNeedsPersonalization = async (userId?: string): Promise<boolean> => {
+    const hasCompleted = await getHasCompletedOnboarding();
+    if (hasCompleted) return false;
+
+    if (userId) {
+      const remote = await fetchRemoteProfile(userId);
+      if (remote?.onboardingCompleted || (remote?.ageBracket && remote?.comprehensionLevel)) {
+        await setHasCompletedOnboarding(true);
+        return false;
+      }
+    }
+
+    const local = await fetchUserProfile();
+    if (local?.onboardingCompleted || (local?.ageBracket && local?.comprehensionLevel && local.fullName !== 'Seeker')) {
+      await setHasCompletedOnboarding(true);
+      return false;
+    }
+
+    return true;
+  };
+
   useEffect(() => {
     let isMounted = true;
 
@@ -150,17 +173,21 @@ export default function App() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          if (isMounted) setAppStage('main');
-          await setHasCompletedOnboarding(true);
           migrateGuestDataToUser(session.user.id);
-          fetchRemoteProfile(session.user.id).then((profile) => {
-            if (profile) saveUserProfile(profile);
-          });
+          const remoteProfile = await fetchRemoteProfile(session.user.id);
+          if (remoteProfile) {
+            await saveUserProfile(remoteProfile);
+          }
+
+          const needsPersonalization = await checkNeedsPersonalization(session.user.id);
+          if (isMounted) {
+            setAppStage(needsPersonalization ? 'profile_setup' : 'main');
+          }
           return;
         }
 
-        const hasCompleted = await getHasCompletedOnboarding();
-        if (hasCompleted) {
+        const needsPersonalization = await checkNeedsPersonalization();
+        if (!needsPersonalization) {
           if (isMounted) setAppStage('main');
           return;
         }
@@ -174,16 +201,37 @@ export default function App() {
 
     verifyUserSession();
 
-    // Listen to Supabase auth events
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    // Listen to Supabase auth events (e.g. Google, Apple, or Email sign-in)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        setAppStage('main');
         setShowAuthModal(false);
-        setHasCompletedOnboarding(true);
         migrateGuestDataToUser(session.user.id);
-        fetchRemoteProfile(session.user.id).then((profile) => {
-          if (profile) saveUserProfile(profile);
-        });
+
+        const meta = session.user.user_metadata;
+        const authFullName = meta?.full_name || meta?.name || meta?.given_name || (session.user.email ? splitEmailToName(session.user.email) : '');
+        const authAvatar = meta?.avatar_url || meta?.picture;
+
+        const remote = await fetchRemoteProfile(session.user.id);
+        if (remote) {
+          await saveUserProfile(remote);
+        } else if (authFullName || authAvatar) {
+          const cur = await fetchUserProfile();
+          await saveUserProfile({
+            ...cur,
+            fullName: authFullName || cur.fullName,
+            avatarUrl: authAvatar || cur.avatarUrl,
+            email: session.user.email || cur.email
+          });
+        }
+
+        const needsPersonalization = await checkNeedsPersonalization(session.user.id);
+        if (isMounted) {
+          if (needsPersonalization) {
+            setAppStage('profile_setup');
+          } else {
+            setAppStage('main');
+          }
+        }
       }
     });
 
@@ -232,6 +280,12 @@ export default function App() {
       // 5. If on Auth screen -> Return to Onboarding
       if (appStage === 'auth') {
         setAppStage('onboarding');
+        return true;
+      }
+
+      // 5b. If on Profile Setup screen -> Return to Auth
+      if (appStage === 'profile_setup') {
+        setAppStage('auth');
         return true;
       }
 
@@ -304,8 +358,9 @@ export default function App() {
               onFinished={handleRevealFinished}
             >
               <AuthScreen
-                onAuthSuccess={() => {
-                  setAppStage('profile_setup');
+                onAuthSuccess={async () => {
+                  const needs = await checkNeedsPersonalization();
+                  setAppStage(needs ? 'profile_setup' : 'main');
                 }}
                 onSkip={() => {
                   setAppStage('profile_setup');
@@ -320,8 +375,9 @@ export default function App() {
           <View style={styles.flexOne}>
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
             <AuthScreen
-              onAuthSuccess={() => {
-                setAppStage('profile_setup');
+              onAuthSuccess={async () => {
+                const needs = await checkNeedsPersonalization();
+                setAppStage(needs ? 'profile_setup' : 'main');
               }}
               onSkip={() => {
                 setAppStage('profile_setup');
@@ -471,9 +527,12 @@ export default function App() {
             <View style={styles.flexOne}>
               <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
               <AuthScreen
-                onAuthSuccess={() => {
-                  setHasCompletedOnboarding(true);
+                onAuthSuccess={async () => {
                   setShowAuthModal(false);
+                  const needs = await checkNeedsPersonalization();
+                  if (needs) {
+                    setAppStage('profile_setup');
+                  }
                 }}
                 onSkip={() => setShowAuthModal(false)}
               />

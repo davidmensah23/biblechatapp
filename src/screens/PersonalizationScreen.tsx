@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../theme/typography';
 import { ComprehensionLevel, UserProfile } from '../types';
 import { fetchUserProfile, saveUserProfile } from '../services/database';
+import { supabase, updateRemoteProfile } from '../services/supabase';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -154,9 +155,20 @@ export const PersonalizationScreen: React.FC<PersonalizationScreenProps> = ({ on
         ageBracket: selectedAge || '25_34',
         gender: selectedGender,
         churchRole: selectedChurchRole || 'member',
-        comprehensionLevel: selectedComprehension
+        comprehensionLevel: selectedComprehension,
+        onboardingCompleted: true
       };
       await saveUserProfile(updatedProfile);
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.id) {
+          await updateRemoteProfile(session.user.id, updatedProfile);
+        }
+      } catch (e) {
+        console.warn('Personalization remote sync note:', e);
+      }
+
       onComplete();
     }
   };

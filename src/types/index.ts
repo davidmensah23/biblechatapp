@@ -72,6 +72,7 @@ export interface UserProfile {
   churchName?: string;
   ageBracket?: string;
   comprehensionLevel?: ComprehensionLevel;
+  onboardingCompleted?: boolean;
 }
 
 export interface AppNotification {

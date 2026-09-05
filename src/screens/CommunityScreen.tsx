@@ -2106,13 +2106,6 @@ const styles = StyleSheet.create({
   replyingBannerText: {
     fontFamily: Typography.fontSansRegular,
     fontSize: 11.5,
-    color: '#4B5563',
-  },
-  sheetContent: {
-    flex: 1,
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 4,
   },
   commentInputRow: {
     flexDirection: 'row',

@@ -182,6 +182,11 @@ const initTables = async (db: SQLite.SQLiteDatabase) => {
     } catch {
       // Column already exists
     }
+    try {
+      await db.execAsync(`ALTER TABLE user_profile ADD COLUMN onboarding_completed INTEGER DEFAULT 0;`);
+    } catch {
+      // Column already exists
+    }
   } catch (e) {
     console.warn('Table creation note:', e);
   }
@@ -348,7 +353,8 @@ export const fetchUserProfile = async (): Promise<UserProfile> => {
           churchRole: row.church_role || undefined,
           churchName: row.church_name || undefined,
           ageBracket: row.age_bracket || undefined,
-          comprehensionLevel: row.comprehension_level || undefined
+          comprehensionLevel: row.comprehension_level || undefined,
+          onboardingCompleted: Boolean(row.onboarding_completed)
         };
       }
     } catch (e) {
@@ -364,7 +370,7 @@ export const saveUserProfile = async (profile: UserProfile): Promise<void> => {
   if (db) {
     try {
       await db.runAsync(
-        'INSERT OR REPLACE INTO user_profile (id, full_name, email, bio, location, date_of_birth, gender, church_role, church_name, age_bracket, comprehension_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT OR REPLACE INTO user_profile (id, full_name, email, bio, location, date_of_birth, gender, church_role, church_name, age_bracket, comprehension_level, onboarding_completed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [
           'current_user',
           profile.fullName,
@@ -376,7 +382,8 @@ export const saveUserProfile = async (profile: UserProfile): Promise<void> => {
           profile.churchRole || null,
           profile.churchName || null,
           profile.ageBracket || null,
-          profile.comprehensionLevel || null
+          profile.comprehensionLevel || null,
+          profile.onboardingCompleted ? 1 : 0
         ]
       );
     } catch (e) {

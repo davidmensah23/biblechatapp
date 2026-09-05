@@ -26,6 +26,7 @@ import {
   updateUserPassword,
   resendVerificationEmail
 } from '../services/supabase';
+import { fetchUserProfile, saveUserProfile } from '../services/database';
 import { MascotAssets } from '../services/mascotAssets';
 
 interface AuthScreenProps {
@@ -106,6 +107,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
       if (error) {
         Alert.alert('Sign In Error', error.message || 'Google sign in could not be completed.');
       } else if (user) {
+        const meta = user.user_metadata;
+        const googleName = meta?.full_name || meta?.name || meta?.given_name;
+        const googleAvatar = meta?.avatar_url || meta?.picture;
+        if (googleName || googleAvatar) {
+          const cur = await fetchUserProfile();
+          await saveUserProfile({
+            ...cur,
+            fullName: googleName || cur.fullName,
+            avatarUrl: googleAvatar || cur.avatarUrl,
+            email: user.email || cur.email
+          });
+        }
         onAuthSuccess();
       }
     } catch (err: any) {
@@ -123,6 +136,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onSkip })
       if (error) {
         Alert.alert('Sign In Error', error.message || 'Apple sign in could not be completed.');
       } else if (user) {
+        const meta = user.user_metadata;
+        const appleName = meta?.full_name || meta?.name;
+        if (appleName) {
+          const cur = await fetchUserProfile();
+          await saveUserProfile({
+            ...cur,
+            fullName: appleName || cur.fullName,
+            email: user.email || cur.email
+          });
+        }
         onAuthSuccess();
       }
     } catch (err: any) {
