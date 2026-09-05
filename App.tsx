@@ -39,7 +39,7 @@ import { clearReadingProgressSession } from './src/services/readingProgressServi
 import { clearDeedsSession } from './src/services/deedsService';
 import { clearGamificationSession } from './src/services/gamificationService';
 import { invalidatePrayerCache } from './src/services/prayerWallService';
-import { pullCloudToLocal } from './src/services/cloudSyncService';
+import { pullCloudToLocal, syncAllToCloud } from './src/services/cloudSyncService';
 import { UserProfile } from './src/types';
 import {
   supabase,
@@ -182,7 +182,8 @@ export default function App() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          migrateGuestDataToUser(session.user.id);
+          await migrateGuestDataToUser(session.user.id);
+          syncAllToCloud().catch(console.warn);
           pullCloudToLocal().catch(console.warn);
           const remoteProfile = await fetchRemoteProfile(session.user.id);
           if (remoteProfile) {
@@ -215,7 +216,8 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         setShowAuthModal(false);
-        migrateGuestDataToUser(session.user.id);
+        await migrateGuestDataToUser(session.user.id);
+        syncAllToCloud().catch(console.warn);
         pullCloudToLocal().catch(console.warn);
 
         const meta = session.user.user_metadata;
@@ -380,6 +382,11 @@ export default function App() {
               <AuthScreen
                 onAuthSuccess={async () => {
                   const { data: { session } } = await supabase.auth.getSession();
+                  if (session?.user?.id) {
+                    await migrateGuestDataToUser(session.user.id);
+                    syncAllToCloud().catch(console.warn);
+                    pullCloudToLocal().catch(console.warn);
+                  }
                   const needs = await checkNeedsPersonalization(session?.user?.id);
                   setAppStage(needs ? 'profile_setup' : 'main');
                 }}
@@ -398,6 +405,11 @@ export default function App() {
             <AuthScreen
               onAuthSuccess={async () => {
                 const { data: { session } } = await supabase.auth.getSession();
+                if (session?.user?.id) {
+                  await migrateGuestDataToUser(session.user.id);
+                  syncAllToCloud().catch(console.warn);
+                  pullCloudToLocal().catch(console.warn);
+                }
                 const needs = await checkNeedsPersonalization(session?.user?.id);
                 setAppStage(needs ? 'profile_setup' : 'main');
               }}

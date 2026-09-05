@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, FlatList, Image, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, FlatList, Image, LayoutAnimation, Platform, UIManager, ToastAndroid } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, FadeOutUp, Layout } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,7 +28,7 @@ import { DailyLiturgyModal } from '../components/DailyLiturgyModal';
 import { getTodayLiturgy, isLiturgyCompletedForToday, DailyLiturgy } from '../services/liturgyService';
 import { getLastReadPosition, LastReadProgress } from '../services/readingProgressService';
 import { ChurchRoleModal } from '../components/ChurchRoleModal';
-import { fetchUserProfile, incrementAndGetSessionCount } from '../services/database';
+import { fetchUserProfile, incrementAndGetSessionCount, saveBookmark } from '../services/database';
 import { ChurchRole } from '../types';
 
 interface HomeScreenProps {
@@ -513,8 +513,26 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
           visible={Boolean(selectedVerse)}
           verse={selectedVerse}
           onClose={() => setSelectedVerse(null)}
+          onBookmark={async (v) => {
+            try {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            } catch (e) {}
+            await saveBookmark({
+              id: `bm_verse_${Date.now()}`,
+              type: 'verse',
+              title: `${v.book} ${v.chapter}:${v.verse}`,
+              content: v.text,
+              reference: `${v.book} ${v.chapter}:${v.verse} (${v.translation || 'NIV'})`,
+              timestamp: Date.now()
+            });
+            if (Platform.OS === 'android') {
+              ToastAndroid.show('Saved to Bookmarks ✓ Find it in your Profile', ToastAndroid.SHORT);
+            }
+            setSelectedVerse(null);
+          }}
         />
       )}
+
 
       {/* Notifications Modal with Live Origin Deep-Linking Navigation */}
       <NotificationsModal

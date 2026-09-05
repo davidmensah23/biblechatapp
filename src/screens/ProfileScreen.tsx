@@ -12,8 +12,10 @@ import {
   RefreshControl,
   Clipboard,
   ToastAndroid,
-  Platform
+  Platform,
+  AppState
 } from 'react-native';
+
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Typography } from '../theme/typography';
@@ -182,7 +184,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   useEffect(() => {
     loadData();
+
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        loadData();
+      }
+    });
+
+    return () => {
+      sub.remove();
+    };
   }, []);
+
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -586,9 +599,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     </View>
                     <View style={styles.activityMeta}>
                       <Text style={styles.activityTitleText}>
-                        Memorized <Text style={{ fontFamily: Typography.fontSansBold }}>{mem.reference}</Text>
+                        {mem.status === 'practicing' ? 'Practicing ' : 'Memorized '}
+                        <Text style={{ fontFamily: Typography.fontSansBold }}>{mem.reference}</Text>
                       </Text>
-                      <Text style={styles.activityTimeText}>Practiced {mem.practiceCount} {mem.practiceCount === 1 ? 'time' : 'times'}</Text>
+                      <Text style={styles.activityTimeText}>
+                        {mem.status === 'practicing' ? 'In progress · ' : 'Mastered · '}Practiced {mem.practiceCount} {mem.practiceCount === 1 ? 'time' : 'times'}
+                      </Text>
                     </View>
                   </View>
 
@@ -961,10 +977,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       </View>
                       <View style={styles.activityMeta}>
                         <Text style={styles.activityTitleText}>
-                          You memorized <Text style={{ fontFamily: Typography.fontSansBold }}>{mem.reference}</Text>
+                          {mem.status === 'practicing' ? 'You are practicing ' : 'You memorized '}
+                          <Text style={{ fontFamily: Typography.fontSansBold }}>{mem.reference}</Text>
                         </Text>
-                        <Text style={styles.activityTimeText}>Practiced {mem.practiceCount} {mem.practiceCount === 1 ? 'time' : 'times'}</Text>
+                        <Text style={styles.activityTimeText}>
+                          {mem.status === 'practicing' ? 'In progress · ' : 'Mastered · '}Practiced {mem.practiceCount} {mem.practiceCount === 1 ? 'time' : 'times'}
+                        </Text>
                       </View>
+
                     </View>
 
                     <TouchableOpacity
@@ -1181,9 +1201,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       {/* 5. Saved Items Modal */}
       <SavedItemsModal
         visible={showSavedModal}
-        onClose={() => setShowSavedModal(false)}
+        onClose={() => {
+          setShowSavedModal(false);
+          loadData();
+        }}
         onOpenVerseInBible={(book, chapter) => {
           setShowSavedModal(false);
+          loadData();
           if (onOpenVerseInBible) {
             onOpenVerseInBible(book, chapter);
           } else if (onOpenBible) {
@@ -1191,6 +1215,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           }
         }}
       />
+
 
       {/* 6. Custom Confirmation Dialog */}
       <CustomConfirmationModal

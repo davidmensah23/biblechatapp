@@ -300,7 +300,7 @@ export const ScriptureMemoryModal: React.FC<ScriptureMemoryModalProps> = ({
     setStage(5);
 
     // Save to Database and award XP
-    await saveMemorizedVerse(reference, verseText, version);
+    await saveMemorizedVerse(reference, verseText, version, 'mastered');
     await recordDailyActivity('verse_memorized', 25);
     if (onMastered) onMastered();
   };
@@ -387,12 +387,16 @@ export const ScriptureMemoryModal: React.FC<ScriptureMemoryModalProps> = ({
             {/* Ready Button */}
             <TouchableOpacity
               style={styles.primaryBtn}
-              onPress={() => setupGameStage(2)}
+              onPress={() => {
+                saveMemorizedVerse(reference, verseText, version, 'practicing').catch(console.warn);
+                setupGameStage(2);
+              }}
               activeOpacity={0.85}
             >
               <Text style={styles.primaryBtnText}>I've Read It · Start Memory Challenge</Text>
               <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
             </TouchableOpacity>
+
           </View>
         )}
 

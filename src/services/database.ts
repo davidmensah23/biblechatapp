@@ -38,7 +38,21 @@ export interface MemorizedVerse {
   version: string;
   masteredAt: number;
   practiceCount: number;
+  status?: 'practicing' | 'mastered';
 }
+
+export type SyncListener = {
+  onBookmarkSaved?: (b: SavedBookmark) => void;
+  onBookmarkRemoved?: (ref: string) => void;
+  onNoteSaved?: (n: VerseNote) => void;
+  onHighlightSaved?: (h: VerseHighlight) => void;
+  onMemorizedSaved?: (m: MemorizedVerse) => void;
+};
+let activeSyncListener: SyncListener | null = null;
+export const registerSyncListener = (listener: SyncListener) => {
+  activeSyncListener = listener;
+};
+
 
 // In-memory fallback if SQLite encounters an issue
 let memoryConversations: ConversationThread[] = [];
@@ -309,10 +323,23 @@ const initTables = async (db: SQLite.SQLiteDatabase) => {
     } catch {
       // Column already exists
     }
+    // Safe migration for memorized_verses status column ('practicing' | 'mastered')
     try {
-      await db.execAsync(`ALTER TABLE user_profile ADD COLUMN onboarding_completed INTEGER DEFAULT 0;`);
+      await db.execAsync(`ALTER TABLE memorized_verses ADD COLUMN status TEXT DEFAULT 'mastered';`);
     } catch {
       // Column already exists
+    }
+
+    // Unique indices for robust non-destructive merging and deduplication
+    try {
+      await db.execAsync(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_bookmarks_user_ref ON bookmarks(user_id, reference);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_memorized_user_ref ON memorized_verses(user_id, reference);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_notes_user_coords ON verse_notes(user_id, book, chapter, verse);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_highlights_user_coords ON verse_highlights(user_id, book, chapter, verse);
+      `);
+    } catch (e) {
+      console.warn('Index creation note:', e);
     }
   } catch (e) {
     console.warn('Table creation note:', e);
@@ -449,22 +476,33 @@ export const fetchBookmarks = async (): Promise<SavedBookmark[]> => {
 
 export const saveBookmark = async (bookmark: SavedBookmark): Promise<void> => {
   const userId = await getCurrentUserId();
+  memoryBookmarks = memoryBookmarks.filter(b => !(b.reference && bookmark.reference && b.reference === bookmark.reference));
   memoryBookmarks.unshift(bookmark);
   const db = await getDB();
   if (db) {
     try {
       await db.runAsync(
-        'INSERT OR REPLACE INTO bookmarks (id, user_id, type, title, content, reference, author, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        `INSERT INTO bookmarks (id, user_id, type, title, content, reference, author, timestamp)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(user_id, reference) DO UPDATE SET
+           title = excluded.title,
+           content = excluded.content,
+           author = excluded.author,
+           timestamp = excluded.timestamp;`,
         [bookmark.id, userId, bookmark.type, bookmark.title, bookmark.content, bookmark.reference || '', bookmark.author || '', bookmark.timestamp]
       );
     } catch (e) {
       console.warn('saveBookmark SQLite error:', e);
     }
   }
+
+  // Background Cloud Sync
+  activeSyncListener?.onBookmarkSaved?.(bookmark);
 };
 
 export const removeBookmark = async (id: string): Promise<void> => {
   const userId = await getCurrentUserId();
+  const target = memoryBookmarks.find(b => b.id === id);
   memoryBookmarks = memoryBookmarks.filter(b => b.id !== id);
   const db = await getDB();
   if (db) {
@@ -474,7 +512,14 @@ export const removeBookmark = async (id: string): Promise<void> => {
       console.warn('removeBookmark SQLite error:', e);
     }
   }
+
+  // Background Cloud Sync
+  if (target?.reference) {
+    activeSyncListener?.onBookmarkRemoved?.(target.reference);
+  }
 };
+
+
 
 export const fetchUserProfile = async (): Promise<UserProfile> => {
   const userId = await getCurrentUserId();
@@ -591,17 +636,33 @@ export const migrateGuestDataToUser = async (newUserId: string): Promise<{
         'group_messages',
         'verse_highlights',
         'verse_notes',
-        'memorized_verses'
+        'memorized_verses',
+        'completed_deeds',
+        'daily_activity_log'
       ];
       for (const t of tables) {
+        // Non-destructive update: existing account records are preserved, guest records fill gaps
         await db.runAsync(
-          `UPDATE ${t} SET user_id = ? WHERE user_id = 'guest_user' OR user_id = ?`,
+          `UPDATE OR IGNORE ${t} SET user_id = ? WHERE user_id = 'guest_user' OR user_id = ?`,
           [newUserId, guestId]
+        );
+        // Clean up any remaining conflicting guest rows so orphaned data is not left behind
+        await db.runAsync(
+          `DELETE FROM ${t} WHERE user_id = 'guest_user' OR user_id = ?`,
+          [guestId]
         );
       }
     } catch (e) {
       console.warn('migrateGuestDataToUser SQLite error:', e);
     }
+  }
+
+  // Update in-memory state keys to point to new user ID
+  for (const k in memoryMemorizedVerses) {
+    const item = memoryMemorizedVerses[k];
+    const newKey = `mem_${newUserId}_${item.reference.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    memoryMemorizedVerses[newKey] = { ...item, id: newKey };
+    if (k !== newKey) delete memoryMemorizedVerses[k];
   }
 
   const bookmarks = await fetchBookmarks();
@@ -619,6 +680,7 @@ export const migrateGuestDataToUser = async (newUserId: string): Promise<{
     conversationsCount: conversations.length
   };
 };
+
 
 // Clear all personal user data upon sign-out to prevent data bleeding across multiple accounts
 export const clearLocalUserSession = async (): Promise<void> => {
@@ -845,7 +907,11 @@ export const saveVerseHighlight = async (
       console.warn('saveVerseHighlight error:', e);
     }
   }
+
+  // Background Cloud Sync
+  activeSyncListener?.onHighlightSaved?.(hl);
 };
+
 
 export const removeVerseHighlight = async (
   book: string,
@@ -970,7 +1036,11 @@ export const saveVerseNote = async (
       console.warn('saveVerseNote error:', e);
     }
   }
+
+  // Background Cloud Sync
+  activeSyncListener?.onNoteSaved?.(noteItem);
 };
+
 
 export const fetchNotesForChapter = async (
   book: string,
@@ -1056,13 +1126,15 @@ export const deleteVerseNote = async (id: string): Promise<void> => {
 export const saveMemorizedVerse = async (
   reference: string,
   verseText: string,
-  version: string = 'NIV'
+  version: string = 'NIV',
+  status: 'practicing' | 'mastered' = 'practicing'
 ): Promise<void> => {
   const userId = await getCurrentUserId();
   const id = `mem_${userId}_${reference.replace(/[^a-zA-Z0-9]/g, '_')}`;
   const now = Date.now();
   const existing = memoryMemorizedVerses[id];
-  const count = existing ? existing.practiceCount + 1 : 1;
+  const count = existing ? existing.practiceCount + (status === 'mastered' ? 1 : 0) : 1;
+  const resolvedStatus = (existing?.status === 'mastered' && status === 'practicing') ? 'mastered' : status;
 
   memoryMemorizedVerses[id] = {
     id,
@@ -1070,25 +1142,32 @@ export const saveMemorizedVerse = async (
     verseText,
     version,
     masteredAt: now,
-    practiceCount: count
+    practiceCount: count,
+    status: resolvedStatus
   };
 
   const db = await getDB();
   if (db) {
     try {
       await db.runAsync(
-        `INSERT INTO memorized_verses (id, user_id, reference, verse_text, version, mastered_at, practice_count)
-         VALUES (?, ?, ?, ?, ?, ?, 1)
-         ON CONFLICT(id) DO UPDATE SET
-           practice_count = practice_count + 1,
+        `INSERT INTO memorized_verses (id, user_id, reference, verse_text, version, mastered_at, practice_count, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(user_id, reference) DO UPDATE SET
+           practice_count = CASE WHEN excluded.status = 'mastered' THEN practice_count + 1 ELSE practice_count END,
+           status = CASE WHEN memorized_verses.status = 'mastered' THEN 'mastered' ELSE excluded.status END,
            mastered_at = excluded.mastered_at;`,
-        [id, userId, reference, verseText, version, now]
+        [id, userId, reference, verseText, version, now, count, resolvedStatus]
       );
     } catch (e) {
       console.warn('saveMemorizedVerse SQLite error:', e);
     }
   }
+
+  // Background Cloud Sync
+  activeSyncListener?.onMemorizedSaved?.(memoryMemorizedVerses[id]);
 };
+
+
 
 export const fetchMemorizedVerses = async (): Promise<MemorizedVerse[]> => {
   const userId = await getCurrentUserId();
@@ -1102,6 +1181,7 @@ export const fetchMemorizedVerses = async (): Promise<MemorizedVerse[]> => {
         version: string;
         mastered_at: number;
         practice_count: number;
+        status?: string;
       }>('SELECT * FROM memorized_verses WHERE user_id = ? ORDER BY mastered_at DESC', [userId]);
       if (rows && rows.length > 0) {
         return rows.map(r => ({
@@ -1110,7 +1190,8 @@ export const fetchMemorizedVerses = async (): Promise<MemorizedVerse[]> => {
           verseText: r.verse_text,
           version: r.version,
           masteredAt: r.mastered_at,
-          practiceCount: r.practice_count || 1
+          practiceCount: r.practice_count || 1,
+          status: (r.status as 'practicing' | 'mastered') || 'mastered'
         }));
       }
     } catch (e) {
@@ -1119,6 +1200,7 @@ export const fetchMemorizedVerses = async (): Promise<MemorizedVerse[]> => {
   }
   return Object.values(memoryMemorizedVerses).filter(m => m.id.startsWith(`mem_${userId}_`));
 };
+
 
 export const isVerseMemorized = async (reference: string): Promise<boolean> => {
   const userId = await getCurrentUserId();
