@@ -322,6 +322,29 @@ const initTables = async (db: SQLite.SQLiteDatabase) => {
         mastered_at INTEGER NOT NULL,
         practice_count INTEGER DEFAULT 1
       );
+
+      CREATE TABLE IF NOT EXISTS completed_deeds (
+        id TEXT PRIMARY KEY NOT NULL,
+        user_id TEXT DEFAULT 'guest_user',
+        deed_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        reflection TEXT,
+        location_name TEXT,
+        latitude REAL,
+        longitude REAL,
+        scripture_ref TEXT,
+        xp_awarded INTEGER NOT NULL,
+        completed_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS daily_activity_log (
+        id TEXT PRIMARY KEY NOT NULL,
+        user_id TEXT DEFAULT 'guest_user',
+        date_str TEXT NOT NULL,
+        activity_type TEXT NOT NULL,
+        xp_earned INTEGER DEFAULT 0,
+        timestamp INTEGER NOT NULL
+      );
     `);
 
     // Safe migrations for user_id column across all local multi-tenant tables
@@ -334,7 +357,9 @@ const initTables = async (db: SQLite.SQLiteDatabase) => {
       'group_messages',
       'verse_highlights',
       'verse_notes',
-      'memorized_verses'
+      'memorized_verses',
+      'completed_deeds',
+      'daily_activity_log'
     ];
     for (const tbl of tablesWithUserId) {
       try {
@@ -409,6 +434,8 @@ const initTables = async (db: SQLite.SQLiteDatabase) => {
         DELETE FROM conversations WHERE rowid NOT IN (SELECT MIN(rowid) FROM conversations GROUP BY user_id, persona_id);
         DELETE FROM group_conversations WHERE rowid NOT IN (SELECT MIN(rowid) FROM group_conversations GROUP BY user_id, name);
         DELETE FROM user_reading_progress WHERE rowid NOT IN (SELECT MIN(rowid) FROM user_reading_progress GROUP BY user_id);
+        DELETE FROM completed_deeds WHERE rowid NOT IN (SELECT MIN(rowid) FROM completed_deeds GROUP BY user_id, deed_id, completed_at);
+        DELETE FROM daily_activity_log WHERE rowid NOT IN (SELECT MIN(rowid) FROM daily_activity_log GROUP BY user_id, date_str, activity_type);
 
         CREATE UNIQUE INDEX IF NOT EXISTS idx_bookmarks_user_ref ON bookmarks(user_id, reference);
         CREATE UNIQUE INDEX IF NOT EXISTS idx_memorized_user_ref ON memorized_verses(user_id, reference);
@@ -417,6 +444,8 @@ const initTables = async (db: SQLite.SQLiteDatabase) => {
         CREATE UNIQUE INDEX IF NOT EXISTS idx_reading_progress_user ON user_reading_progress(user_id);
         CREATE UNIQUE INDEX IF NOT EXISTS idx_conversations_user_persona ON conversations(user_id, persona_id);
         CREATE UNIQUE INDEX IF NOT EXISTS idx_group_conv_user_name ON group_conversations(user_id, name);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_completed_deeds_user_deed_at ON completed_deeds(user_id, deed_id, completed_at);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_activity_log_user_date_type ON daily_activity_log(user_id, date_str, activity_type);
       `);
     } catch (idxErr) {
       console.warn('Error deduplicating and creating local unique indexes:', idxErr);
@@ -757,8 +786,8 @@ export const migrateGuestDataToUser = async (newUserId: string): Promise<{
 
       // 5. Completed Deeds: INSERT OR IGNORE
       await db.runAsync(
-        `INSERT OR IGNORE INTO completed_deeds (id, user_id, deed_id, title, category, scripture, completed_date, xp_awarded, synced)
-         SELECT 'deed_' || ? || '_' || deed_id || '_' || completed_date, ?, deed_id, title, category, scripture, completed_date, xp_awarded, 0
+        `INSERT OR IGNORE INTO completed_deeds (id, user_id, deed_id, title, reflection, location_name, latitude, longitude, scripture_ref, xp_awarded, completed_at, synced)
+         SELECT 'deed_' || ? || '_' || deed_id || '_' || completed_at, ?, deed_id, title, reflection, location_name, latitude, longitude, scripture_ref, xp_awarded, completed_at, 0
          FROM completed_deeds WHERE user_id = 'guest_user' OR user_id = ?;`,
         [newUserId, newUserId, guestId]
       );
@@ -766,8 +795,8 @@ export const migrateGuestDataToUser = async (newUserId: string): Promise<{
 
       // 6. Daily Activity Log: INSERT OR IGNORE
       await db.runAsync(
-        `INSERT OR IGNORE INTO daily_activity_log (id, user_id, activity_date, xp_earned, actions_count, synced)
-         SELECT 'act_' || ? || '_' || activity_date, ?, activity_date, xp_earned, actions_count, 0
+        `INSERT OR IGNORE INTO daily_activity_log (id, user_id, date_str, activity_type, xp_earned, timestamp, synced)
+         SELECT 'act_' || ? || '_' || date_str || '_' || activity_type, ?, date_str, activity_type, xp_earned, timestamp, 0
          FROM daily_activity_log WHERE user_id = 'guest_user' OR user_id = ?;`,
         [newUserId, newUserId, guestId]
       );
@@ -1671,10 +1700,23 @@ export const saveRemoteCompletedDeed = async (d: any): Promise<void> => {
   const db = await getDB();
   if (db) {
     try {
+      const completedAt = d.completed_date ? new Date(d.completed_date).getTime() : (d.completed_at || Date.now());
       await db.runAsync(
-        `INSERT OR REPLACE INTO completed_deeds (id, user_id, deed_id, title, category, scripture, completed_date, xp_awarded, synced)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1);`,
-        [d.id, userId, d.deed_id, d.title, d.category || '', d.scripture || '', d.completed_date, d.xp_awarded || 50]
+        `INSERT OR REPLACE INTO completed_deeds (id, user_id, deed_id, title, reflection, location_name, latitude, longitude, scripture_ref, xp_awarded, completed_at, synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1);`,
+        [
+          d.id,
+          userId,
+          d.deed_id,
+          d.title,
+          d.reflection || '',
+          d.location_name || '',
+          d.latitude || null,
+          d.longitude || null,
+          d.scripture || d.scripture_ref || '',
+          d.xp_awarded || 50,
+          completedAt
+        ]
       );
     } catch (e) {
       console.warn('saveRemoteCompletedDeed error:', e);
