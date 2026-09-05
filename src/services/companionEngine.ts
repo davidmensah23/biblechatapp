@@ -7,6 +7,9 @@ export interface UserProfileMemory {
   location?: string;
   bio?: string;
   gender?: string;
+  churchRole?: string;
+  ageBracket?: string;
+  comprehensionLevel?: string;
 }
 
 export type ConversationMode =
@@ -193,15 +196,37 @@ ${persona.systemPrompt}
 
   // LAYER 2: Memory & Personalization Layer
   if (userProfile && userProfile.fullName) {
-    prompt += `\n=== USER RELATIONSHIP & FIRST-NAME ADDRESS ===
-- User's First Name: ${firstName} (Full Name: ${userProfile.fullName})
-- NATURAL ADDRESS RULE (CRITICAL): When speaking to the user, address them naturally by their first name ("${firstName}"). NEVER say their full legal name ("${userProfile.fullName}"), and do NOT repeatedly append "brother ${firstName}" or "sister ${firstName}" to every reply. Speak as an authentic, loving apostolic mentor.
-${userProfile.bio ? `- User's Faith Background / Note: "${userProfile.bio}"` : ''}
+    const compLevel = userProfile.comprehensionLevel || 'growing_believer';
+    const role = userProfile.churchRole || 'member';
+    const age = userProfile.ageBracket || 'adult';
 
-Memory Usage Rule:
-- Address ${firstName} warmly and naturally by first name with pastoral care.
-- Never robotically regurgitate their profile details back to them.
-`;
+    prompt += `\n=== USER RELATIONSHIP & PERSONALIZATION ===
+- User's First Name: ${firstName} (Full Name: ${userProfile.fullName})
+- Gender Context: ${userProfile.gender || 'neutral'}
+- Age Group: ${age}
+- Church Background: ${role}
+- Comprehension & Study Depth: ${compLevel.toUpperCase()}
+
+PERSONALIZED TONE & DYNAMIC VOCABULARY TAGGING:
+- Address ${firstName} warmly and naturally by first name without repetitive formulas or saying their full name.`;
+
+    if (compLevel === 'plain_simple') {
+      prompt += `
+- PLAIN & SIMPLE COMPREHENSION: The user is newer to faith or prefers clear, conversational language. Avoid heavy seminary jargon. Whenever you introduce an unfamiliar theological term, big grammar word, archaic phrase, or original Greek/Hebrew term (e.g. katakrima, propitiation, justification, sanhedrin, denarius, sanctification, gavel), proactively tag it using: [[term|1-sentence simple plain-English definition]] so the app displays a tap-to-define pill!
+  Example: "There is now no [[katakrima|A final Roman judicial decree of guilt and penalty]] for those in Christ."`;
+    } else if (compLevel === 'deep_exegesis') {
+      prompt += `
+- DEEP EXEGESIS: The user desires rich historical-grammatical depth. Provide original Greek and Hebrew nuances, historical Roman context, and deep cross-references. You may still tag key Greek/Hebrew or historical terms with [[term|concise precision definition]] when helpful.`;
+    } else {
+      prompt += `
+- GROWING BELIEVER: Balance brotherly warmth with biblical depth. Proactively explain 1st-century background, and tag complex theological terms or Greek/Hebrew roots with [[term|1-sentence simple definition]] when introducing them.`;
+    }
+
+    if (userProfile.bio) {
+      prompt += `\n- Faith Background / Note: "${userProfile.bio}"`;
+    }
+
+    prompt += `\n`;
   }
 
   // LAYER 3: Conversation Mode Adaptation

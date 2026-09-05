@@ -106,7 +106,11 @@ export const DEFAULT_PROFILE: UserProfile = {
   email: 'seeker@akorno.app',
   bio: 'Seeker of Christ and student of the Word.',
   location: 'Faith Journey',
-  dateOfBirth: '2025'
+  dateOfBirth: '2025',
+  gender: 'neutral',
+  churchRole: 'seeker',
+  ageBracket: '18-24',
+  comprehensionLevel: 'growing_believer'
 };
 
 // Google Sign-In (Native Android Bottom Sheet Picker + WebBrowser Fallback)

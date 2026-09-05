@@ -57,6 +57,8 @@ export interface SavedBookmark {
 
 export type ChurchRole = 'pastor' | 'leader' | 'member' | 'seeker';
 
+export type ComprehensionLevel = 'plain_simple' | 'growing_believer' | 'deep_exegesis';
+
 export interface UserProfile {
   id?: string;
   fullName: string;
@@ -66,8 +68,10 @@ export interface UserProfile {
   dateOfBirth: string;
   avatarUrl?: string;
   gender?: 'brother' | 'sister' | 'neutral' | string;
-  churchRole?: ChurchRole;
+  churchRole?: ChurchRole | string;
   churchName?: string;
+  ageBracket?: string;
+  comprehensionLevel?: ComprehensionLevel;
 }
 
 export interface AppNotification {

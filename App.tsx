@@ -22,6 +22,7 @@ import {
 } from '@expo-google-fonts/lora';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { AuthScreen } from './src/screens/AuthScreen';
+import { PersonalizationScreen } from './src/screens/PersonalizationScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { ChatListScreen } from './src/screens/ChatListScreen';
 import { ChatDetailScreen } from './src/screens/ChatDetailScreen';
@@ -60,7 +61,7 @@ installAlertInterceptor();
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-type AppStage = 'onboarding' | 'auth' | 'main' | 'checking';
+type AppStage = 'onboarding' | 'auth' | 'profile_setup' | 'main' | 'checking';
 
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({
@@ -297,14 +298,10 @@ export default function App() {
             >
               <AuthScreen
                 onAuthSuccess={() => {
-                  setHasCompletedOnboarding(true);
-                  setAppStage('main');
-                  setShowPrivacyNotice(true);
+                  setAppStage('profile_setup');
                 }}
                 onSkip={() => {
-                  setHasCompletedOnboarding(true);
-                  setAppStage('main');
-                  setShowPrivacyNotice(true);
+                  setAppStage('profile_setup');
                 }}
               />
             </CircularRevealTransition>
@@ -317,12 +314,24 @@ export default function App() {
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
             <AuthScreen
               onAuthSuccess={() => {
-                setHasCompletedOnboarding(true);
-                setAppStage('main');
-                setShowPrivacyNotice(true);
+                setAppStage('profile_setup');
               }}
               onSkip={() => {
-                setHasCompletedOnboarding(true);
+                setAppStage('profile_setup');
+              }}
+            />
+          </View>
+        </ScreenTransition>
+      ) : appStage === 'profile_setup' ? (
+        /* 2b. Minimalist Plain-Screen Personalization Questionnaire */
+        <ScreenTransition transitionKey="profile_setup">
+          <View style={styles.flexOne}>
+            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+            <PersonalizationScreen
+              onComplete={async () => {
+                await setHasCompletedOnboarding(true);
+                const p = await fetchUserProfile();
+                if (p) setUserProfile(p);
                 setAppStage('main');
                 setShowPrivacyNotice(true);
               }}

@@ -250,7 +250,10 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
               fullName: userProfile.fullName,
               location: userProfile.location || 'Ghana',
               bio: userProfile.bio,
-              gender: userProfile.gender
+              gender: userProfile.gender,
+              churchRole: userProfile.churchRole,
+              ageBracket: userProfile.ageBracket,
+              comprehensionLevel: userProfile.comprehensionLevel
             }
           : undefined
       );

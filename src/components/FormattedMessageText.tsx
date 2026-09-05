@@ -79,10 +79,40 @@ function renderTokensWithGlossary(
   baseFontSize: number,
   onSelectWord?: (entry: GlossaryEntry) => void
 ): React.ReactNode[] {
-  // 1. Split by bold (**text**) and italic (*text*)
-  const tokens = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+  // 1. Split by dynamic [[term|definition]], bold (**text**) and italic (*text*)
+  const tokens = text.split(/(\[\[[^\]]+\]\]|\*\*[^*]+\*\*|\*[^*]+\*)/g);
 
   return tokens.map((token, idx) => {
+    // Dynamic AI glossary tag: [[term|definition]] or [[term|definition|origin]]
+    if (token.startsWith('[[') && token.endsWith(']]')) {
+      const inner = token.slice(2, -2);
+      const parts = inner.split('|');
+      const term = parts[0]?.trim() || '';
+      const definition = parts[1]?.trim() || '';
+      const origin = parts[2]?.trim() || 'Apostolic Insight';
+
+      const entry: GlossaryEntry = {
+        term: term.charAt(0).toUpperCase() + term.slice(1),
+        category: 'historical_idiom',
+        originLabel: origin,
+        definition: definition || 'A significant biblical, cultural, or theological term.',
+        exampleContext: text.length > 120 ? text.slice(0, 120) + '...' : text
+      };
+
+      if (onSelectWord) {
+        return (
+          <Text
+            key={idx}
+            style={styles.glossaryWord}
+            onPress={() => onSelectWord(entry)}
+          >
+            {term}
+          </Text>
+        );
+      }
+      return <Text key={idx}>{term}</Text>;
+    }
+
     // Bold tokens
     if (token.startsWith('**') && token.endsWith('**')) {
       const inner = token.slice(2, -2);
