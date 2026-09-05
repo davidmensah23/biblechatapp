@@ -47,10 +47,43 @@ export type SyncListener = {
   onNoteSaved?: (n: VerseNote) => void;
   onHighlightSaved?: (h: VerseHighlight) => void;
   onMemorizedSaved?: (m: MemorizedVerse) => void;
+  onConversationSaved?: (c: ConversationThread) => void;
+  onMessageSaved?: (m: ChatMessage, conversationId: string) => void;
+  onGroupThreadSaved?: (t: GroupCouncilThread) => void;
+  onGroupMessageSaved?: (m: GroupCouncilMessage) => void;
+  onReadingProgressSaved?: (p: any) => void;
+  onDeedCompleted?: (d: any) => void;
+  onActivityLogged?: (a: any) => void;
 };
 let activeSyncListener: SyncListener | null = null;
 export const registerSyncListener = (listener: SyncListener) => {
   activeSyncListener = listener;
+};
+export const getActiveSyncListener = (): SyncListener | null => activeSyncListener;
+
+export const markRecordSynced = async (table: string, id: string): Promise<void> => {
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync(`UPDATE ${table} SET synced = 1 WHERE id = ?`, [id]);
+    } catch (e) {
+      console.warn(`markRecordSynced on ${table} error:`, e);
+    }
+  }
+};
+
+export const fetchPendingSyncRecords = async (table: string): Promise<any[]> => {
+  const userId = await getCurrentUserId();
+  const db = await getDB();
+  if (db) {
+    try {
+      const rows = await db.getAllAsync<any>(`SELECT * FROM ${table} WHERE user_id = ? AND synced = 0`, [userId]);
+      return rows || [];
+    } catch (e) {
+      return [];
+    }
+  }
+  return [];
 };
 
 // Internal pub/sub for local UI components to instantly react to database mutations
@@ -311,6 +344,28 @@ const initTables = async (db: SQLite.SQLiteDatabase) => {
       }
     }
 
+    // Safe migration for synced column across all multi-tenant tables
+    const tablesWithSynced = [
+      'bookmarks',
+      'memorized_verses',
+      'verse_notes',
+      'verse_highlights',
+      'conversations',
+      'messages',
+      'group_conversations',
+      'group_messages',
+      'user_reading_progress',
+      'completed_deeds',
+      'daily_activity_log'
+    ];
+    for (const tbl of tablesWithSynced) {
+      try {
+        await db.execAsync(`ALTER TABLE ${tbl} ADD COLUMN synced INTEGER DEFAULT 1;`);
+      } catch {
+        // Column already exists
+      }
+    }
+
     // Safe migration for user_profile columns
     try {
       await db.execAsync(`ALTER TABLE user_profile ADD COLUMN gender TEXT DEFAULT 'neutral';`);
@@ -342,6 +397,21 @@ const initTables = async (db: SQLite.SQLiteDatabase) => {
       await db.execAsync(`ALTER TABLE memorized_verses ADD COLUMN status TEXT DEFAULT 'mastered';`);
     } catch {
       // Column already exists
+    }
+
+    // Create unique indexes to support ON CONFLICT and ensure multi-tenant deduplication
+    try {
+      await db.execAsync(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_bookmarks_user_ref ON bookmarks(user_id, reference);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_memorized_user_ref ON memorized_verses(user_id, reference);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_verse_notes_user_bcv ON verse_notes(user_id, book, chapter, verse);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_verse_hl_user_bcv ON verse_highlights(user_id, book, chapter, verse);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_reading_progress_user ON user_reading_progress(user_id);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_conversations_user_persona ON conversations(user_id, persona_id);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_group_conv_user_name ON group_conversations(user_id, name);
+      `);
+    } catch (idxErr) {
+      console.warn('Error creating local unique indexes:', idxErr);
     }
 
     // Unique indices for robust non-destructive merging and deduplication
@@ -449,12 +519,12 @@ export const saveMessage = async (msg: ChatMessage, personaName: string, persona
   if (db) {
     try {
       await db.runAsync(
-        'INSERT OR REPLACE INTO messages (id, user_id, conversation_id, sender, content, timestamp, bookmarked) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        'INSERT OR REPLACE INTO messages (id, user_id, conversation_id, sender, content, timestamp, bookmarked, synced) VALUES (?, ?, ?, ?, ?, ?, ?, 0)',
         [msg.id, userId, msg.conversationId, msg.sender, msg.content, msg.timestamp, msg.bookmarked ? 1 : 0]
       );
 
       await db.runAsync(
-        'INSERT OR REPLACE INTO conversations (id, user_id, persona_id, persona_name, last_message, last_message_sender, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        'INSERT OR REPLACE INTO conversations (id, user_id, persona_id, persona_name, last_message, last_message_sender, updated_at, synced) VALUES (?, ?, ?, ?, ?, ?, ?, 0)',
         [msg.conversationId, userId, personaId, personaName, preview, msg.sender, msg.timestamp]
       );
 
@@ -465,6 +535,11 @@ export const saveMessage = async (msg: ChatMessage, personaName: string, persona
       console.warn('saveMessage SQLite error:', e);
     }
   }
+
+  // Background Cloud Sync
+  activeSyncListener?.onMessageSaved?.(msg, msg.conversationId);
+  activeSyncListener?.onConversationSaved?.(convItem);
+  notifyDatabaseChanged();
 };
 
 export const fetchBookmarks = async (): Promise<SavedBookmark[]> => {
@@ -502,13 +577,14 @@ export const saveBookmark = async (bookmark: SavedBookmark): Promise<void> => {
   if (db) {
     try {
       await db.runAsync(
-        `INSERT INTO bookmarks (id, user_id, type, title, content, reference, author, timestamp)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO bookmarks (id, user_id, type, title, content, reference, author, timestamp, synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
          ON CONFLICT(user_id, reference) DO UPDATE SET
            title = excluded.title,
            content = excluded.content,
            author = excluded.author,
-           timestamp = excluded.timestamp;`,
+           timestamp = excluded.timestamp,
+           synced = 0;`,
         [bookmark.id, userId, bookmark.type, bookmark.title, bookmark.content, bookmark.reference || '', bookmark.author || '', bookmark.timestamp]
       );
     } catch (e) {
@@ -651,8 +727,8 @@ export const migrateGuestDataToUser = async (newUserId: string): Promise<{
     try {
       // 1. Bookmarks: INSERT ... ON CONFLICT DO NOTHING
       await db.runAsync(
-        `INSERT INTO bookmarks (id, user_id, type, title, content, reference, author, timestamp)
-         SELECT 'bm_' || ? || '_' || hex(randomblob(6)), ?, type, title, content, reference, author, timestamp
+        `INSERT INTO bookmarks (id, user_id, type, title, content, reference, author, timestamp, synced)
+         SELECT 'bm_' || ? || '_' || hex(randomblob(6)), ?, type, title, content, reference, author, timestamp, 0
          FROM bookmarks WHERE user_id = 'guest_user' OR user_id = ?
          ON CONFLICT(user_id, reference) DO NOTHING;`,
         [newUserId, newUserId, guestId]
@@ -661,8 +737,8 @@ export const migrateGuestDataToUser = async (newUserId: string): Promise<{
 
       // 2. Memorized Verses: INSERT ... ON CONFLICT DO NOTHING
       await db.runAsync(
-        `INSERT INTO memorized_verses (id, user_id, reference, verse_text, version, mastered_at, practice_count, status)
-         SELECT 'mem_' || ? || '_' || REPLACE(reference, ' ', '_'), ?, reference, verse_text, version, mastered_at, practice_count, status
+        `INSERT INTO memorized_verses (id, user_id, reference, verse_text, version, mastered_at, practice_count, status, synced)
+         SELECT 'mem_' || ? || '_' || REPLACE(reference, ' ', '_'), ?, reference, verse_text, version, mastered_at, practice_count, status, 0
          FROM memorized_verses WHERE user_id = 'guest_user' OR user_id = ?
          ON CONFLICT(user_id, reference) DO NOTHING;`,
         [newUserId, newUserId, guestId]
@@ -671,8 +747,8 @@ export const migrateGuestDataToUser = async (newUserId: string): Promise<{
 
       // 3. Verse Notes: INSERT ... ON CONFLICT DO NOTHING
       await db.runAsync(
-        `INSERT INTO verse_notes (id, user_id, book, chapter, verse, reference, verse_text, note_text, timestamp)
-         SELECT 'note_' || ? || '_' || book || '_' || chapter || '_' || verse, ?, book, chapter, verse, reference, verse_text, note_text, timestamp
+        `INSERT INTO verse_notes (id, user_id, book, chapter, verse, reference, verse_text, note_text, timestamp, synced)
+         SELECT 'note_' || ? || '_' || book || '_' || chapter || '_' || verse, ?, book, chapter, verse, reference, verse_text, note_text, timestamp, 0
          FROM verse_notes WHERE user_id = 'guest_user' OR user_id = ?
          ON CONFLICT(user_id, book, chapter, verse) DO NOTHING;`,
         [newUserId, newUserId, guestId]
@@ -681,8 +757,8 @@ export const migrateGuestDataToUser = async (newUserId: string): Promise<{
 
       // 4. Verse Highlights: INSERT ... ON CONFLICT DO NOTHING
       await db.runAsync(
-        `INSERT INTO verse_highlights (id, user_id, book, chapter, verse, color, verse_text, timestamp)
-         SELECT 'hl_' || ? || '_' || book || '_' || chapter || '_' || verse, ?, book, chapter, verse, color, verse_text, timestamp
+        `INSERT INTO verse_highlights (id, user_id, book, chapter, verse, color, verse_text, timestamp, synced)
+         SELECT 'hl_' || ? || '_' || book || '_' || chapter || '_' || verse, ?, book, chapter, verse, color, verse_text, timestamp, 0
          FROM verse_highlights WHERE user_id = 'guest_user' OR user_id = ?
          ON CONFLICT(user_id, book, chapter, verse) DO NOTHING;`,
         [newUserId, newUserId, guestId]
@@ -691,8 +767,8 @@ export const migrateGuestDataToUser = async (newUserId: string): Promise<{
 
       // 5. Completed Deeds: INSERT OR IGNORE
       await db.runAsync(
-        `INSERT OR IGNORE INTO completed_deeds (id, user_id, deed_id, title, category, scripture, completed_date, xp_awarded)
-         SELECT 'deed_' || ? || '_' || deed_id || '_' || completed_date, ?, deed_id, title, category, scripture, completed_date, xp_awarded
+        `INSERT OR IGNORE INTO completed_deeds (id, user_id, deed_id, title, category, scripture, completed_date, xp_awarded, synced)
+         SELECT 'deed_' || ? || '_' || deed_id || '_' || completed_date, ?, deed_id, title, category, scripture, completed_date, xp_awarded, 0
          FROM completed_deeds WHERE user_id = 'guest_user' OR user_id = ?;`,
         [newUserId, newUserId, guestId]
       );
@@ -700,8 +776,8 @@ export const migrateGuestDataToUser = async (newUserId: string): Promise<{
 
       // 6. Daily Activity Log: INSERT OR IGNORE
       await db.runAsync(
-        `INSERT OR IGNORE INTO daily_activity_log (id, user_id, activity_date, xp_earned, actions_count)
-         SELECT 'act_' || ? || '_' || activity_date, ?, activity_date, xp_earned, actions_count
+        `INSERT OR IGNORE INTO daily_activity_log (id, user_id, activity_date, xp_earned, actions_count, synced)
+         SELECT 'act_' || ? || '_' || activity_date, ?, activity_date, xp_earned, actions_count, 0
          FROM daily_activity_log WHERE user_id = 'guest_user' OR user_id = ?;`,
         [newUserId, newUserId, guestId]
       );
@@ -709,8 +785,8 @@ export const migrateGuestDataToUser = async (newUserId: string): Promise<{
 
       // 7. User Reading Progress: INSERT OR IGNORE
       await db.runAsync(
-        `INSERT OR IGNORE INTO user_reading_progress (id, user_id, book, chapter, verse, translation, snippet, estimated_minutes, updated_at)
-         SELECT 'current_' || ?, ?, book, chapter, verse, translation, snippet, estimated_minutes, updated_at
+        `INSERT OR IGNORE INTO user_reading_progress (id, user_id, book, chapter, verse, translation, snippet, estimated_minutes, updated_at, synced)
+         SELECT 'current_' || ?, ?, book, chapter, verse, translation, snippet, estimated_minutes, updated_at, 0
          FROM user_reading_progress WHERE user_id = 'guest_user' OR user_id = ?;`,
         [newUserId, newUserId, guestId]
       );
@@ -729,17 +805,43 @@ export const migrateGuestDataToUser = async (newUserId: string): Promise<{
           );
           if (!userConv) {
             await db.runAsync(
-              `INSERT OR REPLACE INTO conversations (id, user_id, persona_id, persona_name, last_message, last_message_sender, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?)`,
+              `INSERT OR REPLACE INTO conversations (id, user_id, persona_id, persona_name, last_message, last_message_sender, updated_at, synced)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
               [gc.id, newUserId, gc.persona_id, gc.persona_name, gc.last_message, gc.last_message_sender, gc.updated_at]
             );
           }
           await db.runAsync(
-            `UPDATE messages SET user_id = ? WHERE (user_id = 'guest_user' OR user_id = ?) AND conversation_id = ?`,
+            `UPDATE messages SET user_id = ?, synced = 0 WHERE (user_id = 'guest_user' OR user_id = ?) AND conversation_id = ?`,
             [newUserId, guestId, gc.id]
           );
         }
         await db.runAsync(`DELETE FROM conversations WHERE user_id = 'guest_user' OR user_id = ?;`, [guestId]);
+      }
+
+      // 9. Group Conversations & Group Messages
+      const guestGroupThreads = await db.getAllAsync<any>(
+        `SELECT * FROM group_conversations WHERE user_id = 'guest_user' OR user_id = ?`,
+        [guestId]
+      );
+      if (guestGroupThreads && guestGroupThreads.length > 0) {
+        for (const gt of guestGroupThreads) {
+          const userThread = await db.getFirstAsync<any>(
+            `SELECT id FROM group_conversations WHERE user_id = ? AND name = ?`,
+            [newUserId, gt.name]
+          );
+          if (!userThread) {
+            await db.runAsync(
+              `INSERT OR REPLACE INTO group_conversations (id, user_id, name, topic, member_apostle_ids, last_message, last_message_sender_name, updated_at, synced)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+              [gt.id, newUserId, gt.name, gt.topic, gt.member_apostle_ids, gt.last_message, gt.last_message_sender_name, gt.updated_at]
+            );
+          }
+          await db.runAsync(
+            `UPDATE group_messages SET user_id = ?, synced = 0 WHERE (user_id = 'guest_user' OR user_id = ?) AND thread_id = ?`,
+            [newUserId, guestId, gt.id]
+          );
+        }
+        await db.runAsync(`DELETE FROM group_conversations WHERE user_id = 'guest_user' OR user_id = ?;`, [guestId]);
       }
     } catch (e) {
       console.warn('migrateGuestDataToUser SQLite error:', e);
@@ -834,14 +936,17 @@ export const createGroupThread = async (
   if (db) {
     try {
       await db.runAsync(
-        `INSERT OR REPLACE INTO group_conversations (id, user_id, name, topic, member_apostle_ids, last_message, last_message_sender_name, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO group_conversations (id, user_id, name, topic, member_apostle_ids, last_message, last_message_sender_name, updated_at, synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
         [newThread.id, userId, newThread.name, newThread.topic, JSON.stringify(newThread.memberApostleIds), newThread.lastMessage, newThread.lastMessageSenderName, newThread.updatedAt]
       );
     } catch (e) {
       console.warn('createGroupThread SQLite error:', e);
     }
   }
+
+  activeSyncListener?.onGroupThreadSaved?.(newThread);
+  notifyDatabaseChanged();
 
   return newThread;
 };
@@ -927,8 +1032,8 @@ export const saveGroupMessage = async (
   if (db) {
     try {
       await db.runAsync(
-        `INSERT OR REPLACE INTO group_messages (id, user_id, thread_id, sender_type, apostle_id, apostle_name, content, timestamp, reply_to, mentions, bookmarked)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO group_messages (id, user_id, thread_id, sender_type, apostle_id, apostle_name, content, timestamp, reply_to, mentions, bookmarked, synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
         [
           msg.id,
           userId,
@@ -945,13 +1050,16 @@ export const saveGroupMessage = async (
       );
 
       await db.runAsync(
-        `UPDATE group_conversations SET last_message = ?, last_message_sender_name = ?, updated_at = ? WHERE id = ? AND user_id = ?`,
+        `UPDATE group_conversations SET last_message = ?, last_message_sender_name = ?, updated_at = ?, synced = 0 WHERE id = ? AND user_id = ?`,
         [lastMsgSnippet, senderLabel, msg.timestamp, msg.threadId, userId]
       );
     } catch (e) {
       console.warn('saveGroupMessage SQLite error:', e);
     }
   }
+
+  activeSyncListener?.onGroupMessageSaved?.(msg);
+  notifyDatabaseChanged();
 };
 
 export const deleteGroupThread = async (threadId: string): Promise<void> => {
@@ -990,8 +1098,8 @@ export const saveVerseHighlight = async (
   if (db) {
     try {
       await db.runAsync(
-        `INSERT OR REPLACE INTO verse_highlights (id, user_id, book, chapter, verse, color, verse_text, timestamp)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO verse_highlights (id, user_id, book, chapter, verse, color, verse_text, timestamp, synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
         [id, userId, book, chapter, verse, color, verseText, hl.timestamp]
       );
     } catch (e) {
@@ -1121,8 +1229,8 @@ export const saveVerseNote = async (
   if (db) {
     try {
       await db.runAsync(
-        `INSERT OR REPLACE INTO verse_notes (id, user_id, book, chapter, verse, reference, verse_text, note_text, timestamp)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO verse_notes (id, user_id, book, chapter, verse, reference, verse_text, note_text, timestamp, synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
         [id, userId, book, chapter, verse, reference, verseText, noteText, noteItem.timestamp]
       );
     } catch (e) {
@@ -1245,12 +1353,13 @@ export const saveMemorizedVerse = async (
   if (db) {
     try {
       await db.runAsync(
-        `INSERT INTO memorized_verses (id, user_id, reference, verse_text, version, mastered_at, practice_count, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO memorized_verses (id, user_id, reference, verse_text, version, mastered_at, practice_count, status, synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
          ON CONFLICT(user_id, reference) DO UPDATE SET
            practice_count = CASE WHEN excluded.status = 'mastered' THEN practice_count + 1 ELSE practice_count END,
            status = CASE WHEN memorized_verses.status = 'mastered' THEN 'mastered' ELSE excluded.status END,
-           mastered_at = excluded.mastered_at;`,
+           mastered_at = excluded.mastered_at,
+           synced = 0;`,
         [id, userId, reference, verseText, version, now, count, resolvedStatus]
       );
     } catch (e) {
@@ -1329,17 +1438,30 @@ export const saveDatabaseReadingProgress = async (
   const db = await getDB();
   const now = Date.now();
   const id = `current_${userId}`;
+  const progressObj = {
+    id,
+    user_id: userId,
+    book,
+    chapter,
+    verse: verse || 1,
+    translation,
+    snippet: snippet || '',
+    estimated_minutes: estimatedMinutes || 3,
+    updated_at: now
+  };
   if (db) {
     try {
       await db.runAsync(
-        `INSERT OR REPLACE INTO user_reading_progress (id, user_id, book, chapter, verse, translation, snippet, estimated_minutes, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO user_reading_progress (id, user_id, book, chapter, verse, translation, snippet, estimated_minutes, updated_at, synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
         [id, userId, book, chapter, verse || 1, translation, snippet || '', estimatedMinutes || 3, now]
       );
     } catch (e) {
       console.warn('Error saving user_reading_progress to SQLite:', e);
     }
   }
+  activeSyncListener?.onReadingProgressSaved?.(progressObj);
+  notifyDatabaseChanged();
 };
 
 export const fetchDatabaseReadingProgress = async (): Promise<any | null> => {
@@ -1369,3 +1491,220 @@ export const fetchDatabaseReadingProgress = async (): Promise<any | null> => {
   }
   return null;
 };
+
+// =========================================================================
+// REMOTE SYNC RECONCILIATION HELPERS (synced = 1, silent pull)
+// =========================================================================
+
+export const saveRemoteBookmark = async (b: SavedBookmark): Promise<void> => {
+  const userId = await getCurrentUserId();
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync(
+        `INSERT INTO bookmarks (id, user_id, type, title, content, reference, author, timestamp, synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+         ON CONFLICT(user_id, reference) DO UPDATE SET
+           title = excluded.title,
+           content = excluded.content,
+           author = excluded.author,
+           timestamp = excluded.timestamp,
+           synced = 1;`,
+        [b.id, userId, b.type, b.title, b.content, b.reference || '', b.author || '', b.timestamp]
+      );
+    } catch (e) {
+      console.warn('saveRemoteBookmark error:', e);
+    }
+  }
+};
+
+export const saveRemoteMemorizedVerse = async (m: MemorizedVerse): Promise<void> => {
+  const userId = await getCurrentUserId();
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync(
+        `INSERT INTO memorized_verses (id, user_id, reference, verse_text, version, mastered_at, practice_count, status, synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+         ON CONFLICT(user_id, reference) DO UPDATE SET
+           verse_text = excluded.verse_text,
+           version = excluded.version,
+           mastered_at = excluded.mastered_at,
+           practice_count = excluded.practice_count,
+           status = excluded.status,
+           synced = 1;`,
+        [m.id, userId, m.reference, m.verseText, m.version, m.masteredAt, m.practiceCount, m.status || 'mastered']
+      );
+    } catch (e) {
+      console.warn('saveRemoteMemorizedVerse error:', e);
+    }
+  }
+};
+
+export const saveRemoteVerseNote = async (n: VerseNote): Promise<void> => {
+  const userId = await getCurrentUserId();
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync(
+        `INSERT INTO verse_notes (id, user_id, book, chapter, verse, reference, verse_text, note_text, timestamp, synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+         ON CONFLICT(user_id, book, chapter, verse) DO UPDATE SET
+           verse_text = excluded.verse_text,
+           note_text = excluded.note_text,
+           timestamp = excluded.timestamp,
+           synced = 1;`,
+        [n.id, userId, n.book, n.chapter, n.verse, n.reference, n.verseText, n.noteText, n.timestamp]
+      );
+    } catch (e) {
+      console.warn('saveRemoteVerseNote error:', e);
+    }
+  }
+};
+
+export const saveRemoteVerseHighlight = async (h: VerseHighlight): Promise<void> => {
+  const userId = await getCurrentUserId();
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync(
+        `INSERT INTO verse_highlights (id, user_id, book, chapter, verse, color, verse_text, timestamp, synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+         ON CONFLICT(user_id, book, chapter, verse) DO UPDATE SET
+           color = excluded.color,
+           verse_text = excluded.verse_text,
+           timestamp = excluded.timestamp,
+           synced = 1;`,
+        [h.id, userId, h.book, h.chapter, h.verse, h.color, h.verseText, h.timestamp]
+      );
+    } catch (e) {
+      console.warn('saveRemoteVerseHighlight error:', e);
+    }
+  }
+};
+
+export const saveRemoteConversation = async (c: ConversationThread): Promise<void> => {
+  const userId = await getCurrentUserId();
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO conversations (id, user_id, persona_id, persona_name, last_message, last_message_sender, updated_at, synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 1);`,
+        [c.id, userId, c.personaId, c.personaName, c.lastMessage, c.lastMessageSender, c.updatedAt]
+      );
+    } catch (e) {
+      console.warn('saveRemoteConversation error:', e);
+    }
+  }
+};
+
+export const saveRemoteMessage = async (m: ChatMessage, conversationId: string): Promise<void> => {
+  const userId = await getCurrentUserId();
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO messages (id, user_id, conversation_id, sender, content, timestamp, bookmarked, synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 1);`,
+        [m.id, userId, conversationId, m.sender, m.content, m.timestamp, m.bookmarked ? 1 : 0]
+      );
+    } catch (e) {
+      console.warn('saveRemoteMessage error:', e);
+    }
+  }
+};
+
+export const saveRemoteGroupThread = async (t: GroupCouncilThread): Promise<void> => {
+  const userId = await getCurrentUserId();
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO group_conversations (id, user_id, name, topic, member_apostle_ids, last_message, last_message_sender_name, updated_at, synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1);`,
+        [t.id, userId, t.name, t.topic, JSON.stringify(t.memberApostleIds), t.lastMessage, t.lastMessageSenderName, t.updatedAt]
+      );
+    } catch (e) {
+      console.warn('saveRemoteGroupThread error:', e);
+    }
+  }
+};
+
+export const saveRemoteGroupMessage = async (m: GroupCouncilMessage): Promise<void> => {
+  const userId = await getCurrentUserId();
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO group_messages (id, user_id, thread_id, sender_type, apostle_id, apostle_name, content, timestamp, reply_to, mentions, bookmarked, synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1);`,
+        [
+          m.id,
+          userId,
+          m.threadId,
+          m.senderType,
+          m.apostleId || null,
+          m.apostleName || null,
+          m.content,
+          m.timestamp,
+          m.replyTo ? JSON.stringify(m.replyTo) : null,
+          m.mentions ? JSON.stringify(m.mentions) : null,
+          m.bookmarked ? 1 : 0
+        ]
+      );
+    } catch (e) {
+      console.warn('saveRemoteGroupMessage error:', e);
+    }
+  }
+};
+
+export const saveRemoteReadingProgress = async (p: any): Promise<void> => {
+  const userId = await getCurrentUserId();
+  const db = await getDB();
+  const id = `current_${userId}`;
+  if (db) {
+    try {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO user_reading_progress (id, user_id, book, chapter, verse, translation, snippet, estimated_minutes, updated_at, synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1);`,
+        [id, userId, p.book, p.chapter, p.verse || 1, p.translation || 'NIV', p.snippet || '', p.estimated_minutes || 3, p.updated_at || Date.now()]
+      );
+    } catch (e) {
+      console.warn('saveRemoteReadingProgress error:', e);
+    }
+  }
+};
+
+export const saveRemoteCompletedDeed = async (d: any): Promise<void> => {
+  const userId = await getCurrentUserId();
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO completed_deeds (id, user_id, deed_id, title, category, scripture, completed_date, xp_awarded, synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1);`,
+        [d.id, userId, d.deed_id, d.title, d.category || '', d.scripture || '', d.completed_date, d.xp_awarded || 50]
+      );
+    } catch (e) {
+      console.warn('saveRemoteCompletedDeed error:', e);
+    }
+  }
+};
+
+export const saveRemoteDailyActivity = async (a: any): Promise<void> => {
+  const userId = await getCurrentUserId();
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO daily_activity_log (id, user_id, date_str, activity_type, xp_earned, timestamp, synced)
+         VALUES (?, ?, ?, ?, ?, ?, 1);`,
+        [a.id, userId, a.activity_date, 'sync_restore', a.xp_earned || 0, Date.now()]
+      );
+    } catch (e) {
+      console.warn('saveRemoteDailyActivity error:', e);
+    }
+  }
+};
+

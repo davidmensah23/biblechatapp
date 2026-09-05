@@ -1,4 +1,4 @@
-import { getDB, getCurrentUserId } from './database';
+import { getDB, getCurrentUserId, getActiveSyncListener } from './database';
 
 export interface FaithBadge {
   id: string;
@@ -102,16 +102,28 @@ export const recordDailyActivity = async (
       try {
         await db.execAsync(`ALTER TABLE daily_activity_log ADD COLUMN user_id TEXT DEFAULT 'guest_user';`);
       } catch {}
+      try {
+        await db.execAsync(`ALTER TABLE daily_activity_log ADD COLUMN synced INTEGER DEFAULT 1;`);
+      } catch {}
 
       await db.runAsync(
-        `INSERT OR REPLACE INTO daily_activity_log (id, user_id, date_str, activity_type, xp_earned, timestamp)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO daily_activity_log (id, user_id, date_str, activity_type, xp_earned, timestamp, synced)
+         VALUES (?, ?, ?, ?, ?, ?, 0)`,
         [logId, userId, dateStr, activityType, xpEarned, Date.now()]
       );
     } catch (e) {
       console.warn('recordDailyActivity SQLite error:', e);
     }
   }
+
+  // Background Cloud Sync
+  getActiveSyncListener()?.onActivityLogged?.({
+    id: logId,
+    user_id: userId,
+    activity_date: dateStr,
+    xp_earned: xpEarned,
+    actions_count: 1
+  });
 };
 
 /**

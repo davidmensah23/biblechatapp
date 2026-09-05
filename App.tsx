@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, StatusBar, Dimensions, BackHandler, ToastAndroid, Platform, Modal } from 'react-native';
+import { View, StyleSheet, StatusBar, Dimensions, BackHandler, ToastAndroid, Platform, Modal, AppState } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import {
@@ -39,7 +39,7 @@ import { clearReadingProgressSession } from './src/services/readingProgressServi
 import { clearDeedsSession } from './src/services/deedsService';
 import { clearGamificationSession } from './src/services/gamificationService';
 import { invalidatePrayerCache } from './src/services/prayerWallService';
-import { pullCloudToLocal, syncAllToCloud } from './src/services/cloudSyncService';
+import { pullCloudToLocal, syncAllToCloud, flushPendingSyncQueue } from './src/services/cloudSyncService';
 import { UserProfile } from './src/types';
 import {
   supabase,
@@ -248,6 +248,13 @@ export default function App() {
       }
     });
 
+    // AppState listener to flush offline sync queue whenever app comes to foreground
+    const appStateSubscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        flushPendingSyncQueue().catch(console.warn);
+      }
+    });
+
     // Timeout safety to ensure the screen is never stuck blank
     const timer = setTimeout(() => {
       setForceRender(true);
@@ -257,6 +264,7 @@ export default function App() {
       isMounted = false;
       linkSubscription.remove();
       subscription.unsubscribe();
+      appStateSubscription.remove();
       clearTimeout(timer);
     };
   }, []);

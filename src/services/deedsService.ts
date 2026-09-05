@@ -1,4 +1,4 @@
-import { getDB, getCurrentUserId } from './database';
+import { getDB, getCurrentUserId, getActiveSyncListener } from './database';
 import { awardGraceXp, recordDailyActivity } from './gamificationService';
 
 export type DeedTier = 'seed' | 'branch' | 'fruit';
@@ -231,8 +231,8 @@ export const logCompletedDeed = async (
   if (db) {
     try {
       await db.runAsync(
-        `INSERT INTO completed_deeds (id, user_id, deed_id, title, reflection, location_name, latitude, longitude, scripture_ref, xp_awarded, completed_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        `INSERT INTO completed_deeds (id, user_id, deed_id, title, reflection, location_name, latitude, longitude, scripture_ref, xp_awarded, completed_at, synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0);`,
         [
           newLog.id,
           userId,
@@ -254,6 +254,18 @@ export const logCompletedDeed = async (
 
   // In-memory cache
   memoryCompletedDeeds.unshift(newLog);
+
+  // Background Cloud Sync
+  getActiveSyncListener()?.onDeedCompleted?.({
+    id: newLog.id,
+    user_id: userId,
+    deed_id: newLog.deedId,
+    title: newLog.title,
+    category: deed.tier,
+    scripture: newLog.scriptureRef,
+    completed_date: new Date(newLog.completedAt).toISOString().split('T')[0],
+    xp_awarded: newLog.xpAwarded
+  });
 
   // Award Grace XP & Log Daily Streak Activity
   await awardGraceXp(deed.xpReward, deed.title);
