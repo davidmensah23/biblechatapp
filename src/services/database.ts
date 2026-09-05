@@ -909,18 +909,22 @@ export const clearLocalUserSession = async (): Promise<void> => {
   const db = await getDB();
   if (db) {
     try {
-      await db.runAsync('DELETE FROM messages');
-      await db.runAsync('DELETE FROM conversations');
-      await db.runAsync('DELETE FROM bookmarks');
-      await db.runAsync('DELETE FROM user_profile');
-      await db.runAsync('DELETE FROM verse_highlights');
-      await db.runAsync('DELETE FROM verse_notes');
-      await db.runAsync('DELETE FROM memorized_verses');
-      await db.runAsync('DELETE FROM user_reading_progress');
-      await db.runAsync('DELETE FROM group_messages');
-      await db.runAsync('DELETE FROM group_conversations');
-      await db.runAsync('DELETE FROM completed_deeds');
-      await db.runAsync('DELETE FROM daily_activity_log');
+      await db.execAsync(`
+        BEGIN TRANSACTION;
+        DELETE FROM messages;
+        DELETE FROM conversations;
+        DELETE FROM bookmarks;
+        DELETE FROM user_profile;
+        DELETE FROM verse_highlights;
+        DELETE FROM verse_notes;
+        DELETE FROM memorized_verses;
+        DELETE FROM user_reading_progress;
+        DELETE FROM group_messages;
+        DELETE FROM group_conversations;
+        DELETE FROM completed_deeds;
+        DELETE FROM daily_activity_log;
+        COMMIT;
+      `);
     } catch (e) {
       console.warn('clearLocalUserSession SQLite error:', e);
     }
