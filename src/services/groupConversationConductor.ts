@@ -49,6 +49,15 @@ export const COUNCIL_PRESETS = [
     apostleIds: ['paul', 'peter', 'matthew']
   },
   {
+    id: 'women_of_faith',
+    name: 'Women of Faith & Courage',
+    subtitle: 'Deborah & Queen Esther',
+    topic: 'Standing bold in prayer, fasting, and spiritual warfare for God\'s people',
+    icon: 'shield',
+    color: '#B45309',
+    apostleIds: ['deborah', 'esther']
+  },
+  {
     id: 'full_apostolic_council',
     name: 'Full Apostolic Council',
     subtitle: 'All 12 Apostles of Christ',

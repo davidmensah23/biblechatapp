@@ -104,5 +104,50 @@ export const PASTORAL_GUIDES: PastoralGuide[] = [
     guidedPrayer: "Heavenly Father, align my desires with Your kingdom. Free me from the exhausting treadmill of worldly validation. Show me the sacred work You have prepared for my hands today. Amen.",
     color: "#92400E",
     accentBg: "#FEF3C7"
+  },
+  {
+    id: "courage_battle",
+    emoji: "⚔️",
+    title: "When I Need Courage to Face the Battle",
+    situationLabel: "Fear & Hesitation",
+    apostleId: "deborah",
+    apostleName: "Deborah, Prophetess & Judge",
+    scriptureRef: "Judges 4:14 & Judges 5:31",
+    scriptureText: "Up! For this is the day in which the Lord has given the battle into your hands. Has not the Lord gone out before you?",
+    subtitle: "Stepping out when everyone else hesitates",
+    reflection: "When 900 iron chariots stood against Israel, even our military commander trembled and said he would only move if I went with him. I did not rely on armor or spear; I stood under the Palm of Deborah knowing the Lord of Hosts had already sounded the trumpet. Fear whispers that your opposition is too strong. Faith knows that God only needs your obedience to turn the tide.",
+    guidedPrayer: "Lord of Hosts, shatter the paralysis of hesitation in my soul. Give me the holy boldness of Deborah to stand up when fear urges me to retreat. You go before me into every battle—lead me in victory today. Amen.",
+    color: "#B45309",
+    accentBg: "#FEF3C7"
+  },
+  {
+    id: "destiny_timing",
+    emoji: "👑",
+    title: "For Such a Time as This",
+    situationLabel: "High Stakes & Calling",
+    apostleId: "esther",
+    apostleName: "Queen Esther (Hadassah)",
+    scriptureRef: "Esther 4:14–16",
+    scriptureText: "And who knows whether you have not come to the kingdom for such a time as this?... Go, gather all the Jews... and fast for me... And if I perish, I perish.",
+    subtitle: "Finding courage when God places you in the gap",
+    reflection: "I was a young orphan girl in a foreign Persian palace, terrified to step uninvited into the King's inner court where death awaited. But Mordecai reminded me: God does not place us in difficult rooms by accident. When we fast, pray, and surrender our reputations into His hands, His invisible providence turns schemes of destruction into deliverance.",
+    guidedPrayer: "Sovereign Father, when I feel inadequate or intimidated by the rooms I walk into, remind me that You positioned me for such a time as this. Grant me wisdom, grace, and courage to speak and stand for righteousness. Amen.",
+    color: "#9333EA",
+    accentBg: "#FAF5FF"
+  },
+  {
+    id: "living_word",
+    emoji: "📜",
+    title: "When I Need Divine Truth & Clarity",
+    situationLabel: "Wisdom & Light",
+    apostleId: "the_bible",
+    apostleName: "The Holy Bible",
+    scriptureRef: "Psalm 119:105 & Hebrews 4:12",
+    scriptureText: "Your word is a lamp to my feet and a light to my path... For the word of God is alive and active, sharper than any double-edged sword.",
+    subtitle: "Living wisdom that pierces the dark",
+    reflection: "Earthly opinions shift with every passing culture, but the grass withers and the flowers fall, while the Word of our God endures forever. When your mind is crowded by human voices, open the sacred text. Let the breath of the Almighty quiet your confusion and guide your next step.",
+    guidedPrayer: "Living God, open my eyes that I may see wondrous things in Your law. Cleanse my thoughts with the water of Your Word, and anchor my decisions in Your eternal truth. In Jesus' name, Amen.",
+    color: "#D97706",
+    accentBg: "#FFFBEB"
   }
 ];

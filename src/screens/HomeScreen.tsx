@@ -218,7 +218,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.companionsScrollContent}
             >
-              {APOSTLE_PERSONAS.slice(0, 3).map((apostle) => (
+              {APOSTLE_PERSONAS.map((apostle) => (
                 <TouchableOpacity
                   key={apostle.id}
                   style={styles.companionMiniCard}
@@ -238,7 +238,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
                 </TouchableOpacity>
               ))}
 
-              {/* 4th Card: Explore More → Switches to AI Companions Tab */}
+              {/* Explore More → Switches to AI Companions Tab */}
               <TouchableOpacity
                 style={styles.exploreMoreCard}
                 onPress={() => setActiveTab('disciples')}
@@ -248,7 +248,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
                   <Ionicons name="arrow-forward" size={22} color="#111111" />
                 </View>
                 <Text style={styles.exploreMoreTitle}>{t('explore_more', 'Explore More')}</Text>
-                <Text style={styles.exploreMoreSubtitle}>{t('explore_subtitle', 'Meet all 7 Apostles & Biblical mentors')}</Text>
+                <Text style={styles.exploreMoreSubtitle}>
+                  {t('explore_subtitle', `Meet all ${APOSTLE_PERSONAS.length} Apostles & Biblical mentors`)}
+                </Text>
               </TouchableOpacity>
             </ScrollView>
           </View>

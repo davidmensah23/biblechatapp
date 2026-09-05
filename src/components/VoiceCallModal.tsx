@@ -135,6 +135,7 @@ export const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
       john: `Beloved, grace and peace to you. I am glad you called. What would you like to speak about?`,
       paul: `Grace and peace from God our Father. What is on your mind today, my brother?`,
       thomas: `Hello, my friend. Thomas here. I am listening—what questions or thoughts are with you?`,
+      the_bible: `Grace and peace to you. The sacred scriptures are open before us. What divine truth or comfort do you seek from God's Word today?`,
       bible: `Grace and peace to you. The sacred scriptures are open before us. What divine truth or comfort do you seek from God's Word today?`,
       deborah: `Shalom, my friend! I am Deborah, mother in Israel. Arise with courage—what battle or decision is on your heart?`,
       esther: `Peace to you. Queen Esther here. God has brought us together for such a time as this. What is weighing upon your spirit?`

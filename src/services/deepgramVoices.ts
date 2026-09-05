@@ -38,6 +38,7 @@ export const APOSTLE_VOICE_PROFILES: Record<string, ApostleVoiceConfig> = {
   // Scripture Reader: Majestic, reverent, clear
   narrator: { voiceModel: 'aura-orion-en', description: 'Reverent, articulate, majestic' },
   // The Holy Bible: Living Word, sacred, reverent, deep
+  the_bible: { voiceModel: 'aura-zeus-en', description: 'Majestic, sacred, reverent, timeless divine wisdom' },
   bible: { voiceModel: 'aura-zeus-en', description: 'Majestic, sacred, reverent, timeless divine wisdom' },
   // Deborah: Prophetess, judge of Israel, bold & maternal
   deborah: { voiceModel: 'aura-athena-en', description: 'Authoritative, prophetic, courageous, mother in Israel' },
