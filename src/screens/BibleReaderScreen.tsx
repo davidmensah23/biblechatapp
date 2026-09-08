@@ -9,8 +9,10 @@ import {
   PanResponder,
   ActivityIndicator,
   Share,
-  Clipboard
+  Clipboard,
+  Platform
 } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { Typography } from '../theme/typography';
@@ -48,6 +50,19 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated';
 import { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+
+export const BIBLE_FONT_SIZES = [16, 18, 21, 24, 28, 32, 36, 40];
+const BIBLE_FONT_LABELS: Record<number, string> = {
+  16: 'Compact (16px)',
+  18: 'Default (18px)',
+  21: 'Medium (21px)',
+  24: 'Large (24px)',
+  28: 'Extra Large (28px)',
+  32: 'Giant Print (32px)',
+  36: 'High Visibility (36px)',
+  40: 'Maximum Accessibility (40px)'
+};
+const BIBLE_FONT_STORAGE_KEY = 'akorno_bible_reader_font_size';
 
 interface BibleReaderScreenProps {
   onAskApostleWithVerse?: (verseText: string, reference: string, apostle?: ApostlePersona) => void;
@@ -222,6 +237,42 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
       });
     }
   }, []);
+
+  // Restore saved font size preference on mount
+  useEffect(() => {
+    const loadFontSize = async () => {
+      try {
+        let saved: string | null = null;
+        if (Platform.OS === 'web') {
+          saved = typeof localStorage !== 'undefined' ? localStorage.getItem(BIBLE_FONT_STORAGE_KEY) : null;
+        } else {
+          saved = await SecureStore.getItemAsync(BIBLE_FONT_STORAGE_KEY);
+        }
+        if (saved) {
+          const parsed = parseInt(saved, 10);
+          if (BIBLE_FONT_SIZES.includes(parsed)) {
+            setFontSize(parsed);
+          }
+        }
+      } catch (e) {}
+    };
+    loadFontSize();
+  }, []);
+
+  const handleCycleFontSize = async () => {
+    const currentIndex = BIBLE_FONT_SIZES.indexOf(fontSize);
+    const nextIndex = currentIndex === -1 || currentIndex >= BIBLE_FONT_SIZES.length - 1 ? 0 : currentIndex + 1;
+    const nextSize = BIBLE_FONT_SIZES[nextIndex];
+    setFontSize(nextSize);
+    showToast(`Text Size: ${BIBLE_FONT_LABELS[nextSize] || `${nextSize}px`}`, 'text-outline');
+    try {
+      if (Platform.OS === 'web') {
+        if (typeof localStorage !== 'undefined') localStorage.setItem(BIBLE_FONT_STORAGE_KEY, String(nextSize));
+      } else {
+        await SecureStore.setItemAsync(BIBLE_FONT_STORAGE_KEY, String(nextSize));
+      }
+    } catch (e) {}
+  };
 
   // When initialBook/Chapter prop changes, navigate to it
   useEffect(() => {
@@ -542,7 +593,7 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
         <View style={styles.topHeaderRight}>
           <TouchableOpacity
             style={styles.headerIconBtn}
-            onPress={() => setFontSize(prev => (prev >= 23 ? 15 : prev + 2))}
+            onPress={handleCycleFontSize}
             activeOpacity={0.7}
           >
             <Text style={styles.fontScaleBtnText}>aA</Text>
@@ -619,12 +670,14 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
                       <Text
                         style={[
                           styles.verseContentText,
-                          { fontSize, lineHeight: fontSize * 1.68 },
+                          { fontSize, lineHeight: Math.round(fontSize * 1.65) },
                         ]}
                       >
-                        <Text style={styles.superscriptVerseNumber}>{v.verseNumber} </Text>
+                        <Text style={[styles.superscriptVerseNumber, { fontSize: Math.max(11, Math.round(fontSize * 0.6)) }]}>
+                          {v.verseNumber}{' '}
+                        </Text>
                         {isReadingThisVerse && (
-                          <Ionicons name="volume-medium" size={13} color="#D97706" style={{ marginRight: 4 }} />
+                          <Ionicons name="volume-medium" size={Math.round(fontSize * 0.72)} color="#D97706" style={{ marginRight: 4 }} />
                         )}
                         {v.text}
                       </Text>

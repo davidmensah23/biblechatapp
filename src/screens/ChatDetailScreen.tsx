@@ -354,6 +354,14 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
   const lastAssistantMsg = [...messages].reverse().find(m => m.sender === 'assistant')?.content;
   const dynamicChips = getContextualChips(apostle.id, lastAssistantMsg);
 
+  const handleVoiceCallPress = () => {
+    Alert.alert(
+      'Voice Call Coming Soon',
+      `Live spoken audio reflections with ${apostle.name} will be available in an upcoming update. You can continue fellowshipping through scripture questions and chat reflections below!`,
+      [{ text: 'Understood' }]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -373,7 +381,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
         </View>
 
         <TouchableOpacity
-          onPress={() => setShowCallModal(true)}
+          onPress={handleVoiceCallPress}
           style={styles.callBtn}
           activeOpacity={0.75}
         >
@@ -490,7 +498,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
           {inputText.trim().length === 0 ? (
             <TouchableOpacity
               style={styles.micBtn}
-              onPress={() => setShowCallModal(true)}
+              onPress={handleVoiceCallPress}
               activeOpacity={0.75}
             >
               <Ionicons name="mic-outline" size={21} color={Colors.textPrimary} />

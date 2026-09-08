@@ -547,9 +547,13 @@ export default function App() {
                 initialBook={bibleInitialTarget?.book}
                 initialChapter={bibleInitialTarget?.chapter}
                 onAskApostleWithVerse={(verseText, citation, apostle) => {
-                  const targetApostle = apostle || APOSTLE_PERSONAS[0];
+                  const targetApostle = apostle || APOSTLE_PERSONAS.find(a => a.id === 'the_bible') || APOSTLE_PERSONAS[0];
                   setSelectedApostle(targetApostle);
-                  setChatInitialMessage(`Peace be with you, ${targetApostle.name}. I am reflecting on ${citation} and would value your biblical counsel and prayer.`);
+                  if (targetApostle.id === 'the_bible') {
+                    setChatInitialMessage(`I am reflecting on ${citation} (“${verseText}”) and would value biblical wisdom, historical context, and explanation on this passage.`);
+                  } else {
+                    setChatInitialMessage(`Peace be with you, ${targetApostle.name}. I am reflecting on ${citation} and would value your biblical counsel and prayer.`);
+                  }
                   setChatContextQuote({ text: verseText, reference: citation });
                   setCurrentView('chat');
                 }}
