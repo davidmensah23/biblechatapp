@@ -54,55 +54,73 @@ export const initializePushNotifications = async (): Promise<boolean> => {
 
     // 3. Schedule 3-Moment Daily Rhythm: Morning (5:30 AM), Midday (12:30 PM), Evening (6:00 PM)
     try {
+      const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+      const existingIds = new Set((scheduled || []).map((n: any) => n.identifier));
+
+      const hasMorning = existingIds.has('daily_prayer_morning');
+      const hasMidday = existingIds.has('daily_prayer_midday');
+      const hasEvening = existingIds.has('daily_prayer_evening');
+
+      // If all three daily prayers are already scheduled, keep them active without churn
+      if (hasMorning && hasMidday && hasEvening) {
+        return true;
+      }
+
+      // Cancel any legacy or malformed notifications
       await Notifications.cancelAllScheduledNotificationsAsync();
+
+      const dailyTriggerType = Notifications.SchedulableTriggerInputTypes?.DAILY || 'daily';
 
       // 🌅 Early Morning Prayer (5:30 AM)
       await Notifications.scheduleNotificationAsync({
+        identifier: 'daily_prayer_morning',
         content: {
           title: '🌅 Morning Prayer',
           body: 'Start your day with peace. Tap for your 2-minute morning prayer.',
           data: { type: 'daily_prayer', period: 'morning' },
-          sound: true,
+          sound: 'default',
           badge: 1
         },
         trigger: {
+          type: dailyTriggerType,
           hour: 5,
           minute: 30,
-          repeats: true,
           channelId: 'daily-devotion'
         } as any
       });
 
       // ☀️ Midday Pause with God (12:30 PM)
       await Notifications.scheduleNotificationAsync({
+        identifier: 'daily_prayer_midday',
         content: {
           title: '☀️ Midday Pause with God',
           body: 'Take a 60-second breather. God is with you in the middle of your busy day.',
           data: { type: 'daily_prayer', period: 'midday' },
-          sound: true,
+          sound: 'default',
           badge: 1
         },
         trigger: {
+          type: dailyTriggerType,
           hour: 12,
           minute: 30,
-          repeats: true,
           channelId: 'daily-devotion'
         } as any
       });
 
       // 🌙 Evening Prayer & Rest (6:00 PM)
       await Notifications.scheduleNotificationAsync({
+        identifier: 'daily_prayer_evening',
         content: {
           title: '🌙 Evening Prayer & Rest',
           body: 'Unwind and let go of today\'s worries. Rest in God\'s peace tonight.',
           data: { type: 'daily_prayer', period: 'evening' },
-          sound: true,
+          sound: 'default',
           badge: 1
         },
         trigger: {
+          type: dailyTriggerType,
           hour: 18,
           minute: 0,
-          repeats: true,
           channelId: 'daily-devotion'
         } as any
       });
