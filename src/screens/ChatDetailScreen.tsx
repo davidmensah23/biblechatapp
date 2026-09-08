@@ -513,22 +513,26 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
                     )}
                   </TouchableOpacity>
 
-                  {/* Tappable Structured Scripture Citation Chips below Assistant Bubble */}
-                  {!isUser && references.length > 0 && (
-                    <View style={styles.scriptureChipsContainer}>
-                      {references.map((refStr: string, idx: number) => (
-                        <TouchableOpacity
-                          key={`${refStr}_${idx}`}
-                          style={styles.scriptureChip}
-                          onPress={() => handleOpenScriptureModal(refStr)}
-                          activeOpacity={0.75}
-                        >
-                          <Ionicons name="book-outline" size={12.5} color="#8B1E1E" style={{ marginRight: 5 }} />
-                          <Text style={styles.scriptureChipText}>{refStr}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
+                  {/* Tappable Structured Scripture Citation Chips below Assistant Bubble (Only render valid verified passages) */}
+                  {!isUser && references.length > 0 && (() => {
+                    const validReferences = references.filter((refStr: string) => resolveScriptureReference(refStr) !== null);
+                    if (validReferences.length === 0) return null;
+                    return (
+                      <View style={styles.scriptureChipsContainer}>
+                        {validReferences.map((refStr: string, idx: number) => (
+                          <TouchableOpacity
+                            key={`${refStr}_${idx}`}
+                            style={styles.scriptureChip}
+                            onPress={() => handleOpenScriptureModal(refStr)}
+                            activeOpacity={0.75}
+                          >
+                            <Ionicons name="book-outline" size={12.5} color="#8B1E1E" style={{ marginRight: 5 }} />
+                            <Text style={styles.scriptureChipText}>{refStr}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    );
+                  })()}
                 </AnimatedChatBubble>
 
                 {/* Subtle Timestamp outside/below card — only rendered on the last message in a burst */}
