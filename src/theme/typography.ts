@@ -1,29 +1,40 @@
+import { PrimitiveFontFamilies, TypographyScale } from './tokens';
+
+/**
+ * BibleChat Typography
+ * Backward-compatible typography object mapped to Design System Tokens.
+ */
 export const Typography = {
   // Screen-Optimized Scripture & Chat Serif (Merriweather)
-  fontYouVersionSerif: 'Merriweather_400Regular',
-  fontYouVersionSerifBold: 'Merriweather_700Bold',
-  fontYouVersionSerifItalic: 'Merriweather_400Regular_Italic',
+  fontYouVersionSerif: PrimitiveFontFamilies.serifRegular,
+  fontYouVersionSerifBold: PrimitiveFontFamilies.serifBold,
+  fontYouVersionSerifItalic: PrimitiveFontFamilies.serifItalic,
 
   // Editorial Scripture Reading Serif (Merriweather)
-  fontSerif: 'Merriweather_700Bold',
-  fontSerifBold: 'Merriweather_700Bold',
-  fontSerifMedium: 'Merriweather_400Regular',
-  fontSerifRegular: 'Merriweather_400Regular',
-  fontSerifItalic: 'Merriweather_400Regular_Italic',
+  fontSerif: PrimitiveFontFamilies.serifBold,
+  fontSerifBold: PrimitiveFontFamilies.serifBold,
+  fontSerifMedium: PrimitiveFontFamilies.serifRegular,
+  fontSerifRegular: PrimitiveFontFamilies.serifRegular,
+  fontSerifItalic: PrimitiveFontFamilies.serifItalic,
 
   // Monastic Display Serif (Instrument Serif)
-  fontDisplaySerif: 'InstrumentSerif-Bold',
-  fontDisplaySerifRegular: 'InstrumentSerif-Regular',
-  fontDisplaySerifItalic: 'InstrumentSerif-Italic',
+  fontDisplaySerif: PrimitiveFontFamilies.displayBold,
+  fontDisplaySerifRegular: PrimitiveFontFamilies.displayRegular,
+  fontDisplaySerifItalic: PrimitiveFontFamilies.displayItalic,
 
   // Modern UI Sans (Poppins)
-  fontSansRegular: 'Poppins_400Regular',
-  fontSansMedium: 'Poppins_500Medium',
-  fontSansSemiBold: 'Poppins_600SemiBold',
-  fontSansBold: 'Poppins_700Bold',
+  fontSansRegular: PrimitiveFontFamilies.sansRegular,
+  fontSansMedium: PrimitiveFontFamilies.sansMedium,
+  fontSansSemiBold: PrimitiveFontFamilies.sansSemiBold,
+  fontSansBold: PrimitiveFontFamilies.sansBold,
 
   // Fallbacks
   fallbackSerif: 'Georgia, serif',
-  fallbackSans: 'System, sans-serif'
+  fallbackSans: 'System, sans-serif',
+
+  // Typography Scales & Families Re-exports
+  families: PrimitiveFontFamilies,
+  scale: TypographyScale
 };
 
+export { PrimitiveFontFamilies, TypographyScale };
