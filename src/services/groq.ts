@@ -1,5 +1,15 @@
 import { ApostlePersona, ChatMessage } from '../types';
-import { buildCompanionSystemPrompt, detectConversationMode, UserProfileMemory } from './companionEngine';
+import {
+  buildCompanionSystemPrompt,
+  detectTurnCadence,
+  UserProfileMemory
+} from './companionEngine';
+import {
+  getCompanionProfile,
+  buildCuratedMemoryContext,
+  runAsyncMemoryExtraction
+} from './companionMemoryService';
+import { getCurrentUserId } from './database';
 
 const GROQ_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY || '';
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
@@ -19,17 +29,37 @@ export const generateApostleReply = async (
   userProfile?: UserProfileContext
 ): Promise<string> => {
   try {
-    // 1. Detect Conversation Intent & Mode
-    const mode = detectConversationMode(userPrompt);
+    const userId = await getCurrentUserId();
 
-    // 2. Build Multi-Layered Companion System Prompt
-    const fullSystemPrompt = buildCompanionSystemPrompt(persona, userProfile, mode);
+    // 1. Thread-Aware Turn & Cadence Analysis (solves the over-explanation & follow-up trap)
+    const turnAnalysis = detectTurnCadence(
+      userPrompt,
+      conversationHistory.map(m => ({ sender: m.sender, content: m.content }))
+    );
+
+    // 2. Fetch Structured Memory and Build Lean Curated Summary
+    let memorySummary = '';
+    try {
+      const profile = await getCompanionProfile(userId);
+      memorySummary = buildCuratedMemoryContext(profile);
+    } catch (e) {
+      console.warn('Memory summary retrieval note:', e);
+    }
+
+    // 3. Build Standardized Character System Prompt
+    const fullSystemPrompt = buildCompanionSystemPrompt(
+      persona,
+      userProfile,
+      turnAnalysis.mode,
+      turnAnalysis.cadence,
+      memorySummary
+    );
 
     const messages: MessagePayload[] = [
       { role: 'system', content: fullSystemPrompt }
     ];
 
-    // 3. Include recent conversation history for context continuity (last 8 turns)
+    // 4. Include recent conversation history for context continuity (last 8 turns)
     const recentTurns = conversationHistory.slice(-8);
     for (const msg of recentTurns) {
       messages.push({
@@ -38,26 +68,23 @@ export const generateApostleReply = async (
       });
     }
 
-    // 4. Append current user message
+    // 5. Append current user message
     messages.push({ role: 'user', content: userPrompt });
 
-    // Ensure generous token count so thoughts and deep exegesis are never cut off mid-sentence
-    const maxTokens = mode === 'greeting' ? 120 : mode === 'casual' ? 220 : mode === 'sermon_preparation' ? 750 : 580;
-
-    // 5. Direct Low-Latency Groq Engine Call
+    // 6. Direct Low-Latency Groq Engine Call with Cadence-Proportional Token Limit
     if (GROQ_API_KEY) {
       const directRes = await fetch(GROQ_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${GROQ_API_KEY}`,
+          Authorization: `Bearer ${GROQ_API_KEY}`,
           'User-Agent': 'BibleChatApp/1.0'
         },
         body: JSON.stringify({
           model: PRIMARY_MODEL,
           messages,
-          max_tokens: maxTokens,
-          temperature: 0.72
+          max_tokens: turnAnalysis.maxTokens,
+          temperature: 0.7
         })
       });
 
@@ -66,6 +93,8 @@ export const generateApostleReply = async (
         if (data.choices?.[0]?.message?.content) {
           const text = data.choices[0].message.content.trim();
           if (text.length > 0) {
+            // 7. Fire-and-forget asynchronous background memory extraction (0ms UI latency)
+            runAsyncMemoryExtraction(userId, userPrompt, text).catch(() => {});
             return text;
           }
         }
@@ -74,7 +103,9 @@ export const generateApostleReply = async (
       }
     }
 
-    return getPersonaSpecificFallback(persona, userPrompt);
+    const fallback = getPersonaSpecificFallback(persona, userPrompt);
+    runAsyncMemoryExtraction(userId, userPrompt, fallback).catch(() => {});
+    return fallback;
   } catch (error) {
     console.error('Groq AI generation error:', error);
     return getPersonaSpecificFallback(persona, userPrompt);
@@ -101,6 +132,10 @@ const getPersonaSpecificFallback = (persona: ApostlePersona, prompt: string): st
     thomas: [
       "I understand what it means to question and search for truth. Jesus met me right where I was with open hands, and He meets you here today as well.",
       "Blessed are those who have not seen and yet have believed. Stand firm, and keep seeking with an open heart."
+    ],
+    the_bible: [
+      "Your word is a lamp to my feet and a light to my path (Psalm 119:105). What scripture shall we examine together?",
+      "All Scripture is breathed out by God and profitable for teaching, for reproof, for correction, and for training in righteousness."
     ]
   };
 
