@@ -49,6 +49,28 @@ export const getBundledChapter = (book: string, chapter: number): ChapterVerse[]
   return null;
 };
 
+// Bundled New International Version (NIV) for 100% Day-One Offline Reading
+let bundledNivData: Record<string, string[]> | null = null;
+export const getBundledNivChapter = (book: string, chapter: number): ChapterVerse[] | null => {
+  if (!bundledNivData) {
+    try {
+      bundledNivData = require('../../assets/bibles/niv.json');
+    } catch (e) {
+      console.warn('Could not load bundled niv.json:', e);
+      bundledNivData = {};
+    }
+  }
+  const key = `${book}_${chapter}`;
+  const verses = bundledNivData?.[key];
+  if (verses && Array.isArray(verses) && verses.length > 0) {
+    return verses.map((text, idx) => ({
+      verseNumber: idx + 1,
+      text
+    }));
+  }
+  return null;
+};
+
 export const BOOK_TO_USFM: Record<string, string> = {
   'Genesis': 'GEN', 'Exodus': 'EXO', 'Leviticus': 'LEV', 'Numbers': 'NUM', 'Deuteronomy': 'DEU',
   'Joshua': 'JOS', 'Judges': 'JDG', 'Ruth': 'RUT', '1 Samuel': '1SA', '2 Samuel': '2SA',
@@ -141,7 +163,7 @@ export const ALL_BIBLE_BOOKS: BibleBook[] = [
 
 export const INITIAL_BIBLE_VERSIONS: BibleVersionInfo[] = [
   // English (Historic & Modern)
-  { id: '1', code: 'NIV', name: 'New International Version', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:111' },
+  { id: '1', code: 'NIV', name: 'New International Version', language: 'en', hasAudio: true, isDownloaded: true, apiTranslationKey: 'niv' },
   { id: '2', code: 'KJV', name: 'King James Version (1611)', language: 'en', hasAudio: true, isDownloaded: true, apiTranslationKey: 'kjv' },
   { id: '3', code: 'ESV', name: 'English Standard Version', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'bolls:ESV' },
   { id: '4', code: 'GNV', name: 'Geneva Bible (1599)', language: 'en', hasAudio: true, isDownloaded: true, apiTranslationKey: 'youversion:2163' },
@@ -319,8 +341,8 @@ export const downloadBibleVersion = async (
   const version = INITIAL_BIBLE_VERSIONS.find(v => v.code.toUpperCase() === versionCode.toUpperCase());
   if (!version) return false;
 
-  // 1. If WEB, it is already bundled locally in full
-  if (version.code.toUpperCase() === 'WEB') {
+  // 1. If WEB or NIV, it is already bundled locally in full
+  if (version.code.toUpperCase() === 'WEB' || version.code.toUpperCase() === 'NIV') {
     const db = await getDB();
     if (db) {
       try {
@@ -485,6 +507,27 @@ export async function fetchChapter(
     }
   }
 
+  // 1.6 Special check for bundled New International Version (NIV): 0ms instant local resolution
+  if (transCode === 'NIV') {
+    const bundledVerses = getBundledNivChapter(book, chapter);
+    if (bundledVerses && bundledVerses.length > 0) {
+      const result: BibleChapterData = {
+        book,
+        chapter,
+        sectionTitle: `${book} Chapter ${chapter}`,
+        translation: 'NIV',
+        verses: bundledVerses
+      };
+      if (db) {
+        db.runAsync(
+          'INSERT OR REPLACE INTO offline_bible_chapters (id, translation, book, chapter, section_title, verses_json, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [cacheKey, 'NIV', book, chapter, result.sectionTitle || '', JSON.stringify(bundledVerses), Date.now()]
+        ).catch(() => {});
+      }
+      return result;
+    }
+  }
+
   const versionMeta = INITIAL_BIBLE_VERSIONS.find(v => v.code.toUpperCase() === transCode);
 
   // 2. Dynamic Live Fetching from YouVersion (Asante Twi, Akuapem Twi, Nigerian Pidgin, Yoruba, Igbo, etc.)
@@ -617,7 +660,20 @@ export async function fetchChapter(
     console.warn(`Bible API fetch error for ${book} ${chapter} (${transCode}):`, err);
   }
 
-  // 4. Fallback Resilient Chapter (Bundled Offline Modern English WEB)
+  // 4. Fallback Resilient Chapter (Bundled Offline NIV or WEB)
+  if (transCode === 'NIV') {
+    const bundledNiv = getBundledNivChapter(book, chapter);
+    if (bundledNiv && bundledNiv.length > 0) {
+      return {
+        book,
+        chapter,
+        sectionTitle: `${book} Chapter ${chapter}`,
+        translation: 'NIV',
+        verses: bundledNiv
+      };
+    }
+  }
+
   const bundledVerses = getBundledChapter(book, chapter);
   if (bundledVerses && bundledVerses.length > 0) {
     return {
