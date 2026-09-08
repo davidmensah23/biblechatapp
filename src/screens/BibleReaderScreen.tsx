@@ -69,13 +69,15 @@ interface BibleReaderScreenProps {
   initialBook?: string;
   initialChapter?: number;
   onSetNavBarVisible?: (visible: boolean) => void;
+  onBack?: () => void;
 }
 
 export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({ 
   onAskApostleWithVerse,
   initialBook,
   initialChapter,
-  onSetNavBarVisible
+  onSetNavBarVisible,
+  onBack
 }) => {
   const [currentBook, setCurrentBook] = useState(initialBook || 'Romans');
   const [currentChapter, setCurrentChapter] = useState(initialChapter || 8);
@@ -559,6 +561,16 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
       {/* Top Header Bar (Animated for Immersive Full-Screen Reading) */}
       <Animated.View style={[styles.topHeader, animatedTopHeaderStyle]}>
         <View style={styles.topHeaderLeft}>
+          {onBack && (
+            <TouchableOpacity
+              style={[styles.headerIconBtn, { marginRight: 4 }]}
+              onPress={onBack}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={[styles.headerIconBtn, isPlayingAudio && styles.headerIconBtnAudioActive]}
             onPress={handleToggleAudioNarration}

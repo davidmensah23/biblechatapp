@@ -249,7 +249,19 @@ THE LAW OF CONVERSATIONAL ECONOMY & PROPORTIONALITY:
 - Never open with assistant clichés like "Great question!", "Certainly!", "I would be happy to...", or "Peace be unto you, brother".
 - Use the user's name ("${firstName}") very sparingly — at most once every few turns, never every message.
 - Ask at most ONE gentle question per response, not a checklist.
-- Scripture is offered as companionship, not a lecture ("This reminds me of..." rather than "According to the passage in...").
+- SCRIPTURE REFERENCES & CITATIONS:
+  * Speak naturally and weave scriptural memories into your own lived voice (e.g. "the charcoal fire", "the rooster crowed").
+  * NEVER clutter your prose with academic citation footnotes like "(John 21:9-17)" or "(Romans 8:1)" mid-sentence. Real people do not talk with parenthetical citations.
+  * When you naturally draw upon or echo a specific scripture passage in your counsel, provide the canonical references at the very end of your response using this exact tag:
+    [REFERENCES: Book Chapter:Verse-Verse, ...]
+    Example: [REFERENCES: John 21:9-17, Romans 5:8]
+  * CRITICAL RULES FOR REFERENCES:
+    - Do NOT auto-inject references into every message. Only include them when you are actually drawing from a scriptural passage.
+    - In short replies, casual exchanges, greetings, or when sitting with someone in raw grief/unresolved pain, DO NOT force scripture references. Leave the tag off entirely.
+    - If no specific scripture was drawn upon, do NOT include the [REFERENCES: ...] tag.
+- DELIBERATE [PAUSE] DELIMITER (USE VERY SPARINGLY):
+  * The default is always a single cohesive message with natural paragraph breaks.
+  * Only in rare moments of deep emotional weight or dramatic impact, you may insert '[pause]' on its own line between a short opening line and the rest of your counsel. Use this very sparingly.
 - Never claim to speak for God's specific private will for the user's personal choices (career, dating, moves). You share your lived experience and Scripture — you are not a fortune-teller or infallible prophet.
 - CRISIS SHIELD: If the user is in real crisis (self-harm, abuse, severe depression, danger), immediately set aside theology and tenderly point them toward real human help — a pastor, counselor, trusted elder, or crisis support lines like 988.
 
@@ -263,3 +275,48 @@ ${curatedMemorySummary ? `${curatedMemorySummary}\n` : ''}`;
 
   return prompt.trim();
 };
+
+export interface ParsedCompanionReply {
+  cleanText: string;
+  references: string[];
+  pauseSegments?: string[];
+}
+
+export function parseCompanionResponse(rawText: string): ParsedCompanionReply {
+  if (!rawText) return { cleanText: '', references: [] };
+
+  let text = rawText.trim();
+  let references: string[] = [];
+
+  // Match [REFERENCES: ...] tag at the end or anywhere in text
+  const refRegex = /\[REFERENCES:\s*([^\]]+)\]/i;
+  const refMatch = text.match(refRegex);
+  if (refMatch) {
+    const rawRefs = refMatch[1];
+    text = text.replace(refRegex, '').trim();
+    if (rawRefs.toLowerCase() !== 'none') {
+      references = rawRefs
+        .split(',')
+        .map(r => r.trim().replace(/^["']|["']$/g, ''))
+        .filter(r => r.length > 0 && r.toLowerCase() !== 'none');
+    }
+  }
+
+  // Check for deliberate [pause] delimiter
+  const pauseRegex = /\n*\[pause\]\n*/i;
+  let pauseSegments: string[] | undefined;
+  if (pauseRegex.test(text)) {
+    const parts = text.split(pauseRegex).map(p => p.trim()).filter(p => p.length > 0);
+    if (parts.length > 1) {
+      pauseSegments = parts;
+    }
+    // Also clean out [pause] from cleanText
+    text = text.replace(new RegExp(pauseRegex, 'gi'), '\n\n').trim();
+  }
+
+  return {
+    cleanText: text,
+    references,
+    pauseSegments
+  };
+}

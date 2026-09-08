@@ -39,6 +39,10 @@ import { AnimatedChatBubble } from '../components/AnimatedChatBubble';
 import { getContextualChips } from '../services/quickChips';
 import { WordDefinitionPill } from '../components/WordDefinitionPill';
 import { GlossaryEntry } from '../services/biblicalGlossary';
+import { parseCompanionResponse } from '../services/companionEngine';
+import { resolveScriptureReference, ResolvedScripturePassage } from '../services/bibleEngine';
+import { ScriptureDetailModal } from '../components/ScriptureDetailModal';
+import { BibleReaderScreen } from './BibleReaderScreen';
 
 interface ChatDetailScreenProps {
   apostle: ApostlePersona;
@@ -108,10 +112,46 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
   const [actionMessage, setActionMessage] = useState<ChatMessage | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [selectedGlossaryEntry, setSelectedGlossaryEntry] = useState<GlossaryEntry | null>(null);
+  const [selectedScripturePassage, setSelectedScripturePassage] = useState<ResolvedScripturePassage | null>(null);
+  const [readingChapterTarget, setReadingChapterTarget] = useState<{ book: string; chapter: number; departedAt: number } | null>(null);
+  const [companionReturnPresence, setCompanionReturnPresence] = useState<string | null>(null);
   
   const flatListRef = useRef<FlatList>(null);
   const activeDispatchIdRef = useRef<number>(0);
   const initialLoadedIdsRef = useRef<Set<string>>(new Set());
+
+  const handleOpenScriptureModal = (refStr: string) => {
+    const resolved = resolveScriptureReference(refStr);
+    if (resolved) {
+      setSelectedScripturePassage(resolved);
+    } else {
+      Alert.alert('Passage Not Found', `Could not find verified text for "${refStr}".`);
+    }
+  };
+
+  const handleReadInBible = (book: string, chapter: number) => {
+    setSelectedScripturePassage(null);
+    setReadingChapterTarget({
+      book,
+      chapter,
+      departedAt: Date.now()
+    });
+  };
+
+  const handleReturnFromReading = () => {
+    if (readingChapterTarget) {
+      const elapsed = Date.now() - readingChapterTarget.departedAt;
+      setReadingChapterTarget(null);
+
+      // If user spent >= 45 seconds reading in the Bible, welcome them back with gentle companion presence
+      if (elapsed >= 45000) {
+        setCompanionReturnPresence(`Take your time. I'm still right here with you.`);
+        setTimeout(() => {
+          setCompanionReturnPresence(null);
+        }, 6000);
+      }
+    }
+  };
 
   const conversationId = `conv_${apostle.id}`;
 
@@ -259,17 +299,53 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
 
       if (activeDispatchIdRef.current !== currentDispatchId) return;
 
-      const assistantMsg: ChatMessage = {
-        id: `msg_asst_${Date.now()}`,
-        conversationId: conversationId,
-        sender: 'assistant',
-        content: replyText.trim(),
-        timestamp: Date.now()
-      };
+      const parsed = parseCompanionResponse(replyText);
 
-      setMessages(prev => [...prev, assistantMsg]);
-      await saveMessage(assistantMsg, apostle.title, apostle.id);
-      flatListRef.current?.scrollToEnd({ animated: true });
+      if (parsed.pauseSegments && parsed.pauseSegments.length > 1) {
+        // Double-text emotional emphasis: part 1
+        const part1Msg: ChatMessage = {
+          id: `msg_asst_${Date.now()}_1`,
+          conversationId: conversationId,
+          sender: 'assistant',
+          content: parsed.pauseSegments[0],
+          timestamp: Date.now()
+        };
+        setMessages(prev => [...prev, part1Msg]);
+        await saveMessage(part1Msg, apostle.title, apostle.id);
+        flatListRef.current?.scrollToEnd({ animated: true });
+
+        // Beat pause with subtle typing dots
+        setIsLoading(true);
+        await new Promise(r => setTimeout(r, 1200));
+        if (activeDispatchIdRef.current !== currentDispatchId) return;
+
+        // Double-text part 2 (carries references)
+        const part2Msg: ChatMessage = {
+          id: `msg_asst_${Date.now()}_2`,
+          conversationId: conversationId,
+          sender: 'assistant',
+          content: parsed.pauseSegments.slice(1).join('\n\n'),
+          timestamp: Date.now(),
+          scriptureReferences: parsed.references.length > 0 ? parsed.references : undefined
+        };
+        setMessages(prev => [...prev, part2Msg]);
+        await saveMessage(part2Msg, apostle.title, apostle.id);
+        flatListRef.current?.scrollToEnd({ animated: true });
+      } else {
+        // Cohesive single message bubble with breathing room
+        const assistantMsg: ChatMessage = {
+          id: `msg_asst_${Date.now()}`,
+          conversationId: conversationId,
+          sender: 'assistant',
+          content: parsed.cleanText,
+          timestamp: Date.now(),
+          scriptureReferences: parsed.references.length > 0 ? parsed.references : undefined
+        };
+
+        setMessages(prev => [...prev, assistantMsg]);
+        await saveMessage(assistantMsg, apostle.title, apostle.id);
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }
     } catch (error) {
       console.error('Error in multi-message generation:', error);
     } finally {
@@ -400,6 +476,13 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
               nextMsg.sender !== item.sender ||
               (nextMsg.timestamp - item.timestamp > 2.5 * 60 * 1000);
 
+            const rawContent = item.content;
+            const parsedFallback = !isUser && rawContent.includes('[REFERENCES:') ? parseCompanionResponse(rawContent) : null;
+            const messageContent = parsedFallback ? parsedFallback.cleanText : rawContent;
+            const references: string[] = item.scriptureReferences && item.scriptureReferences.length > 0
+              ? item.scriptureReferences
+              : (parsedFallback ? parsedFallback.references : []);
+
             return (
               <View
                 style={[
@@ -415,7 +498,7 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
                     activeOpacity={0.88}
                   >
                     <FormattedMessageText
-                      content={item.content}
+                      content={messageContent}
                       isUser={isUser}
                       fontSize={15.5}
                       onSelectWord={setSelectedGlossaryEntry}
@@ -429,6 +512,23 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
                       </View>
                     )}
                   </TouchableOpacity>
+
+                  {/* Tappable Structured Scripture Citation Chips below Assistant Bubble */}
+                  {!isUser && references.length > 0 && (
+                    <View style={styles.scriptureChipsContainer}>
+                      {references.map((refStr: string, idx: number) => (
+                        <TouchableOpacity
+                          key={`${refStr}_${idx}`}
+                          style={styles.scriptureChip}
+                          onPress={() => handleOpenScriptureModal(refStr)}
+                          activeOpacity={0.75}
+                        >
+                          <Ionicons name="book-outline" size={12.5} color="#8B1E1E" style={{ marginRight: 5 }} />
+                          <Text style={styles.scriptureChipText}>{refStr}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
                 </AnimatedChatBubble>
 
                 {/* Subtle Timestamp outside/below card — only rendered on the last message in a burst */}
@@ -453,6 +553,17 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
             ) : null
           }
         />
+
+        {/* Companion Return Presence Banner */}
+        {companionReturnPresence && (
+          <View style={styles.presenceBanner}>
+            <Ionicons name="sparkles" size={13} color="#8B1E1E" style={{ marginRight: 6 }} />
+            <Text style={styles.presenceBannerText}>
+              <Text style={{ fontWeight: 'bold' }}>{apostle.name}: </Text>
+              {companionReturnPresence}
+            </Text>
+          </View>
+        )}
 
         {/* Dynamic Contextual Suggestion Chips */}
         <View style={styles.quickPromptsContainer}>
@@ -601,6 +712,38 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
         entry={selectedGlossaryEntry}
         onClose={() => setSelectedGlossaryEntry(null)}
       />
+
+      {/* Scripture Reference Preview Modal (Verified against bundled offline NIV) */}
+      <ScriptureDetailModal
+        visible={Boolean(selectedScripturePassage)}
+        verse={selectedScripturePassage}
+        onClose={() => setSelectedScripturePassage(null)}
+        onReadInBible={handleReadInBible}
+        onBookmark={async (passage) => {
+          const citation = 'citation' in passage ? passage.citation : `${passage.book} ${passage.chapter}:${passage.verse}`;
+          await saveBookmark({
+            id: `bm_scripture_${Date.now()}`,
+            type: 'verse',
+            title: citation,
+            content: passage.text,
+            reference: citation,
+            author: apostle.name,
+            timestamp: Date.now()
+          });
+          Alert.alert('Verse Saved', `Saved ${citation} to your Profile.`);
+        }}
+      />
+
+      {/* Stacked Full-Chapter Bible Reader View (preserves chat state, scroll, and draft underneath) */}
+      {readingChapterTarget && (
+        <View style={StyleSheet.absoluteFillObject}>
+          <BibleReaderScreen
+            initialBook={readingChapterTarget.book}
+            initialChapter={readingChapterTarget.chapter}
+            onBack={handleReturnFromReading}
+          />
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -852,5 +995,50 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: '#111111',
     marginTop: 4,
+  },
+  scriptureChipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 6,
+    marginLeft: 2,
+    maxWidth: '88%',
+  },
+  scriptureChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FDFBF7',
+    borderWidth: 1,
+    borderColor: '#E8DFD1',
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  scriptureChipText: {
+    fontFamily: Typography.fontSansMedium,
+    fontSize: 12,
+    color: '#8B1E1E',
+  },
+  presenceBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginVertical: 6,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  presenceBannerText: {
+    fontFamily: Typography.fontSansRegular,
+    fontSize: 12.5,
+    color: Colors.textPrimary,
   },
 });

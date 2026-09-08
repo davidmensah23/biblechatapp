@@ -18,6 +18,7 @@ export interface ChatMessage {
   content: string;
   timestamp: number;
   bookmarked?: boolean;
+  scriptureReferences?: string[];
 }
 
 export interface ConversationThread {

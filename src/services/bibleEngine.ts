@@ -161,6 +161,135 @@ export const ALL_BIBLE_BOOKS: BibleBook[] = [
   { name: 'Revelation', testament: 'NT', chaptersCount: 22 }
 ];
 
+export interface ResolvedScripturePassage {
+  citation: string;
+  book: string;
+  chapter: number;
+  startVerse: number;
+  endVerse: number;
+  verses: ChapterVerse[];
+  text: string;
+  translation: string;
+}
+
+export function parseReferenceString(refStr: string): { book: string; chapter: number; startVerse?: number; endVerse?: number } | null {
+  if (!refStr || typeof refStr !== 'string') return null;
+  const trimmed = refStr.trim();
+
+  // Matches "1 Peter 5:7", "John 21:9-17", "Psalms 23:1-4", "Genesis 1:1", "Romans 8"
+  const regex = /^((?:[123]\s+)?[A-Za-z\s]+?)\s+(\d+)(?::(\d+)(?:-(\d+))?)?$/;
+  const match = trimmed.match(regex);
+  if (!match) return null;
+
+  let rawBook = match[1].trim();
+  const chapter = parseInt(match[2], 10);
+  const startVerse = match[3] ? parseInt(match[3], 10) : undefined;
+  const endVerse = match[4] ? parseInt(match[4], 10) : startVerse;
+
+  // Book alias mappings
+  const bookAliases: Record<string, string> = {
+    'psalm': 'Psalms',
+    'song of songs': 'Song of Solomon',
+    'canticles': 'Song of Solomon',
+    '1 cor': '1 Corinthians',
+    '2 cor': '2 Corinthians',
+    '1 thess': '1 Thessalonians',
+    '2 thess': '2 Thessalonians',
+    '1 tim': '1 Timothy',
+    '2 tim': '2 Timothy',
+    '1 pet': '1 Peter',
+    '2 pet': '2 Peter',
+    '1 jn': '1 John',
+    '2 jn': '2 John',
+    '3 jn': '3 John',
+    'rev': 'Revelation',
+    'matt': 'Matthew',
+    'rom': 'Romans',
+    'gen': 'Genesis',
+    'ex': 'Exodus',
+    'exod': 'Exodus',
+    'heb': 'Hebrews'
+  };
+
+  const lowerRaw = rawBook.toLowerCase();
+  let normalizedBook = bookAliases[lowerRaw];
+
+  if (!normalizedBook) {
+    const found = ALL_BIBLE_BOOKS.find(b => b.name.toLowerCase() === lowerRaw);
+    if (found) {
+      normalizedBook = found.name;
+    } else {
+      const prefixMatch = ALL_BIBLE_BOOKS.find(b => b.name.toLowerCase().startsWith(lowerRaw));
+      if (prefixMatch) {
+        normalizedBook = prefixMatch.name;
+      } else {
+        normalizedBook = rawBook;
+      }
+    }
+  }
+
+  return {
+    book: normalizedBook,
+    chapter,
+    startVerse,
+    endVerse
+  };
+}
+
+export function resolveScriptureReference(
+  referenceStr: string,
+  preferredTranslation: string = 'NIV'
+): ResolvedScripturePassage | null {
+  const parsed = parseReferenceString(referenceStr);
+  if (!parsed) return null;
+
+  const { book, chapter, startVerse, endVerse } = parsed;
+
+  // Try bundled NIV first (0ms offline, verified)
+  let allVerses = getBundledNivChapter(book, chapter);
+  let translationUsed = 'NIV';
+
+  if (!allVerses || allVerses.length === 0) {
+    // Fall back to bundled WEB
+    allVerses = getBundledChapter(book, chapter);
+    translationUsed = 'WEB';
+  }
+
+  if (!allVerses || allVerses.length === 0) {
+    return null;
+  }
+
+  let selectedVerses: ChapterVerse[];
+  if (startVerse !== undefined) {
+    const end = endVerse !== undefined ? endVerse : startVerse;
+    selectedVerses = allVerses.filter(v => v.verseNumber >= startVerse && v.verseNumber <= end);
+    if (selectedVerses.length === 0) {
+      selectedVerses = allVerses;
+    }
+  } else {
+    selectedVerses = allVerses;
+  }
+
+  const citation = startVerse !== undefined
+    ? (endVerse && endVerse !== startVerse
+        ? `${book} ${chapter}:${startVerse}-${endVerse}`
+        : `${book} ${chapter}:${startVerse}`)
+    : `${book} ${chapter}`;
+
+  const text = selectedVerses.map(v => v.text).join(' ');
+
+  return {
+    citation,
+    book,
+    chapter,
+    startVerse: startVerse || 1,
+    endVerse: endVerse || (selectedVerses[selectedVerses.length - 1]?.verseNumber || 1),
+    verses: selectedVerses,
+    text,
+    translation: translationUsed
+  };
+}
+
 export const INITIAL_BIBLE_VERSIONS: BibleVersionInfo[] = [
   // English (Historic & Modern)
   { id: '1', code: 'NIV', name: 'New International Version', language: 'en', hasAudio: true, isDownloaded: true, apiTranslationKey: 'niv' },

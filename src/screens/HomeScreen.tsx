@@ -518,12 +518,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectApostle, onOpenB
             try {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             } catch (e) {}
+            const citation = 'citation' in v ? v.citation : `${v.book} ${v.chapter}:${(v as any).verse}`;
             await saveBookmark({
               id: `bm_verse_${Date.now()}`,
               type: 'verse',
-              title: `${v.book} ${v.chapter}:${v.verse}`,
+              title: citation,
               content: v.text,
-              reference: `${v.book} ${v.chapter}:${v.verse} (${v.translation || 'NIV'})`,
+              reference: `${citation} (${v.translation || 'NIV'})`,
               timestamp: Date.now()
             });
             if (Platform.OS === 'android') {

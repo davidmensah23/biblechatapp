@@ -229,7 +229,8 @@ const initTables = async (db: SQLite.SQLiteDatabase) => {
         sender TEXT NOT NULL,
         content TEXT NOT NULL,
         timestamp INTEGER NOT NULL,
-        bookmarked INTEGER DEFAULT 0
+        bookmarked INTEGER DEFAULT 0,
+        scripture_references TEXT
       );
 
       CREATE TABLE IF NOT EXISTS bookmarks (
@@ -391,6 +392,13 @@ const initTables = async (db: SQLite.SQLiteDatabase) => {
       }
     }
 
+    // Safe migration for scripture_references column on messages table
+    try {
+      await db.execAsync(`ALTER TABLE messages ADD COLUMN scripture_references TEXT;`);
+    } catch {
+      // Column already exists
+    }
+
     // Safe migration for user_profile columns
     try {
       await db.execAsync(`ALTER TABLE user_profile ADD COLUMN gender TEXT DEFAULT 'neutral';`);
@@ -492,14 +500,23 @@ export const fetchMessages = async (conversationId: string): Promise<ChatMessage
         [conversationId, userId]
       );
       if (rows.length > 0) {
-        return rows.map(r => ({
-          id: r.id,
-          conversationId: r.conversation_id,
-          sender: r.sender as 'user' | 'assistant',
-          content: r.content,
-          timestamp: r.timestamp,
-          bookmarked: Boolean(r.bookmarked)
-        }));
+        return rows.map(r => {
+          let scriptureReferences: string[] | undefined;
+          if (r.scripture_references) {
+            try {
+              scriptureReferences = JSON.parse(r.scripture_references);
+            } catch {}
+          }
+          return {
+            id: r.id,
+            conversationId: r.conversation_id,
+            sender: r.sender as 'user' | 'assistant',
+            content: r.content,
+            timestamp: r.timestamp,
+            bookmarked: Boolean(r.bookmarked),
+            scriptureReferences
+          };
+        });
       }
     } catch (e) {
       console.warn('fetchMessages error:', e);
@@ -538,8 +555,17 @@ export const saveMessage = async (msg: ChatMessage, personaName: string, persona
   if (db) {
     try {
       await db.runAsync(
-        'INSERT OR REPLACE INTO messages (id, user_id, conversation_id, sender, content, timestamp, bookmarked, synced) VALUES (?, ?, ?, ?, ?, ?, ?, 0)',
-        [msg.id, userId, msg.conversationId, msg.sender, msg.content, msg.timestamp, msg.bookmarked ? 1 : 0]
+        'INSERT OR REPLACE INTO messages (id, user_id, conversation_id, sender, content, timestamp, bookmarked, scripture_references, synced) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)',
+        [
+          msg.id,
+          userId,
+          msg.conversationId,
+          msg.sender,
+          msg.content,
+          msg.timestamp,
+          msg.bookmarked ? 1 : 0,
+          msg.scriptureReferences ? JSON.stringify(msg.scriptureReferences) : null
+        ]
       );
 
       await db.runAsync(
