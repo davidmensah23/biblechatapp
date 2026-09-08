@@ -24,7 +24,8 @@ import {
   fetchHighlightsForChapter,
   saveVerseNote,
   deleteVerseNote,
-  fetchNotesForChapter
+  fetchNotesForChapter,
+  subscribeToDatabaseChanges
 } from '../services/database';
 import { playDeepgramSpeech, stopDeepgramSpeech } from '../services/deepgramVoices';
 import { VerseActionSheet } from '../components/VerseActionSheet';
@@ -237,6 +238,20 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
     loadChapter(currentBook, currentChapter, translation);
   }, [currentBook, currentChapter, translation]);
 
+  // Instantly re-sync highlights and notes if modified anywhere in app or synced from cloud
+  useEffect(() => {
+    const unsub = subscribeToDatabaseChanges(() => {
+      Promise.all([
+        fetchHighlightsForChapter(currentBook, currentChapter),
+        fetchNotesForChapter(currentBook, currentChapter)
+      ]).then(([hlMap, noteMap]) => {
+        setChapterHighlights(hlMap);
+        setChapterNotes(noteMap);
+      }).catch(() => {});
+    });
+    return unsub;
+  }, [currentBook, currentChapter]);
+
   const loadChapter = async (b: string, c: number, t: string) => {
     setIsLoading(true);
     try {
@@ -372,15 +387,17 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
 
   // 4. Save Note with Custom Toast
   const handleSaveNote = async (noteText: string) => {
-    const vNum = modalVerseData?.verseNumber ?? selectedVerseNumber;
-    if (vNum === null || vNum === undefined) return;
+    const rawVNum = modalVerseData?.verseNumber ?? selectedVerseNumber;
+    if (rawVNum === null || rawVNum === undefined) return;
+    const vNum = Number(rawVNum);
+    if (isNaN(vNum)) return;
 
-    const book = modalVerseData?.book || chapterData?.book || currentBook;
-    const chapter = modalVerseData?.chapter || chapterData?.chapter || currentChapter;
+    const book = String(modalVerseData?.book || chapterData?.book || currentBook).trim();
+    const chapter = Number(modalVerseData?.chapter || chapterData?.chapter || currentChapter);
 
     let text = modalVerseData?.text;
     if (!text && chapterData) {
-      const verseObj = chapterData.verses.find(v => v.verseNumber === vNum);
+      const verseObj = chapterData.verses.find(v => Number(v.verseNumber) === vNum);
       text = verseObj?.text;
     }
     if (!text) text = '';
@@ -395,17 +412,20 @@ export const BibleReaderScreen: React.FC<BibleReaderScreenProps> = ({
 
   // 5. Delete Note
   const handleDeleteNote = async () => {
-    const vNum = modalVerseData?.verseNumber ?? selectedVerseNumber;
-    if (vNum === null || vNum === undefined) return;
-    const book = modalVerseData?.book || chapterData?.book || currentBook;
-    const chapter = modalVerseData?.chapter || chapterData?.chapter || currentChapter;
+    const rawVNum = modalVerseData?.verseNumber ?? selectedVerseNumber;
+    if (rawVNum === null || rawVNum === undefined) return;
+    const vNum = Number(rawVNum);
+    if (isNaN(vNum)) return;
+
+    const book = String(modalVerseData?.book || chapterData?.book || currentBook).trim();
+    const chapter = Number(modalVerseData?.chapter || chapterData?.chapter || currentChapter);
 
     setChapterNotes(prev => {
       const copy = { ...prev };
       delete copy[vNum];
       return copy;
     });
-    await deleteVerseNote(`note_${book}_${chapter}_${vNum}`);
+    await deleteVerseNote(book, chapter, vNum);
     showToast('Note deleted', 'trash-outline');
   };
 

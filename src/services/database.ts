@@ -1113,8 +1113,11 @@ export const saveVerseHighlight = async (
   verseText: string
 ): Promise<void> => {
   const userId = await getCurrentUserId();
-  const id = `hl_${userId}_${book}_${chapter}_${verse}`;
-  const hl: VerseHighlight = { id, book, chapter, verse, color, verseText, timestamp: Date.now() };
+  const cleanBook = book.trim();
+  const cleanChapter = Number(chapter);
+  const cleanVerse = Number(verse);
+  const id = `hl_${userId}_${cleanBook}_${cleanChapter}_${cleanVerse}`;
+  const hl: VerseHighlight = { id, book: cleanBook, chapter: cleanChapter, verse: cleanVerse, color, verseText, timestamp: Date.now() };
   memoryHighlights[id] = hl;
 
   const db = await getDB();
@@ -1123,7 +1126,7 @@ export const saveVerseHighlight = async (
       await db.runAsync(
         `INSERT OR REPLACE INTO verse_highlights (id, user_id, book, chapter, verse, color, verse_text, timestamp, synced)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
-        [id, userId, book, chapter, verse, color, verseText, hl.timestamp]
+        [id, userId, cleanBook, cleanChapter, cleanVerse, color, verseText, hl.timestamp]
       );
     } catch (e) {
       console.warn('saveVerseHighlight error:', e);
@@ -1142,15 +1145,20 @@ export const removeVerseHighlight = async (
   verse: number
 ): Promise<void> => {
   const userId = await getCurrentUserId();
-  const id = `hl_${userId}_${book}_${chapter}_${verse}`;
+  const cleanBook = book.trim();
+  const cleanChapter = Number(chapter);
+  const cleanVerse = Number(verse);
+  const id = `hl_${userId}_${cleanBook}_${cleanChapter}_${cleanVerse}`;
   delete memoryHighlights[id];
 
   const db = await getDB();
   if (db) {
     try {
       await db.runAsync(
-        'DELETE FROM verse_highlights WHERE (id = ? OR (book = ? AND chapter = ? AND verse = ?)) AND user_id = ?',
-        [id, book, chapter, verse, userId]
+        `DELETE FROM verse_highlights 
+         WHERE (id = ? OR (LOWER(TRIM(book)) = LOWER(TRIM(?)) AND CAST(chapter AS INTEGER) = CAST(? AS INTEGER) AND CAST(verse AS INTEGER) = CAST(? AS INTEGER))) 
+           AND user_id = ?`,
+        [id, cleanBook, cleanChapter, cleanVerse, userId]
       );
     } catch (e) {
       console.warn('removeVerseHighlight error:', e);
@@ -1164,13 +1172,19 @@ export const fetchHighlightsForChapter = async (
   chapter: number
 ): Promise<Record<number, string>> => {
   const userId = await getCurrentUserId();
+  const cleanBook = book.trim();
+  const cleanChapter = Number(chapter);
   const result: Record<number, string> = {};
 
   // Check memory
   for (const key in memoryHighlights) {
     const hl = memoryHighlights[key];
-    if (hl.book === book && hl.chapter === chapter && hl.id.startsWith(`hl_${userId}_`)) {
-      result[hl.verse] = hl.color;
+    if (
+      hl.book.trim().toLowerCase() === cleanBook.toLowerCase() &&
+      Number(hl.chapter) === cleanChapter &&
+      hl.id.startsWith(`hl_${userId}_`)
+    ) {
+      result[Number(hl.verse)] = hl.color;
     }
   }
 
@@ -1178,12 +1192,15 @@ export const fetchHighlightsForChapter = async (
   if (db) {
     try {
       const rows = await db.getAllAsync<{ verse: number; color: string }>(
-        'SELECT verse, color FROM verse_highlights WHERE book = ? AND chapter = ? AND user_id = ?',
-        [book, chapter, userId]
+        `SELECT verse, color FROM verse_highlights 
+         WHERE LOWER(TRIM(book)) = LOWER(TRIM(?)) 
+           AND CAST(chapter AS INTEGER) = CAST(? AS INTEGER) 
+           AND user_id = ?`,
+        [cleanBook, cleanChapter, userId]
       );
       if (rows && rows.length > 0) {
         rows.forEach(r => {
-          result[r.verse] = r.color;
+          result[Number(r.verse)] = r.color;
         });
       }
     } catch (e) {
@@ -1235,12 +1252,15 @@ export const saveVerseNote = async (
   noteText: string
 ): Promise<void> => {
   const userId = await getCurrentUserId();
-  const id = `note_${userId}_${book}_${chapter}_${verse}`;
+  const cleanBook = book.trim();
+  const cleanChapter = Number(chapter);
+  const cleanVerse = Number(verse);
+  const id = `note_${userId}_${cleanBook}_${cleanChapter}_${cleanVerse}`;
   const noteItem: VerseNote = {
     id,
-    book,
-    chapter,
-    verse,
+    book: cleanBook,
+    chapter: cleanChapter,
+    verse: cleanVerse,
     reference,
     verseText,
     noteText,
@@ -1254,7 +1274,7 @@ export const saveVerseNote = async (
       await db.runAsync(
         `INSERT OR REPLACE INTO verse_notes (id, user_id, book, chapter, verse, reference, verse_text, note_text, timestamp, synced)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
-        [id, userId, book, chapter, verse, reference, verseText, noteText, noteItem.timestamp]
+        [id, userId, cleanBook, cleanChapter, cleanVerse, reference, verseText, noteText, noteItem.timestamp]
       );
     } catch (e) {
       console.warn('saveVerseNote error:', e);
@@ -1272,12 +1292,18 @@ export const fetchNotesForChapter = async (
   chapter: number
 ): Promise<Record<number, string>> => {
   const userId = await getCurrentUserId();
+  const cleanBook = book.trim();
+  const cleanChapter = Number(chapter);
   const result: Record<number, string> = {};
 
   for (const key in memoryNotes) {
     const n = memoryNotes[key];
-    if (n.book === book && n.chapter === chapter && n.id.startsWith(`note_${userId}_`)) {
-      result[n.verse] = n.noteText;
+    if (
+      n.book.trim().toLowerCase() === cleanBook.toLowerCase() &&
+      Number(n.chapter) === cleanChapter &&
+      n.id.startsWith(`note_${userId}_`)
+    ) {
+      result[Number(n.verse)] = n.noteText;
     }
   }
 
@@ -1285,12 +1311,15 @@ export const fetchNotesForChapter = async (
   if (db) {
     try {
       const rows = await db.getAllAsync<{ verse: number; note_text: string }>(
-        'SELECT verse, note_text FROM verse_notes WHERE book = ? AND chapter = ? AND user_id = ?',
-        [book, chapter, userId]
+        `SELECT verse, note_text FROM verse_notes 
+         WHERE LOWER(TRIM(book)) = LOWER(TRIM(?)) 
+           AND CAST(chapter AS INTEGER) = CAST(? AS INTEGER) 
+           AND user_id = ?`,
+        [cleanBook, cleanChapter, userId]
       );
       if (rows && rows.length > 0) {
         rows.forEach(r => {
-          result[r.verse] = r.note_text;
+          result[Number(r.verse)] = r.note_text;
         });
       }
     } catch (e) {
@@ -1335,15 +1364,42 @@ export const fetchAllVerseNotes = async (): Promise<VerseNote[]> => {
   return Object.values(memoryNotes).filter(n => n.id.startsWith(`note_${userId}_`));
 };
 
-export const deleteVerseNote = async (id: string): Promise<void> => {
+export const deleteVerseNote = async (
+  idOrBook: string,
+  chapter?: number,
+  verse?: number
+): Promise<void> => {
   const userId = await getCurrentUserId();
-  delete memoryNotes[id];
-  const db = await getDB();
-  if (db) {
-    try {
-      await db.runAsync('DELETE FROM verse_notes WHERE id = ? AND user_id = ?', [id, userId]);
-    } catch (e) {
-      console.warn('deleteVerseNote error:', e);
+  if (chapter !== undefined && verse !== undefined) {
+    const cleanBook = idOrBook.trim();
+    const cleanChapter = Number(chapter);
+    const cleanVerse = Number(verse);
+    const id = `note_${userId}_${cleanBook}_${cleanChapter}_${cleanVerse}`;
+    delete memoryNotes[id];
+    delete memoryNotes[idOrBook];
+
+    const db = await getDB();
+    if (db) {
+      try {
+        await db.runAsync(
+          `DELETE FROM verse_notes 
+           WHERE (id = ? OR id = ? OR (LOWER(TRIM(book)) = LOWER(TRIM(?)) AND CAST(chapter AS INTEGER) = CAST(? AS INTEGER) AND CAST(verse AS INTEGER) = CAST(? AS INTEGER))) 
+             AND user_id = ?`,
+          [id, idOrBook, cleanBook, cleanChapter, cleanVerse, userId]
+        );
+      } catch (e) {
+        console.warn('deleteVerseNote error:', e);
+      }
+    }
+  } else {
+    delete memoryNotes[idOrBook];
+    const db = await getDB();
+    if (db) {
+      try {
+        await db.runAsync('DELETE FROM verse_notes WHERE id = ? AND user_id = ?', [idOrBook, userId]);
+      } catch (e) {
+        console.warn('deleteVerseNote error:', e);
+      }
     }
   }
   notifyDatabaseChanged();
@@ -1566,6 +1622,22 @@ export const saveRemoteMemorizedVerse = async (m: MemorizedVerse): Promise<void>
 
 export const saveRemoteVerseNote = async (n: VerseNote): Promise<void> => {
   const userId = await getCurrentUserId();
+  const cleanBook = n.book.trim();
+  const cleanChapter = Number(n.chapter);
+  const cleanVerse = Number(n.verse);
+  const noteItem: VerseNote = {
+    id: n.id,
+    book: cleanBook,
+    chapter: cleanChapter,
+    verse: cleanVerse,
+    reference: n.reference,
+    verseText: n.verseText,
+    noteText: n.noteText,
+    timestamp: n.timestamp
+  };
+  memoryNotes[n.id] = noteItem;
+  memoryNotes[`note_${userId}_${cleanBook}_${cleanChapter}_${cleanVerse}`] = noteItem;
+
   const db = await getDB();
   if (db) {
     try {
@@ -1577,7 +1649,7 @@ export const saveRemoteVerseNote = async (n: VerseNote): Promise<void> => {
            note_text = excluded.note_text,
            timestamp = excluded.timestamp,
            synced = 1;`,
-        [n.id, userId, n.book, n.chapter, n.verse, n.reference, n.verseText, n.noteText, n.timestamp]
+        [n.id, userId, cleanBook, cleanChapter, cleanVerse, n.reference, n.verseText, n.noteText, n.timestamp]
       );
     } catch (e) {
       console.warn('saveRemoteVerseNote error:', e);
@@ -1587,6 +1659,21 @@ export const saveRemoteVerseNote = async (n: VerseNote): Promise<void> => {
 
 export const saveRemoteVerseHighlight = async (h: VerseHighlight): Promise<void> => {
   const userId = await getCurrentUserId();
+  const cleanBook = h.book.trim();
+  const cleanChapter = Number(h.chapter);
+  const cleanVerse = Number(h.verse);
+  const hl: VerseHighlight = {
+    id: h.id,
+    book: cleanBook,
+    chapter: cleanChapter,
+    verse: cleanVerse,
+    color: h.color,
+    verseText: h.verseText,
+    timestamp: h.timestamp
+  };
+  memoryHighlights[h.id] = hl;
+  memoryHighlights[`hl_${userId}_${cleanBook}_${cleanChapter}_${cleanVerse}`] = hl;
+
   const db = await getDB();
   if (db) {
     try {
@@ -1598,7 +1685,7 @@ export const saveRemoteVerseHighlight = async (h: VerseHighlight): Promise<void>
            verse_text = excluded.verse_text,
            timestamp = excluded.timestamp,
            synced = 1;`,
-        [h.id, userId, h.book, h.chapter, h.verse, h.color, h.verseText, h.timestamp]
+        [h.id, userId, cleanBook, cleanChapter, cleanVerse, h.color, h.verseText, h.timestamp]
       );
     } catch (e) {
       console.warn('saveRemoteVerseHighlight error:', e);
