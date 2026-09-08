@@ -27,6 +27,28 @@ export interface BibleVersionInfo {
   apiTranslationKey: string;
 }
 
+// Bundled Public Domain World English Bible (WEB) for 100% Day-One Offline Reading
+let bundledWebData: Record<string, string[]> | null = null;
+export const getBundledChapter = (book: string, chapter: number): ChapterVerse[] | null => {
+  if (!bundledWebData) {
+    try {
+      bundledWebData = require('../../assets/bibles/web.json');
+    } catch (e) {
+      console.warn('Could not load bundled web.json:', e);
+      bundledWebData = {};
+    }
+  }
+  const key = `${book}_${chapter}`;
+  const verses = bundledWebData?.[key];
+  if (verses && Array.isArray(verses) && verses.length > 0) {
+    return verses.map((text, idx) => ({
+      verseNumber: idx + 1,
+      text
+    }));
+  }
+  return null;
+};
+
 export const BOOK_TO_USFM: Record<string, string> = {
   'Genesis': 'GEN', 'Exodus': 'EXO', 'Leviticus': 'LEV', 'Numbers': 'NUM', 'Deuteronomy': 'DEU',
   'Joshua': 'JOS', 'Judges': 'JDG', 'Ruth': 'RUT', '1 Samuel': '1SA', '2 Samuel': '2SA',
@@ -119,7 +141,7 @@ export const ALL_BIBLE_BOOKS: BibleBook[] = [
 
 export const INITIAL_BIBLE_VERSIONS: BibleVersionInfo[] = [
   // English (Historic & Modern)
-  { id: '1', code: 'NIV', name: 'New International Version', language: 'en', hasAudio: true, isDownloaded: true, apiTranslationKey: 'youversion:111' },
+  { id: '1', code: 'NIV', name: 'New International Version', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'youversion:111' },
   { id: '2', code: 'KJV', name: 'King James Version (1611)', language: 'en', hasAudio: true, isDownloaded: true, apiTranslationKey: 'kjv' },
   { id: '3', code: 'ESV', name: 'English Standard Version', language: 'en', hasAudio: true, isDownloaded: false, apiTranslationKey: 'bolls:ESV' },
   { id: '4', code: 'GNV', name: 'Geneva Bible (1599)', language: 'en', hasAudio: true, isDownloaded: true, apiTranslationKey: 'youversion:2163' },
@@ -274,7 +296,7 @@ export const getBibleVersionsList = async (): Promise<BibleVersionInfo[]> => {
           const row = existing.find(e => e.code.toUpperCase() === v.code.toUpperCase());
           return {
             ...v,
-            isDownloaded: row ? Boolean(row.is_downloaded) : v.isDownloaded
+            isDownloaded: v.code.toUpperCase() === 'WEB' ? true : (row ? Boolean(row.is_downloaded) : false)
           };
         });
       }
@@ -297,6 +319,21 @@ export const downloadBibleVersion = async (
   const version = INITIAL_BIBLE_VERSIONS.find(v => v.code.toUpperCase() === versionCode.toUpperCase());
   if (!version) return false;
 
+  // 1. If WEB, it is already bundled locally in full
+  if (version.code.toUpperCase() === 'WEB') {
+    const db = await getDB();
+    if (db) {
+      try {
+        await db.runAsync(
+          'INSERT OR REPLACE INTO offline_bible_versions (code, name, has_audio, is_downloaded, api_key) VALUES (?, ?, ?, 1, ?)',
+          [version.code, version.name, version.hasAudio ? 1 : 0, version.apiTranslationKey]
+        );
+      } catch (e) {}
+    }
+    if (onProgress) onProgress(100);
+    return true;
+  }
+
   try {
     const db = await getDB();
     if (!db) return false;
@@ -313,9 +350,23 @@ export const downloadBibleVersion = async (
       );
     `);
 
-    // Complete Bible Download across all 66 books (all 1,189 chapters)
+    // Prioritize New Testament first (260 ch), then Psalms (150 ch), Proverbs (31 ch), Genesis (50 ch), then remaining OT
+    const priorityBooks = [
+      'Matthew', 'Mark', 'Luke', 'John', 'Acts', 'Romans',
+      '1 Corinthians', '2 Corinthians', 'Galatians', 'Ephesians',
+      'Philippians', 'Colossians', '1 Thessalonians', '2 Thessalonians',
+      '1 Timothy', '2 Timothy', 'Titus', 'Philemon', 'Hebrews', 'James',
+      '1 Peter', '2 Peter', '1 John', '2 John', '3 John', 'Jude', 'Revelation',
+      'Psalms', 'Proverbs', 'Genesis'
+    ];
+
+    const orderedBooks = [
+      ...ALL_BIBLE_BOOKS.filter(b => priorityBooks.includes(b.name)),
+      ...ALL_BIBLE_BOOKS.filter(b => !priorityBooks.includes(b.name))
+    ];
+
     const allChaptersList: { book: string; chapter: number }[] = [];
-    for (const book of ALL_BIBLE_BOOKS) {
+    for (const book of orderedBooks) {
       for (let ch = 1; ch <= book.chaptersCount; ch++) {
         allChaptersList.push({ book: book.name, chapter: ch });
       }
@@ -323,7 +374,7 @@ export const downloadBibleVersion = async (
 
     const totalChapters = allChaptersList.length;
     let downloadedCount = 0;
-    const CHUNK_SIZE = 5;
+    const CHUNK_SIZE = 2; // Paced to avoid 429 rate limits
 
     for (let i = 0; i < allChaptersList.length; i += CHUNK_SIZE) {
       const chunk = allChaptersList.slice(i, i + CHUNK_SIZE);
@@ -332,11 +383,14 @@ export const downloadBibleVersion = async (
           try {
             await fetchChapter(item.book, item.chapter, version.code);
           } catch (err) {
-            // Non-fatal, keep downloading rest
+            // Non-fatal, keep downloading
           }
           downloadedCount++;
         })
       );
+
+      // Throttling delay to prevent YouVersion / Bolls API rate limiting
+      await new Promise(resolve => setTimeout(resolve, 80));
 
       if (onProgress) {
         const percent = Math.min(99, Math.round((downloadedCount / totalChapters) * 100));
@@ -407,6 +461,27 @@ export async function fetchChapter(
       }
     } catch (e) {
       console.warn('SQLite chapter lookup note:', e);
+    }
+  }
+
+  // 1.5 Special check for bundled World English Bible (WEB): 0ms instant local resolution
+  if (transCode === 'WEB') {
+    const bundledVerses = getBundledChapter(book, chapter);
+    if (bundledVerses && bundledVerses.length > 0) {
+      const result: BibleChapterData = {
+        book,
+        chapter,
+        sectionTitle: `${book} Chapter ${chapter}`,
+        translation: 'WEB',
+        verses: bundledVerses
+      };
+      if (db) {
+        db.runAsync(
+          'INSERT OR REPLACE INTO offline_bible_chapters (id, translation, book, chapter, section_title, verses_json, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [cacheKey, 'WEB', book, chapter, result.sectionTitle || '', JSON.stringify(bundledVerses), Date.now()]
+        ).catch(() => {});
+      }
+      return result;
     }
   }
 
@@ -542,7 +617,18 @@ export async function fetchChapter(
     console.warn(`Bible API fetch error for ${book} ${chapter} (${transCode}):`, err);
   }
 
-  // 4. Fallback Resilient Chapter
+  // 4. Fallback Resilient Chapter (Bundled Offline Modern English WEB)
+  const bundledVerses = getBundledChapter(book, chapter);
+  if (bundledVerses && bundledVerses.length > 0) {
+    return {
+      book,
+      chapter,
+      sectionTitle: `${book} Chapter ${chapter}`,
+      translation: transCode,
+      verses: bundledVerses
+    };
+  }
+
   return {
     book,
     chapter,
@@ -566,6 +652,16 @@ export async function fetchSpecificVerse(
   translation: string = 'NIV'
 ): Promise<string | null> {
   const transCode = translation.toUpperCase();
+
+  // 0. Fast local check for bundled WEB
+  if (transCode === 'WEB') {
+    const bundledVerses = getBundledChapter(book, chapter);
+    if (bundledVerses) {
+      const matched = bundledVerses.find(v => v.verseNumber === verseNumber);
+      if (matched) return matched.text;
+    }
+  }
+
   const versionMeta = INITIAL_BIBLE_VERSIONS.find(v => v.code.toUpperCase() === transCode);
 
   // 1. Check Bolls.life (NLT, ESV, NKJV, MSG, etc.)

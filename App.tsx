@@ -126,16 +126,20 @@ export default function App() {
   }, [activeNavTab]);
 
   // Determine whether the user needs to complete the personalization questionnaire
-  const checkNeedsPersonalization = async (userId?: string): Promise<boolean> => {
+  const checkNeedsPersonalization = async (userId?: string, skipRemote: boolean = false): Promise<boolean> => {
     // 1. If user ID is available, check per-user storage and remote Supabase profile (source of truth)
     if (userId) {
       const hasCompleted = await getHasCompletedOnboarding(userId);
       if (hasCompleted) return false;
 
-      const remote = await fetchRemoteProfile(userId);
-      if (remote?.onboardingCompleted || (remote?.ageBracket && remote?.comprehensionLevel)) {
-        await setHasCompletedOnboarding(true, userId);
-        return false;
+      if (!skipRemote) {
+        try {
+          const remote = await fetchRemoteProfile(userId);
+          if (remote?.onboardingCompleted || (remote?.ageBracket && remote?.comprehensionLevel)) {
+            await setHasCompletedOnboarding(true, userId);
+            return false;
+          }
+        } catch (e) {}
       }
     } else {
       const hasCompleted = await getHasCompletedOnboarding();
@@ -143,11 +147,13 @@ export default function App() {
     }
 
     // 2. Check local SQLite profile for this session
-    const local = await fetchUserProfile();
-    if (local?.onboardingCompleted || (local?.ageBracket && local?.comprehensionLevel)) {
-      await setHasCompletedOnboarding(true, userId);
-      return false;
-    }
+    try {
+      const local = await fetchUserProfile();
+      if (local?.onboardingCompleted || (local?.ageBracket && local?.comprehensionLevel)) {
+        await setHasCompletedOnboarding(true, userId);
+        return false;
+      }
+    } catch (e) {}
 
     return true;
   };
@@ -177,27 +183,38 @@ export default function App() {
       if (event.url) processDeepLink(event.url);
     });
 
-    // Check existing Supabase session or persistent user state
+    // Check existing Supabase session or persistent user state (local-first, non-blocking)
     const verifyUserSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          await migrateGuestDataToUser(session.user.id);
-          syncAllToCloud().catch(console.warn);
-          pullCloudToLocal().catch(console.warn);
-          const remoteProfile = await fetchRemoteProfile(session.user.id);
-          if (remoteProfile) {
-            await saveUserProfile(remoteProfile);
-          }
-
-          const needsPersonalization = await checkNeedsPersonalization(session.user.id);
+          // 1. Instant local check (0ms network latency, offline resilient)
+          const needsPersonalization = await checkNeedsPersonalization(session.user.id, true);
           if (isMounted) {
             setAppStage(needsPersonalization ? 'profile_setup' : 'main');
           }
+
+          // 2. Background sync & remote profile hydration (non-blocking)
+          (async () => {
+            try {
+              await migrateGuestDataToUser(session.user.id);
+              syncAllToCloud().catch(console.warn);
+              pullCloudToLocal().catch(console.warn);
+              const remoteProfile = await fetchRemoteProfile(session.user.id);
+              if (remoteProfile) {
+                await saveUserProfile(remoteProfile);
+                if (remoteProfile.onboardingCompleted) {
+                  await setHasCompletedOnboarding(true, session.user.id);
+                }
+              }
+            } catch (bgErr) {
+              console.warn('Background session hydration note:', bgErr);
+            }
+          })();
           return;
         }
 
-        const needsPersonalization = await checkNeedsPersonalization();
+        const needsPersonalization = await checkNeedsPersonalization(undefined, true);
         if (!needsPersonalization) {
           if (isMounted) setAppStage('main');
           return;
@@ -260,12 +277,21 @@ export default function App() {
       setForceRender(true);
     }, 600);
 
+    // Watchdog safety timer: Guarantee screen is NEVER stuck on 'checking' or dark background
+    const watchdogTimer = setTimeout(() => {
+      if (isMounted) {
+        setForceRender(true);
+        setAppStage(prev => (prev === 'checking' ? 'main' : prev));
+      }
+    }, 1000);
+
     return () => {
       isMounted = false;
       linkSubscription.remove();
       subscription.unsubscribe();
       appStateSubscription.remove();
       clearTimeout(timer);
+      clearTimeout(watchdogTimer);
     };
   }, []);
 
@@ -363,7 +389,7 @@ export default function App() {
   };
 
   // If fonts are still loading or session check in progress, show a dark container
-  if ((!fontsLoaded && !fontError && !forceRender) || appStage === 'checking') {
+  if ((!fontsLoaded && !fontError && !forceRender) || (appStage === 'checking' && !forceRender)) {
     return (
       <View style={styles.darkBackground}>
         <StatusBar barStyle="light-content" backgroundColor="#0B0B0B" />
