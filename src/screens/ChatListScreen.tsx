@@ -78,7 +78,19 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
     try {
       const list = await fetchConversations();
       const groups = await fetchGroupThreads();
-      setConversations(list);
+
+      const biblePersona = APOSTLE_PERSONAS.find(p => p.id === 'the_bible') || APOSTLE_PERSONAS[0];
+      const existingBible = list.find(c => c.personaId === 'the_bible');
+      const pinnedBible: ConversationThread = existingBible || {
+        id: `conv_${biblePersona.id}`,
+        personaId: biblePersona.id,
+        personaName: biblePersona.name,
+        lastMessage: biblePersona.shortQuote || "Ask any question about Scripture, theology, or daily faith...",
+        lastMessageSender: 'assistant',
+        updatedAt: Date.now()
+      };
+      const otherConversations = list.filter(c => c.personaId !== 'the_bible');
+      setConversations([pinnedBible, ...otherConversations]);
       setGroupThreads(groups);
     } finally {
       setIsLoading(false);
@@ -276,7 +288,15 @@ export const ChatListScreen: React.FC<ChatListScreenProps> = ({
 
                     <View style={styles.chatInfo}>
                       <View style={styles.chatHeader}>
-                        <Text style={styles.personaName}>{item.personaName}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, marginRight: 8 }}>
+                          <Text style={styles.personaName} numberOfLines={1}>{item.personaName}</Text>
+                          {item.personaId === 'the_bible' && (
+                            <View style={styles.pinnedBadge}>
+                              <Ionicons name="pin" size={10} color="#B45309" />
+                              <Text style={styles.pinnedText}>Pinned</Text>
+                            </View>
+                          )}
+                        </View>
                         <Text style={styles.timestamp}>{formatTimestamp(item.updatedAt)}</Text>
                       </View>
                       <Text style={styles.lastMessage} numberOfLines={1}>
@@ -538,6 +558,20 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontSansBold,
     fontSize: 15,
     color: Colors.textPrimary,
+  },
+  pinnedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  pinnedText: {
+    fontFamily: Typography.fontSansSemiBold,
+    fontSize: 10,
+    color: '#B45309',
   },
   timestamp: {
     fontFamily: Typography.fontSansRegular,

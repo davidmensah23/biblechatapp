@@ -34,8 +34,7 @@ import { generateApostleReply } from '../services/groq';
 import { VoiceCallModal } from '../components/VoiceCallModal';
 import { FormattedMessageText } from '../components/FormattedMessageText';
 import { checkProactiveFollowUp } from '../services/companionFollowup';
-import { splitIntoThoughtBubbles } from '../services/messageSplitter';
-import { calculateBubbleTypingDelay, calculateInitialContemplationDelay } from '../services/typingSpeed';
+import { calculateInitialContemplationDelay } from '../services/typingSpeed';
 import { AnimatedChatBubble } from '../components/AnimatedChatBubble';
 import { getContextualChips } from '../services/quickChips';
 import { WordDefinitionPill } from '../components/WordDefinitionPill';
@@ -260,30 +259,17 @@ export const ChatDetailScreen: React.FC<ChatDetailScreenProps> = ({ apostle, onB
 
       if (activeDispatchIdRef.current !== currentDispatchId) return;
 
-      const chunks = splitIntoThoughtBubbles(replyText);
+      const assistantMsg: ChatMessage = {
+        id: `msg_asst_${Date.now()}`,
+        conversationId: conversationId,
+        sender: 'assistant',
+        content: replyText.trim(),
+        timestamp: Date.now()
+      };
 
-      for (let i = 0; i < chunks.length; i++) {
-        if (activeDispatchIdRef.current !== currentDispatchId) return;
-
-        const chunk = chunks[i];
-        const bubbleDelay = calculateBubbleTypingDelay(apostle.id, chunk);
-
-        await new Promise(r => setTimeout(r, bubbleDelay));
-
-        if (activeDispatchIdRef.current !== currentDispatchId) return;
-
-        const assistantMsg: ChatMessage = {
-          id: `msg_asst_${Date.now()}_${i}`,
-          conversationId: conversationId,
-          sender: 'assistant',
-          content: chunk,
-          timestamp: Date.now()
-        };
-
-        setMessages(prev => [...prev, assistantMsg]);
-        await saveMessage(assistantMsg, apostle.title, apostle.id);
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }
+      setMessages(prev => [...prev, assistantMsg]);
+      await saveMessage(assistantMsg, apostle.title, apostle.id);
+      flatListRef.current?.scrollToEnd({ animated: true });
     } catch (error) {
       console.error('Error in multi-message generation:', error);
     } finally {
